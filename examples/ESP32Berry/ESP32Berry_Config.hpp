@@ -38,6 +38,6 @@ https://github.com/lvgl/lvgl
 
 // Set your OpenAPI Key for ChatGPT 
 // https://youtu.be/IuvEtq73gyE 
-#define OPENAI_API_KEY "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"
+#define OPENAI_API_KEY ""
 
 #define AUDIO_BOOT "/startup-sound.mp3" // Download the mp3 file from https://www.myinstants.com/en/instant/blackberry-startup-sound-67394/
