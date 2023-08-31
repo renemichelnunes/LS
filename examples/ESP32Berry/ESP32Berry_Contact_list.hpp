@@ -1,12 +1,14 @@
 #pragma once
 #include "ESP32Berry_Config.hpp"
 #include "ESP32Berry_AppBase.hpp"
+#include "Contacts.hpp"
 
 class AppContactList : public AppBase {
 private:
   lv_style_t msgStyle;
   lv_obj_t *addBtn;
   lv_obj_t *ContactList;
+  Contacts* clist;
   int display_width;
   void draw_ui();
 

@@ -14,6 +14,7 @@
 #include "ESP32Berry_Network.hpp"
 #include "ESP32Berry_System.hpp"
 #include "ESP32Berry_AppChatGPT.hpp"
+#include "ESP32Berry_Contact_list.hpp"
 
 class ESP32Berry {
 private:
