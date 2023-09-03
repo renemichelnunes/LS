@@ -7,8 +7,7 @@ class AppContactList : public AppBase {
 private:
   lv_style_t msgStyle;
   lv_obj_t *addBtn;
-  lv_obj_t *ContactList;
-  Contacts* clist;
+    lv_obj_t *ContactList;
   int display_width;
   void draw_ui();
 
