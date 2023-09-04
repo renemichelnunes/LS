@@ -1,7 +1,8 @@
 #pragma once
 #include <Arduino.h>
-using namespace std;
 #include <vector>
+
+using namespace std;
 
 class Contact{
     public:
