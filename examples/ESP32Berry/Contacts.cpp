@@ -2,8 +2,9 @@
 #include <iterator>
 #include <vector>
 #include <algorithm>
+#include <iostream>
 
-Contact::Contact(const String &name, const String &lora_address){
+Contact::Contact(const string &name, const string &lora_address){
     this->name = name;
     this->lora_address = lora_address;
 }
@@ -12,16 +13,24 @@ Contact::Contact(){
 
 }
 
-String Contact::getName()const{
+string Contact::getName()const{
     return this->name;
 }
 
-String Contact::getLoraAddress()const{
+string Contact::getLoraAddress()const{
     return this->lora_address;
 }
 
 bool Contact::operator==(const Contact &other)const{
-    return (name == other.name && lora_address == other.lora_address);
+    return (name == other.name || lora_address == other.lora_address);
+}
+
+void Contact::setName(string name){
+    this->name = name;
+}
+
+void Contact::setLAddr(string laddr){
+    this->lora_address = laddr;
 }
 
 static bool cmp_name(const Contact &c1, const Contact &c2){
@@ -64,4 +73,14 @@ bool Contact_list::find(Contact &c){
     }
     else
         return false;
+}
+
+void Contact_list::print(){
+    if(this->contact_list.size() == 0)
+        return;
+    for(uint32_t i = 0; i < this->contact_list.size(); i++){
+        cout << this->contact_list[i].getName() << endl;
+        cout << this->contact_list[i].getLoraAddress() << endl;
+        cout << "---------------------------------------------" << endl;
+    }
 }

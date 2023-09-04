@@ -1,19 +1,21 @@
 #pragma once
-#include <Arduino.h>
+#include <string>
 #include <vector>
 
 using namespace std;
 
 class Contact{
     public:
-        Contact(const String &name, const String &lora_address);
+        Contact(const string &name, const string &lora_address);
         Contact();
         bool operator==(const Contact &other)const;
-        String getName()const;
-        String getLoraAddress()const;
+        string getName()const;
+        string getLoraAddress()const;
+        void setName(string name);
+        void setLAddr(string laddr);
     private:
-        String name;
-        String lora_address;
+        string name;
+        string lora_address;
 };
 
 class Contact_list{
@@ -23,6 +25,7 @@ class Contact_list{
         bool add(Contact c);
         bool del(Contact c);
         bool find(Contact &c);
+        void print();
         Contact_list();
         ~Contact_list();
 };
