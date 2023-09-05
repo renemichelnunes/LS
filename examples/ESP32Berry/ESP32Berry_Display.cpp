@@ -168,7 +168,11 @@ void Display::ui_app_btns_callback(lv_event_t *e) {
     lv_obj_t *label = lv_obj_get_child(btn, 0);
     String appBtnLabel = lv_label_get_text(label);
     switch (appBtnLabel.toInt()) {
-      case 0:
+      case 0:// ChatGPT app
+        lv_scr_load_anim(ui_Sub_Screen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 100, 0, false);
+        menu_event_cb(APP, lv_label_get_text(label));
+        break;
+      case 1:// Contacts app
         lv_scr_load_anim(ui_Sub_Screen, LV_SCR_LOAD_ANIM_MOVE_LEFT, 100, 0, false);
         menu_event_cb(APP, lv_label_get_text(label));
         break;
@@ -356,6 +360,10 @@ void Display::ui_main() {
   LV_IMG_DECLARE(icon_speaker);
   LV_IMG_DECLARE(icon_wifi);
   LV_IMG_DECLARE(icon_chatgpt);
+  LV_IMG_DECLARE(icon_contact);
+  LV_IMG_DECLARE(icon_mail);
+  LV_IMG_DECLARE(icon_lora);
+  LV_IMG_DECLARE(icon_lora2);
 
   ui_Main_Screen = lv_obj_create(NULL);
   lv_obj_clear_flag(ui_Main_Screen, LV_OBJ_FLAG_SCROLLABLE);
@@ -488,6 +496,15 @@ void Display::ui_main() {
     if (i == 0) {
       ui_btn_icon = lv_img_create(obj);
       lv_img_set_src(ui_btn_icon, &icon_chatgpt);
+      lv_obj_set_width(ui_btn_icon, LV_SIZE_CONTENT);
+      lv_obj_set_height(ui_btn_icon, LV_SIZE_CONTENT);
+      lv_obj_set_align(ui_btn_icon, LV_ALIGN_CENTER);
+      lv_obj_add_flag(ui_btn_icon, LV_OBJ_FLAG_ADV_HITTEST);
+      lv_obj_clear_flag(ui_btn_icon, LV_OBJ_FLAG_SCROLLABLE);
+    }
+    else if(i == 1){// Contact list
+      ui_btn_icon = lv_img_create(obj);
+      lv_img_set_src(ui_btn_icon, &icon_lora2); 
       lv_obj_set_width(ui_btn_icon, LV_SIZE_CONTENT);
       lv_obj_set_height(ui_btn_icon, LV_SIZE_CONTENT);
       lv_obj_set_align(ui_btn_icon, LV_ALIGN_CENTER);

@@ -24,6 +24,7 @@ public:
   Network *network;
   System *system;
   AppChatGPT *appChatGPT;
+  AppContactList *appContactList;
 
   ESP32Berry();
   ~ESP32Berry();

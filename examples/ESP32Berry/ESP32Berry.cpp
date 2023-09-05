@@ -31,11 +31,15 @@ void displayEventHandler(Menu_Event_t event, void* param) {
 
     case APP:
       int menuNum = std::stoi((char*)param);
+      Serial.print("Menu ");
+      Serial.println((char*)param);
       switch (menuNum) {
         case 0:
           instance->appChatGPT = new AppChatGPT(instance->display, instance->system, instance->network, "ChatGPT Client");
           break;
-        
+        case 1:// appContactList
+          instance->appContactList = new AppContactList(instance->display, instance->system, instance->network, "Contacts");
+          break;
       }
 
       break;
@@ -58,7 +62,7 @@ void networkResponse(Network_Event_t event, void* data1, void* data2) {
     case NETWORK_CONNECT_FAILURE:
     case NETWORK_DISCONNECTED:
       instance->display->show_loading_popup(false);
-      instance->display->set_notification("[WIFI] Unable to connect to selected WiFi.");
+      instance->display->set_notification("[WIFI] Disconnected.");
       instance->display->update_WiFi_label(data1);
       break;
   }
