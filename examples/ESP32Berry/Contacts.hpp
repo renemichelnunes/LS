@@ -25,7 +25,6 @@ class Contact_list{
         bool add(Contact c);
         bool del(Contact c);
         bool find(Contact &c);
-        void print();
         Contact_list();
         ~Contact_list();
 };

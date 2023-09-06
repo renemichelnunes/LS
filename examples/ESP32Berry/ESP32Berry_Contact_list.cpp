@@ -7,6 +7,7 @@ const char* title) : AppBase(display, system, network, title){
   instance = this;
   display_width = display->get_display_width();
   this->draw_ui();
+  this->contact_list = Contact_list();
 }
 
 /*for testing only==================================================*/
@@ -14,11 +15,28 @@ static uint32_t btn_cnt = 1;
 
 static void add(lv_event_t* e){
   lv_obj_t* addBtn = lv_event_get_target(e);
-  lv_obj_t* window = lv_obj_get_parent(addBtn);
-  lv_obj_t * list = (lv_obj_t*)lv_event_get_user_data(e);
+  lv_obj_t* window = (lv_obj_t*)lv_event_get_user_data(e);
+  string name, lora_addr;
 
-  lv_obj_t* btn = lv_list_add_btn(list, LV_SYMBOL_CALL, "Contact");
 
+  lv_obj_t* txtName = lv_obj_get_child(window, 0);
+  Serial.print("Name: ");
+  name = lv_textarea_get_text(txtName);
+  Serial.println(name.c_str());
+  lv_obj_t* txtLoRaAddr = lv_obj_get_child(window, 1);
+  Serial.print("LoRa Address: ");
+  lora_addr = lv_textarea_get_text(txtLoRaAddr);
+  Serial.println(lora_addr.c_str());
+  if(name != "" && lora_addr != ""){
+    Contact c = Contact(name, lora_addr);
+    if(!instance->contact_list.find(c)){
+      if(instance->contact_list.add(c))
+        Serial.println("Contact added");
+      else
+        Serial.println("Fail to add contact");
+    }else
+      Serial.println("Contact already exists");
+  }
   lv_obj_del(window);
 }
 
@@ -51,19 +69,15 @@ static void add_btn_event_cb(lv_event_t * e)
       lv_obj_align(lblBtnAdd, LV_ALIGN_CENTER, 0, 0);
       
       lv_obj_t * list = (lv_obj_t*)lv_event_get_user_data(e);
-      lv_obj_add_event_cb(btnAdd, add, LV_EVENT_CLICKED, list);
+      lv_obj_add_event_cb(btnAdd, add, LV_EVENT_CLICKED, window);
+      char buf[32];
+      lv_snprintf(buf, sizeof(buf), "Contact %d", (int)btn_cnt);
+      lv_obj_t * list_btn = lv_list_add_btn(list, LV_SYMBOL_CALL, buf);
+      btn_cnt++;
 
-      /*
-        lv_obj_t * list = (lv_obj_t*)lv_event_get_user_data(e);
-        char buf[32];
-        //lv_snprintf(buf, sizeof(buf), "Contact %d", (int)btn_cnt);
-        //lv_obj_t * list_btn = lv_list_add_btn(list, LV_SYMBOL_CALL, buf);
-        btn_cnt++;
-
-        lv_obj_move_foreground(float_btn);
-
-        lv_obj_scroll_to_view(list_btn, LV_ANIM_ON);
-      */
+      lv_obj_move_foreground(float_btn);
+      lv_obj_scroll_to_view(list_btn, LV_ANIM_ON);
+      
     }
 }
 /*for testing only==================================================*/

@@ -22,7 +22,7 @@ string Contact::getLoraAddress()const{
 }
 
 bool Contact::operator==(const Contact &other)const{
-    return (name == other.name || lora_address == other.lora_address);
+    return (name == other.name);
 }
 
 void Contact::setName(string name){
@@ -75,12 +75,3 @@ bool Contact_list::find(Contact &c){
         return false;
 }
 
-void Contact_list::print(){
-    if(this->contact_list.size() == 0)
-        return;
-    for(uint32_t i = 0; i < this->contact_list.size(); i++){
-        cout << this->contact_list[i].getName() << endl;
-        cout << this->contact_list[i].getLoraAddress() << endl;
-        cout << "---------------------------------------------" << endl;
-    }
-}
