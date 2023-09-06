@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <iostream>
 
-Contact::Contact(const string &name, const string &lora_address){
+Contact::Contact(String name, String lora_address){
     this->name = name;
     this->lora_address = lora_address;
 }
@@ -13,34 +13,34 @@ Contact::Contact(){
 
 }
 
-string Contact::getName()const{
+String Contact::getName(){
     return this->name;
 }
 
-string Contact::getLoraAddress()const{
+String Contact::getLoraAddress(){
     return this->lora_address;
 }
 
-bool Contact::operator==(const Contact &other)const{
+bool Contact::operator==( Contact other){
     return (name == other.name);
 }
 
-void Contact::setName(string name){
+void Contact::setName(String name){
     this->name = name;
 }
 
-void Contact::setLAddr(string laddr){
+void Contact::setLAddr(String laddr){
     this->lora_address = laddr;
 }
 
-static bool cmp_name(const Contact &c1, const Contact &c2){
+static bool cmp_name( Contact &c1,  Contact &c2){
     return c1.getName() < c2.getName();
 }
 
 bool Contact_list::add(Contact c){
     try{
-        this->contact_list.push_back(c);
-        std::sort(this->contact_list.begin(), this->contact_list.end(), cmp_name);
+        this->list.push_back(c);
+        std::sort(this->list.begin(), this->list.end(), cmp_name);
     }
     catch(exception ex){
         return false;
@@ -52,13 +52,21 @@ Contact_list::Contact_list(){
 }
 
 Contact_list::~Contact_list(){
-    this->contact_list.clear();
+    this->list.clear();
+}
+
+uint32_t Contact_list::size(){
+    return sizeof(this->list.size());
+}
+
+Contact  Contact_list::getContact(uint32_t index){
+    return list.at(index);
 }
 
 bool Contact_list::del(Contact c){
-    std::vector<Contact>::iterator it = std::find(this->contact_list.begin(), this->contact_list.end(), c);
-    if(it != this->contact_list.end()){
-        this->contact_list.erase(it);
+    std::vector<Contact>::iterator it = std::find(this->list.begin(), this->list.end(), c);
+    if(it != this->list.end()){
+        this->list.erase(it);
     }
     else
         return false;
@@ -66,9 +74,9 @@ bool Contact_list::del(Contact c){
 }
 
 bool Contact_list::find(Contact &c){
-    std::vector<Contact>::iterator it = std::find(this->contact_list.begin(), this->contact_list.end(), c);
-    if(it != this->contact_list.end()){
-        c = this->contact_list[std::distance(this->contact_list.begin(), it)];
+    std::vector<Contact>::iterator it = std::find(this->list.begin(), this->list.end(), c);
+    if(it != this->list.end()){
+        c = this->list[std::distance(this->list.begin(), it)];
         return true;
     }
     else

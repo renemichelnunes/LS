@@ -1,30 +1,33 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <Arduino.h>
 
 using namespace std;
 
 class Contact{
     public:
-        Contact(const string &name, const string &lora_address);
+        Contact( String name,  String lora_address);
         Contact();
-        bool operator==(const Contact &other)const;
-        string getName()const;
-        string getLoraAddress()const;
-        void setName(string name);
-        void setLAddr(string laddr);
+        bool operator==( Contact other);
+        String getName();
+        String getLoraAddress();
+        void setName(String name);
+        void setLAddr(String laddr);
     private:
-        string name;
-        string lora_address;
+        String name;
+        String lora_address;
 };
 
 class Contact_list{
     private:
-        vector <Contact> contact_list;
+        vector <Contact> list;
     public:
         bool add(Contact c);
         bool del(Contact c);
         bool find(Contact &c);
+        Contact getContact(uint32_t index);
+        uint32_t size();
         Contact_list();
         ~Contact_list();
 };

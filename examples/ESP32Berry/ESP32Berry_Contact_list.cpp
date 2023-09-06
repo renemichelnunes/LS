@@ -1,13 +1,30 @@
 #include "ESP32Berry_Contact_list.hpp"
+#include <exception>
+#include <string>
 
 static AppContactList *instance = NULL;
+
+void AppContactList::refresh_contact_list(){
+  Contact c;
+  Serial.print("list size ");
+  Serial.println(this->contact_list->size());
+  try{
+    this->contact_list->getContact(1);
+  }catch(exception e){
+    Serial.println(e.what());
+  }
+}
 
 AppContactList::AppContactList(Display* display, System* system, Network* network, 
 const char* title) : AppBase(display, system, network, title){
   instance = this;
   display_width = display->get_display_width();
   this->draw_ui();
-  this->contact_list = Contact_list();
+  this->contact_list = new Contact_list();
+
+  this->contact_list->add(Contact("Zequinha", "aaaaaa"));
+  this->contact_list->add(Contact("Huguinho", "bbbbbb"));
+  this->contact_list->add(Contact("Luizinho", "cccccc"));
 }
 
 /*for testing only==================================================*/
@@ -16,21 +33,21 @@ static uint32_t btn_cnt = 1;
 static void add(lv_event_t* e){
   lv_obj_t* addBtn = lv_event_get_target(e);
   lv_obj_t* window = (lv_obj_t*)lv_event_get_user_data(e);
-  string name, lora_addr;
+  String name, lora_addr;
 
 
   lv_obj_t* txtName = lv_obj_get_child(window, 0);
   Serial.print("Name: ");
   name = lv_textarea_get_text(txtName);
-  Serial.println(name.c_str());
+  Serial.println(name);
   lv_obj_t* txtLoRaAddr = lv_obj_get_child(window, 1);
   Serial.print("LoRa Address: ");
   lora_addr = lv_textarea_get_text(txtLoRaAddr);
-  Serial.println(lora_addr.c_str());
+  Serial.println(lora_addr);
   if(name != "" && lora_addr != ""){
     Contact c = Contact(name, lora_addr);
-    if(!instance->contact_list.find(c)){
-      if(instance->contact_list.add(c))
+    if(!instance->contact_list->find(c)){
+      if(instance->contact_list->add(c))
         Serial.println("Contact added");
       else
         Serial.println("Fail to add contact");
@@ -47,21 +64,21 @@ static void add_btn_event_cb(lv_event_t * e)
 
     if(code == LV_EVENT_CLICKED) {
       lv_obj_t* window = lv_obj_create(lv_scr_act());
-      lv_obj_set_size(window, 200, 200);
-      lv_obj_align(window, LV_ALIGN_CENTER, 0 , 0);
+      lv_obj_set_size(window, 300, 200);
+      lv_obj_align(window, LV_ALIGN_CENTER, 0 , 10);
       
       lv_obj_t* txtName = lv_textarea_create(window);
-      lv_obj_set_size(txtName, 160, 40);
+      lv_obj_set_size(txtName, 250, 40);
       lv_textarea_set_placeholder_text(txtName, "Name");
-      lv_obj_align(txtName, LV_ALIGN_TOP_MID, 0, 0);
+      lv_obj_align(txtName, LV_ALIGN_TOP_MID, 0, -10);
 
       lv_obj_t* txtLoraAddr = lv_textarea_create(window);
-      lv_obj_set_size(txtLoraAddr, 160, 40);
-      lv_textarea_set_placeholder_text(txtLoraAddr, "LoRa Addr");
-      lv_obj_align(txtLoraAddr, LV_ALIGN_TOP_MID, 0, 40);
+      lv_obj_set_size(txtLoraAddr, 250, 40);
+      lv_textarea_set_placeholder_text(txtLoraAddr, "LoRa Address");
+      lv_obj_align(txtLoraAddr, LV_ALIGN_TOP_MID, 0, 30);
 
       lv_obj_t* btnAdd = lv_btn_create(window);
-      lv_obj_set_size(btnAdd, 40, 40);
+      lv_obj_set_size(btnAdd, 40, 25);
       lv_obj_align(btnAdd, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 
       lv_obj_t* lblBtnAdd = lv_label_create(btnAdd);
@@ -77,7 +94,6 @@ static void add_btn_event_cb(lv_event_t * e)
 
       lv_obj_move_foreground(float_btn);
       lv_obj_scroll_to_view(list_btn, LV_ANIM_ON);
-      
     }
 }
 /*for testing only==================================================*/
@@ -108,6 +124,11 @@ void AppContactList::draw_ui(){
   lv_obj_set_style_radius(addBtn, LV_RADIUS_CIRCLE, 0);
   lv_obj_set_style_bg_img_src(addBtn, LV_SYMBOL_PLUS, 0);
   lv_obj_set_style_text_font(addBtn, lv_theme_get_font_large(addBtn), 0);
+  try{
+    this->refresh_contact_list();  
+  }catch (exception &e){
+    Serial.println(e.what());
+  }
 }
 
 void AppContactList::tg_event_handler(lv_event_t* e){

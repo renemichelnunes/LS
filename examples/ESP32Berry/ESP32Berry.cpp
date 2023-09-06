@@ -31,8 +31,8 @@ void displayEventHandler(Menu_Event_t event, void* param) {
 
     case APP:
       int menuNum = std::stoi((char*)param);
-      Serial.print("Menu ");
-      Serial.println((char*)param);
+      //Serial.print("Menu ");
+      //Serial.println((char*)param);
       switch (menuNum) {
         case 0:
           instance->appChatGPT = new AppChatGPT(instance->display, instance->system, instance->network, "ChatGPT Client");
