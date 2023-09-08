@@ -4,12 +4,31 @@
 
 static AppContactList *instance = NULL;
 
+//static Contact_list contact_list = Contact_list();
+
+static void add_btn_event_cb(lv_event_t * e);
+
 void AppContactList::refresh_contact_list(){
-  Contact c;
-  Serial.print("list size ");
-  Serial.println(this->contact_list->size());
   try{
-    this->contact_list->getContact(1);
+    lv_obj_clean(list);
+
+    // The floating button
+    lv_obj_t* addBtn = lv_btn_create(list);
+    lv_obj_set_size(addBtn, 50, 50);
+    lv_obj_add_flag(addBtn, LV_OBJ_FLAG_FLOATING);
+    lv_obj_align(addBtn, LV_ALIGN_BOTTOM_RIGHT, 0, -lv_obj_get_style_pad_right(list, LV_PART_MAIN));
+    lv_obj_add_event_cb(addBtn, add_btn_event_cb, LV_EVENT_ALL, list);
+    lv_obj_set_style_radius(addBtn, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_img_src(addBtn, LV_SYMBOL_PLUS, 0);
+    lv_obj_set_style_text_font(addBtn, lv_theme_get_font_large(addBtn), 0);
+
+
+    for(uint32_t i = 0; i < contact_list.size(); i++){
+      lv_obj_t* btn = lv_list_add_btn(this->list, LV_SYMBOL_CALL, contact_list.getContact(i).getName().c_str());
+      lv_obj_move_foreground(addBtn);
+      lv_obj_scroll_to_view(btn, LV_ANIM_ON);
+    }
+
   }catch(exception e){
     Serial.println(e.what());
   }
@@ -19,22 +38,18 @@ AppContactList::AppContactList(Display* display, System* system, Network* networ
 const char* title) : AppBase(display, system, network, title){
   instance = this;
   display_width = display->get_display_width();
-  this->draw_ui();
-  this->contact_list = new Contact_list();
+  contact_list = Contact_list();
 
-  this->contact_list->add(Contact("Zequinha", "aaaaaa"));
-  this->contact_list->add(Contact("Huguinho", "bbbbbb"));
-  this->contact_list->add(Contact("Luizinho", "cccccc"));
+
+  this->draw_ui();
 }
 
 /*for testing only==================================================*/
-static uint32_t btn_cnt = 1;
 
 static void add(lv_event_t* e){
   lv_obj_t* addBtn = lv_event_get_target(e);
   lv_obj_t* window = (lv_obj_t*)lv_event_get_user_data(e);
   String name, lora_addr;
-
 
   lv_obj_t* txtName = lv_obj_get_child(window, 0);
   Serial.print("Name: ");
@@ -46,14 +61,18 @@ static void add(lv_event_t* e){
   Serial.println(lora_addr);
   if(name != "" && lora_addr != ""){
     Contact c = Contact(name, lora_addr);
-    if(!instance->contact_list->find(c)){
-      if(instance->contact_list->add(c))
+    if(!instance->contact_list.find(c)){
+      if(instance->contact_list.add(c))
         Serial.println("Contact added");
       else
         Serial.println("Fail to add contact");
     }else
       Serial.println("Contact already exists");
   }
+
+  instance->refresh_contact_list();
+
+  lv_obj_clean(window);
   lv_obj_del(window);
 }
 
@@ -87,19 +106,19 @@ static void add_btn_event_cb(lv_event_t * e)
       
       lv_obj_t * list = (lv_obj_t*)lv_event_get_user_data(e);
       lv_obj_add_event_cb(btnAdd, add, LV_EVENT_CLICKED, window);
-      char buf[32];
-      lv_snprintf(buf, sizeof(buf), "Contact %d", (int)btn_cnt);
-      lv_obj_t * list_btn = lv_list_add_btn(list, LV_SYMBOL_CALL, buf);
-      btn_cnt++;
-
+      
+      //char buf[32];
+      //lv_snprintf(buf, sizeof(buf), "Contact %d", (int)btn_cnt);
+      //lv_obj_t * list_btn = lv_list_add_btn(list, LV_SYMBOL_CALL, buf);
+      //btn_cnt++;
+      lv_obj_t* last_btn = lv_obj_get_child(list, -1);
       lv_obj_move_foreground(float_btn);
-      lv_obj_scroll_to_view(list_btn, LV_ANIM_ON);
+      lv_obj_scroll_to_view(last_btn, LV_ANIM_ON);
     }
 }
 /*for testing only==================================================*/
 
 void AppContactList::draw_ui(){
-  Serial.println("Contacts");
   lv_style_init(&msgStyle);
   lv_style_set_bg_color(&msgStyle, lv_color_black());
   lv_style_set_pad_ver(&msgStyle, 8);
@@ -114,7 +133,6 @@ void AppContactList::draw_ui(){
   lv_obj_set_style_border_opa(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_border_width(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_list_add_btn(list, LV_SYMBOL_WARNING, "Broadcast");
-  //lv_list_add_text(list, "Broadcast");
   // The floating button
   lv_obj_t* addBtn = lv_btn_create(list);
   lv_obj_set_size(addBtn, 50, 50);

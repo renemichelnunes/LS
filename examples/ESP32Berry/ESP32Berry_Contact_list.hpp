@@ -14,7 +14,7 @@ private:
 public:
   AppContactList(Display *display, System *system, Network *network, const char *title);
   ~AppContactList();
-  Contact_list *contact_list;
+  Contact_list contact_list;
   void refresh_contact_list();
   void add_contact();
   void tg_event_handler(lv_event_t *e);

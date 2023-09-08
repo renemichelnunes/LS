@@ -10,7 +10,7 @@ Contact::Contact(String name, String lora_address){
 }
 
 Contact::Contact(){
-
+    
 }
 
 String Contact::getName(){
@@ -39,6 +39,8 @@ static bool cmp_name( Contact &c1,  Contact &c2){
 
 bool Contact_list::add(Contact c){
     try{
+        if(this->find(c))
+            return false;
         this->list.push_back(c);
         std::sort(this->list.begin(), this->list.end(), cmp_name);
     }
@@ -56,11 +58,17 @@ Contact_list::~Contact_list(){
 }
 
 uint32_t Contact_list::size(){
-    return sizeof(this->list.size());
+    return this->list.size();
 }
 
 Contact  Contact_list::getContact(uint32_t index){
-    return list.at(index);
+    try{
+        return list.at(index);
+    }
+    catch(exception e){
+        Serial.println(e.what());
+        return Contact();
+    }
 }
 
 bool Contact_list::del(Contact c){
@@ -76,7 +84,7 @@ bool Contact_list::del(Contact c){
 bool Contact_list::find(Contact &c){
     std::vector<Contact>::iterator it = std::find(this->list.begin(), this->list.end(), c);
     if(it != this->list.end()){
-        c = this->list[std::distance(this->list.begin(), it)];
+        c = this->getContact(std::distance(this->list.begin(), it));
         return true;
     }
     else
