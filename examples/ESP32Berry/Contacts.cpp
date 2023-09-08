@@ -71,6 +71,15 @@ Contact  Contact_list::getContact(uint32_t index){
     }
 }
 
+Contact * Contact_list::getContactByName(String name){
+    Contact c = Contact(name, "");
+    std::vector<Contact>::iterator it = std::find(this->list.begin(), this->list.end(), c);
+    if(it != this->list.end()){
+        return &this->list[std::distance(this->list.begin(), it)];
+    }
+    return NULL;
+}
+
 bool Contact_list::del(Contact c){
     std::vector<Contact>::iterator it = std::find(this->list.begin(), this->list.end(), c);
     if(it != this->list.end()){

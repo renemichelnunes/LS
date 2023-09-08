@@ -27,6 +27,7 @@ class Contact_list{
         bool del(Contact c);
         bool find(Contact &c);
         Contact getContact(uint32_t index);
+        Contact* getContactByName(String name);
         uint32_t size();
         Contact_list();
         ~Contact_list();

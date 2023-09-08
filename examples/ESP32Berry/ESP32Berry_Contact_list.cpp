@@ -7,7 +7,91 @@ static AppContactList *instance = NULL;
 //static Contact_list contact_list = Contact_list();
 
 static void add_btn_event_cb(lv_event_t * e);
+struct data{
+  lv_obj_t * obj;
+  Contact * c;
+};
+data * data_ = new data;
+static void close_edit_window(lv_event_t* e){
+  //lv_obj_t * btnOK = lv_event_get_target(e);
+  //lv_obj_t * window = lv_obj_get_parent(btnOK);
+  data * data_ = (data*)lv_event_get_user_data(e);
+  lv_obj_t * window = data_->obj;
+  Contact * c1 = data_->c;
+  //Contact * c1 = (Contact*)lv_event_get_user_data(e);
+  Contact * c2 = instance->contact_list.getContactByName(c1->getName());
+  lv_obj_t * txtName = lv_obj_get_child(window, 0);
+  lv_obj_t * txtLoraAddr = lv_obj_get_child(window, 1);
+  String name, laddr;
 
+  name = lv_textarea_get_text(txtName);
+  laddr = lv_textarea_get_text(txtLoraAddr);
+  Serial.print("Name ");
+  Serial.println(name);
+  Serial.print("Lora ");
+  Serial.println(laddr);
+  c2->setName(name);
+  c2->setLAddr(laddr);
+  Serial.print("Name after ");
+  Serial.println(c2->getName());
+  Serial.print("Lora after ");
+  Serial.println(c2->getLoraAddress());
+
+  Contact * c3 = instance->contact_list.getContactByName(c2->getName());
+  Serial.print("Name c3 ");
+  Serial.println(c3->getName());
+  Serial.print("Lora c3 ");
+  Serial.println(c3->getLoraAddress());
+
+  instance->refresh_contact_list();
+  lv_obj_clean(window);
+  lv_obj_del(window);
+}
+
+
+
+
+
+static void edit_contact(lv_event_t* e){
+  lv_event_code_t code = lv_event_get_code(e);
+  Contact* c = (Contact *)lv_event_get_user_data(e);
+  //Serial.print("edit contact ");
+  //Serial.println(c->getName().c_str());
+  Contact *d = instance->contact_list.getContactByName(c->getName());
+
+  lv_obj_t* window = lv_obj_create(lv_scr_act());
+  lv_obj_set_size(window, 300, 200);
+  lv_obj_align(window, LV_ALIGN_CENTER, 0 , 10);
+  
+  lv_obj_t* txtName = lv_textarea_create(window);
+  lv_obj_set_size(txtName, 250, 40);
+  lv_textarea_set_placeholder_text(txtName, "Name");
+  lv_textarea_set_text(txtName, d->getName().c_str());
+  lv_obj_align(txtName, LV_ALIGN_TOP_MID, 0, -10);
+
+  lv_obj_t* txtLoraAddr = lv_textarea_create(window);
+  lv_obj_set_size(txtLoraAddr, 250, 40);
+  lv_textarea_set_placeholder_text(txtLoraAddr, "LoRa Address");
+  lv_textarea_set_text(txtLoraAddr, d->getLoraAddress().c_str());
+  lv_obj_align(txtLoraAddr, LV_ALIGN_TOP_MID, 0, 30);
+
+  lv_obj_t* btnAdd = lv_btn_create(window);
+  lv_obj_set_size(btnAdd, 40, 25);
+  lv_obj_align(btnAdd, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+
+  lv_obj_t* lblBtnAdd = lv_label_create(btnAdd);
+  lv_label_set_text(lblBtnAdd, "OK");
+  lv_obj_align(lblBtnAdd, LV_ALIGN_CENTER, 0, 0);
+  
+  data_->c = d;
+  data_->obj = window;
+
+  lv_obj_t * list = (lv_obj_t*)lv_event_get_user_data(e);
+  lv_obj_add_event_cb(btnAdd, close_edit_window, LV_EVENT_CLICKED, data_);
+}
+
+
+Contact c;
 void AppContactList::refresh_contact_list(){
   try{
     lv_obj_clean(list);
@@ -24,11 +108,13 @@ void AppContactList::refresh_contact_list(){
 
 
     for(uint32_t i = 0; i < contact_list.size(); i++){
-      lv_obj_t* btn = lv_list_add_btn(this->list, LV_SYMBOL_CALL, contact_list.getContact(i).getName().c_str());
+      c = contact_list.getContact(i);
+      lv_obj_t* btn = lv_list_add_btn(this->list, LV_SYMBOL_CALL, c.getName().c_str());
+      lv_obj_add_event_cb(btn, edit_contact, LV_EVENT_LONG_PRESSED_REPEAT, &c);
       lv_obj_move_foreground(addBtn);
       lv_obj_scroll_to_view(btn, LV_ANIM_ON);
     }
-
+    Serial.println("List rebuilt");
   }catch(exception e){
     Serial.println(e.what());
   }
