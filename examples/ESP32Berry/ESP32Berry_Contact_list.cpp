@@ -6,6 +6,10 @@ static AppContactList *instance = NULL;
 
 //static Contact_list contact_list = Contact_list();
 
+lv_obj_t * AppContactList::getList(){
+  return list;
+}
+
 static void add_btn_event_cb(lv_event_t * e);
 
 static void close_chat_window(lv_event_t * e){
@@ -13,9 +17,12 @@ static void close_chat_window(lv_event_t * e){
 }
 
 static void chat_window(lv_event_t * e){
-  Contact * c = (Contact *)lv_event_get_user_data(e);
-  Serial.print("Chat with ");
-  Serial.println(c->getName());
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_CLICKED){
+    lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
+    Serial.print("Chat with ");
+    Serial.println(lv_list_get_btn_text(instance->getList(), btn));
+  }
 }
 
 //Used in close_edit_window()
@@ -113,7 +120,7 @@ void AppContactList::refresh_contact_list(){
       /*Edit contact info*/
       lv_obj_add_event_cb(btn, edit_contact, LV_EVENT_LONG_PRESSED, &c);
       /*Open chat window*/
-      lv_obj_add_event_cb(btn, chat_window, LV_EVENT_PRESSED, &c);
+      lv_obj_add_event_cb(btn, chat_window, LV_EVENT_CLICKED, btn);
       lv_obj_move_foreground(addBtn);
       lv_obj_scroll_to_view(btn, LV_ANIM_ON);
     }
@@ -158,11 +165,8 @@ static void add(lv_event_t* e){
     }else
       Serial.println("Contact already exists");
   }
-
-  instance->refresh_contact_list();
-
-  lv_obj_clean(window);
   lv_obj_del(window);
+  instance->refresh_contact_list();
 }
 
 static void add_btn_event_cb(lv_event_t * e)
@@ -179,6 +183,7 @@ static void add_btn_event_cb(lv_event_t * e)
       lv_obj_set_size(txtName, 250, 40);
       lv_textarea_set_placeholder_text(txtName, "Name");
       lv_obj_align(txtName, LV_ALIGN_TOP_MID, 0, -10);
+      lv_obj_add_flag(txtName, LV_STATE_FOCUSED);
 
       lv_obj_t* txtLoraAddr = lv_textarea_create(window);
       lv_obj_set_size(txtLoraAddr, 250, 40);
@@ -195,11 +200,7 @@ static void add_btn_event_cb(lv_event_t * e)
       
       lv_obj_t * list = (lv_obj_t*)lv_event_get_user_data(e);
       lv_obj_add_event_cb(btnAdd, add, LV_EVENT_CLICKED, window);
-      
-      //char buf[32];
-      //lv_snprintf(buf, sizeof(buf), "Contact %d", (int)btn_cnt);
-      //lv_obj_t * list_btn = lv_list_add_btn(list, LV_SYMBOL_CALL, buf);
-      //btn_cnt++;
+
       lv_obj_t* last_btn = lv_obj_get_child(list, -1);
       lv_obj_move_foreground(float_btn);
       lv_obj_scroll_to_view(last_btn, LV_ANIM_ON);

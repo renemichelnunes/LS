@@ -18,5 +18,6 @@ public:
   void refresh_contact_list();
   void add_contact();
   void tg_event_handler(lv_event_t *e);
+  lv_obj_t * getList();
   void close_app();
 };
