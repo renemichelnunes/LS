@@ -20,8 +20,23 @@ static void chat_window(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_CLICKED){
     lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
+    String name = lv_list_get_btn_text(instance->getList(), btn);
+    Contact * ch = instance->contact_list.getContactByName(name);
     Serial.print("Chat with ");
-    Serial.println(lv_list_get_btn_text(instance->getList(), btn));
+    Serial.println();
+
+    lv_obj_t * window = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(window, 300, 200);
+
+    lv_obj_t * btnContact = lv_btn_create(window);
+    lv_obj_set_size(btnContact, 300, 200);
+    lv_obj_align(btnContact, LV_ALIGN_TOP_MID, 0, 0);
+
+    lv_obj_t * lblContact = lv_label_create(btnContact);
+    char text[30];
+    sprintf(text, "Chat with %s", name);
+    lv_label_set_text(lblContact, text);
+    lv_obj_align(lblContact, LV_ALIGN_CENTER, 0, 0);
   }
 }
 
@@ -54,13 +69,26 @@ static void close_edit_window(lv_event_t* e){
   }
 }
 
+static void delContact(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_CLICKED){
+    data * de = (data *)lv_event_get_user_data(e);
+    Contact * cd = de->c;
+    cd = instance->contact_list.getContactByName(cd->getName());
+    lv_obj_t * window = de->obj;
+
+    instance->contact_list.del(*cd);
+    lv_obj_del(window);
+    instance->refresh_contact_list();
+  }
+}
+
 static void edit_contact(lv_event_t* e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code = LV_EVENT_LONG_PRESSED){
-    Contact* ce = (Contact *)lv_event_get_user_data(e);
-    //Serial.print("edit contact ");
-    //Serial.println(c->getName().c_str());
-    ce = instance->contact_list.getContactByName(ce->getName());
+    lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
+    String name = lv_list_get_btn_text(instance->getList(), btn);
+    Contact* ce = instance->contact_list.getContactByName(name);
 
     lv_obj_t* window = lv_obj_create(lv_scr_act());
     lv_obj_set_size(window, 300, 200);
@@ -92,8 +120,17 @@ static void edit_contact(lv_event_t* e){
     data_->c = ce;
     data_->obj = window;
 
-    lv_obj_t * list = (lv_obj_t*)lv_event_get_user_data(e);
     lv_obj_add_event_cb(btnAdd, close_edit_window, LV_EVENT_CLICKED, data_);
+
+    lv_obj_t * btnDel = lv_btn_create(window);
+    lv_obj_set_size(btnDel, 40, 25);
+    lv_obj_align(btnDel, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+
+    lv_obj_t * lblBtnDel = lv_label_create(btnDel);
+    lv_label_set_text(lblBtnDel, "Del");
+    lv_obj_align(lblBtnDel, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_add_event_cb(btnDel, delContact, LV_EVENT_CLICKED, data_);
   }
 }
 
@@ -118,7 +155,7 @@ void AppContactList::refresh_contact_list(){
       c = contact_list.getContact(i);
       lv_obj_t* btn = lv_list_add_btn(this->list, LV_SYMBOL_CALL, c.getName().c_str());
       /*Edit contact info*/
-      lv_obj_add_event_cb(btn, edit_contact, LV_EVENT_LONG_PRESSED, &c);
+      lv_obj_add_event_cb(btn, edit_contact, LV_EVENT_LONG_PRESSED, btn);
       /*Open chat window*/
       lv_obj_add_event_cb(btn, chat_window, LV_EVENT_CLICKED, btn);
       lv_obj_move_foreground(addBtn);
