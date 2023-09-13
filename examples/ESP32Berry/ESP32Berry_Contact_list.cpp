@@ -13,30 +13,103 @@ lv_obj_t * AppContactList::getList(){
 static void add_btn_event_cb(lv_event_t * e);
 
 static void close_chat_window(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_CLICKED){
+    lv_obj_t * window = (lv_obj_t *)lv_event_get_user_data(e);
+    lv_obj_del(window);
+  }
+}
 
+struct msgAndList{
+  lv_obj_t * list, *txtReply;
+  Contact * c;
+};
+msgAndList * msg = new msgAndList;
+
+static void sendMessage(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_SHORT_CLICKED){
+    msgAndList * msg = (msgAndList *)lv_event_get_user_data(e);
+    lv_obj_t * txtReply = msg->txtReply;
+    String message = lv_textarea_get_text(txtReply);
+    Serial.print("Message: ");
+    Serial.println(message);
+    if(msg != NULL){
+      lv_list_add_text(msg->list, "Me");
+      lv_obj_t * btnList = lv_list_add_btn(msg->list, NULL, message.c_str());
+      lv_obj_t* label = lv_obj_get_child(btnList, 0);
+      lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+      lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
+      delay(2000);
+      lv_list_add_text(msg->list, msg->c->getName().c_str());
+      lv_obj_t * btnList2 = lv_list_add_btn(msg->list, NULL, "You're welcome! If you have any more questions or need further assistance, please don't hesitate to ask. Happy coding!");
+      lv_obj_t* label2 = lv_obj_get_child(btnList2, 0);
+      lv_label_set_long_mode(label2, LV_LABEL_LONG_WRAP);
+      lv_obj_scroll_to_view(btnList2, LV_ANIM_OFF);
+    }
+    lv_textarea_set_text(txtReply, "");
+  }
 }
 
 static void chat_window(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
-  if(code == LV_EVENT_CLICKED){
+  if(code == LV_EVENT_SHORT_CLICKED){
     lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
     String name = lv_list_get_btn_text(instance->getList(), btn);
     Contact * ch = instance->contact_list.getContactByName(name);
     Serial.print("Chat with ");
-    Serial.println();
-
+    Serial.println(ch->getName());
+    
     lv_obj_t * window = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(window, 300, 200);
-
+    lv_obj_set_size(window, 320, 240);
+    lv_obj_clear_flag(window, LV_OBJ_FLAG_SCROLLABLE);
+    /*Contact description at the top*/
     lv_obj_t * btnContact = lv_btn_create(window);
-    lv_obj_set_size(btnContact, 300, 200);
-    lv_obj_align(btnContact, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_size(btnContact, 240, 25);
+    lv_obj_align(btnContact, LV_ALIGN_TOP_LEFT, -10, -10);
 
     lv_obj_t * lblContact = lv_label_create(btnContact);
     char text[30];
     sprintf(text, "Chat with %s", name);
     lv_label_set_text(lblContact, text);
     lv_obj_align(lblContact, LV_ALIGN_CENTER, 0, 0);
+    lv_label_set_long_mode(lblContact, LV_LABEL_LONG_SCROLL_CIRCULAR);
+
+    /*Back button on the right side*/
+    lv_obj_t * btnClose = lv_btn_create(window);
+    lv_obj_set_size(btnClose, 40, 25);
+    lv_obj_align(btnClose, LV_ALIGN_TOP_RIGHT, 10, -10);
+
+    lv_obj_t * lblClose = lv_label_create(btnClose);
+    lv_label_set_text(lblClose, "back");
+    lv_obj_align(lblClose, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(btnClose, close_chat_window, LV_EVENT_CLICKED, window);
+
+    /*List of replies*/
+    lv_obj_t * listReply = lv_list_create(window);
+    lv_obj_set_size(listReply, 320, 140);
+    lv_obj_align(listReply, LV_ALIGN_TOP_MID, 0, 20);
+
+    /*Reply text area*/
+    lv_obj_t * txtReply = lv_textarea_create(window);
+    lv_obj_set_size(txtReply, 270, 60);
+    lv_obj_align(txtReply, LV_ALIGN_TOP_LEFT, -15, 165);
+    lv_obj_add_state(txtReply, LV_STATE_FOCUSED);
+
+    /*Send button*/
+    lv_obj_t * btnSend = lv_btn_create(window);
+    lv_obj_set_size(btnSend, 40, 55);
+    lv_obj_align(btnSend, LV_ALIGN_TOP_RIGHT, 10, 168);
+    lv_obj_clear_flag(btnSend, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+
+    lv_obj_t * lblBtnSend = lv_label_create(btnSend);
+    lv_label_set_text(lblBtnSend, "Send");
+    lv_obj_align(lblBtnSend, LV_ALIGN_CENTER, 0, 0);
+
+    msg->list = listReply;
+    msg->txtReply = txtReply;
+    msg->c = ch;
+    lv_obj_add_event_cb(btnSend, sendMessage, LV_EVENT_SHORT_CLICKED, msg);
   }
 }
 
@@ -91,8 +164,8 @@ static void edit_contact(lv_event_t* e){
     Contact* ce = instance->contact_list.getContactByName(name);
 
     lv_obj_t* window = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(window, 300, 200);
-    lv_obj_align(window, LV_ALIGN_CENTER, 0 , 10);
+    lv_obj_set_size(window, 320, 240);
+    lv_obj_align(window, LV_ALIGN_CENTER, 0 , 0);
     
     lv_obj_t* txtName = lv_textarea_create(window);
     lv_obj_set_size(txtName, 250, 40);
@@ -157,7 +230,7 @@ void AppContactList::refresh_contact_list(){
       /*Edit contact info*/
       lv_obj_add_event_cb(btn, edit_contact, LV_EVENT_LONG_PRESSED, btn);
       /*Open chat window*/
-      lv_obj_add_event_cb(btn, chat_window, LV_EVENT_CLICKED, btn);
+      lv_obj_add_event_cb(btn, chat_window, LV_EVENT_SHORT_CLICKED, btn);
       lv_obj_move_foreground(addBtn);
       lv_obj_scroll_to_view(btn, LV_ANIM_ON);
     }
@@ -213,8 +286,8 @@ static void add_btn_event_cb(lv_event_t * e)
 
     if(code == LV_EVENT_CLICKED) {
       lv_obj_t* window = lv_obj_create(lv_scr_act());
-      lv_obj_set_size(window, 300, 200);
-      lv_obj_align(window, LV_ALIGN_CENTER, 0 , 10);
+      lv_obj_set_size(window, 320, 240);
+      lv_obj_align(window, LV_ALIGN_CENTER, 0 , 0);
       
       lv_obj_t* txtName = lv_textarea_create(window);
       lv_obj_set_size(txtName, 250, 40);
