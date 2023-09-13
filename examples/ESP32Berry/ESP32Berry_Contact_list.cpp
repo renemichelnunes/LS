@@ -1,10 +1,9 @@
 #include "ESP32Berry_Contact_list.hpp"
 #include <exception>
 #include <string>
+#include <RadioLib.h>
 
 static AppContactList *instance = NULL;
-
-//static Contact_list contact_list = Contact_list();
 
 lv_obj_t * AppContactList::getList(){
   return list;
@@ -40,7 +39,7 @@ static void sendMessage(lv_event_t * e){
       lv_obj_t* label = lv_obj_get_child(btnList, 0);
       lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
       lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
-      delay(2000);
+      //delay(2000);
       lv_list_add_text(msg->list, msg->c->getName().c_str());
       lv_obj_t * btnList2 = lv_list_add_btn(msg->list, NULL, "You're welcome! If you have any more questions or need further assistance, please don't hesitate to ask. Happy coding!");
       lv_obj_t* label2 = lv_obj_get_child(btnList2, 0);
@@ -245,7 +244,6 @@ const char* title) : AppBase(display, system, network, title){
   instance = this;
   display_width = display->get_display_width();
   contact_list = Contact_list();
-
 
   this->draw_ui();
 }
