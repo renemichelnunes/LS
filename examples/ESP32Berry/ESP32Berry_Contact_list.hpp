@@ -10,6 +10,7 @@ private:
   lv_style_t msgStyle;
   lv_obj_t *addBtn;
   lv_obj_t *list;
+  lv_obj_t * configbtn;
   int display_width;
   void draw_ui();
 

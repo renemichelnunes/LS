@@ -102,6 +102,7 @@ void Network::WiFiScanner(bool isOn) {
     this->WiFiScannerStop();
     WiFi.disconnect();
   }
+  
 }
 
 void Network::WiFiScannerStop() {

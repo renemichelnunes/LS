@@ -254,8 +254,6 @@ const char* title) : AppBase(display, system, network, title){
     Serial.println("LoRa radio not ready");
 }
 
-/*for testing only==================================================*/
-
 static void add(lv_event_t* e){
   lv_obj_t* addBtn = lv_event_get_target(e);
   lv_obj_t* window = (lv_obj_t*)lv_event_get_user_data(e);
@@ -320,7 +318,45 @@ static void add_btn_event_cb(lv_event_t * e)
       lv_obj_scroll_to_view(last_btn, LV_ANIM_ON);
     }
 }
-/*for testing only==================================================*/
+
+static void close_config(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_SHORT_CLICKED){
+    lv_obj_t * window = (lv_obj_t *)lv_event_get_user_data(e);
+    if(window != NULL)
+      lv_obj_del(window);
+  }
+}
+
+static void config_radio(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_SHORT_CLICKED){
+    lv_obj_t * window = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(window, 320, 240);
+    lv_obj_clear_flag(window, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t * btnTitle = lv_btn_create(window);
+    lv_obj_set_size(btnTitle, 120, 25);
+    lv_obj_align(btnTitle, LV_ALIGN_TOP_LEFT, -15, -15);
+
+    lv_obj_t * lblBtnTitle = lv_label_create(btnTitle);
+    lv_label_set_text(lblBtnTitle, "Radio settings");
+    lv_obj_align(lblBtnTitle, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_t * btnClose = lv_btn_create(window);
+    lv_obj_set_size(btnClose, 25, 25);
+    lv_obj_align(btnClose, LV_ALIGN_TOP_RIGHT, +15, -15);
+    //lv_obj_set_style_radius(btnClose, 0, 0);
+    lv_obj_set_style_bg_img_src(btnClose, LV_SYMBOL_CLOSE, 0);
+    lv_obj_add_event_cb(btnClose, close_config, LV_EVENT_SHORT_CLICKED, window);
+
+    /*Lora configs*/
+    lv_obj_t * winConfig = lv_obj_create(window);
+    lv_obj_set_size(winConfig, 320, 220);
+    lv_obj_align(winConfig, LV_ALIGN_TOP_MID, 0, 10);
+    //lv_obj_set_style_bg_color(winConfig, lv_palette_darken(LV_PALETTE_GREY, 3), 0);
+  }
+}
 
 void AppContactList::draw_ui(){
   lv_style_init(&msgStyle);
@@ -339,13 +375,22 @@ void AppContactList::draw_ui(){
   lv_list_add_btn(list, LV_SYMBOL_WARNING, "Broadcast");
   // The floating button
   lv_obj_t* addBtn = lv_btn_create(list);
-  lv_obj_set_size(addBtn, 50, 50);
+  lv_obj_set_size(addBtn, 30, 30);
   lv_obj_add_flag(addBtn, LV_OBJ_FLAG_FLOATING);
   lv_obj_align(addBtn, LV_ALIGN_BOTTOM_RIGHT, 0, -lv_obj_get_style_pad_right(list, LV_PART_MAIN));
   lv_obj_add_event_cb(addBtn, add_btn_event_cb, LV_EVENT_ALL, list);
   lv_obj_set_style_radius(addBtn, LV_RADIUS_CIRCLE, 0);
   lv_obj_set_style_bg_img_src(addBtn, LV_SYMBOL_PLUS, 0);
   lv_obj_set_style_text_font(addBtn, lv_theme_get_font_large(addBtn), 0);
+
+  /*Config button*/
+  configbtn = lv_btn_create(_bodyScreen);
+  lv_obj_set_size(configbtn, 25, 25);
+  lv_obj_align(configbtn, LV_ALIGN_TOP_RIGHT, -50, -12);
+  lv_obj_set_style_radius(configbtn, 0, 0);
+  lv_obj_set_style_bg_img_src(configbtn, LV_SYMBOL_BARS, 0);
+  lv_obj_add_event_cb(configbtn, config_radio, LV_EVENT_SHORT_CLICKED, NULL);
+
   try{
     this->refresh_contact_list();  
   }catch (exception &e){
@@ -372,7 +417,7 @@ void AppContactList::close_app(){
   _display->goback_main_screen();
   lv_obj_del(_bodyScreen);
   delete this;
-}
+};
 
 AppContactList::~AppContactList(){
   
