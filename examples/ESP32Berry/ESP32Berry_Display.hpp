@@ -11,6 +11,7 @@
 #include <vector>
 #include "LGFX_T-Deck.h"
 #include "ESP32Berry_Config.hpp"
+#include "lora_radio.hpp"
 
 typedef enum {
   WIFI_OFF,
@@ -68,6 +69,7 @@ private:
   typedef void (*FuncPtrInt)(Menu_Event_t, void *);
 
 public:
+  lora_radio radio;
   lv_obj_t *ui_NotiLabel;
   FuncPtrInt menu_event_cb;
   TaskHandle_t uiNotiTaskHandler;

@@ -2,6 +2,8 @@
 #include "ESP32Berry_Config.hpp"
 #include "ESP32Berry_AppBase.hpp"
 #include "Contacts.hpp"
+#include <RadioLib.h>
+#include "lora_radio.hpp"
 
 class AppContactList : public AppBase {
 private:

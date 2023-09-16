@@ -24,6 +24,7 @@ https://github.com/lvgl/lvgl
 
 // Set User Name For Display
 #define USER_NAME "Rene" 
+#define LORA_FREQ 915.0
 
 #define WIFI_SCAN_ITER 5
 #define WIFI_SSID_PW_DELIMITER "^_"

@@ -239,13 +239,19 @@ void AppContactList::refresh_contact_list(){
   }
 }
 
+
+
 AppContactList::AppContactList(Display* display, System* system, Network* network, 
 const char* title) : AppBase(display, system, network, title){
   instance = this;
   display_width = display->get_display_width();
   contact_list = Contact_list();
-
   this->draw_ui();
+  
+  if(instance->_display->radio.initialized)
+    Serial.println("LoRa radio ready");
+  else
+    Serial.println("LoRa radio not ready");
 }
 
 /*for testing only==================================================*/
@@ -369,5 +375,5 @@ void AppContactList::close_app(){
 }
 
 AppContactList::~AppContactList(){
-
+  
 }

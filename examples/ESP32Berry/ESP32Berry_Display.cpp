@@ -33,6 +33,9 @@ void Display::initTFT() {
   tft->setRotation(1);
   tft->fillScreen(TFT_BLACK);
   this->initLVGL();
+
+  //lora radio
+  radio = lora_radio();
 }
 
 void Display::my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
@@ -322,7 +325,7 @@ void Display::initLVGL() {
   indev_keypad.read_cb = my_key_read_thunk;
   lv_indev_t *kb_indev = lv_indev_drv_register(&indev_keypad);
   lv_indev_set_group(kb_indev, lv_group_get_default());
-
+  /*Set the colors of the apps*/
   lv_disp_t *dispp = lv_disp_get_default();
   lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(0xE95622), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
   lv_disp_set_theme(dispp, theme);
@@ -331,7 +334,6 @@ void Display::initLVGL() {
   ui_main();
   ui_second();
   ui_prep_loading();
-  ui_prep_popup_box();
 
   xTaskCreatePinnedToCore(update_ui_task,
                           "update_ui_task",
@@ -340,8 +342,7 @@ void Display::initLVGL() {
                           1,
                           &lvgl_task_handle,
                           0);
-
-  this->ui_popup_open("Welcome to ESP32Berry Project!", "This project aims to develop useful applications based on the T-Deck device. Let's do a fun project together!\n\n(Version 0.5)");
+  
 }
 
 
@@ -361,8 +362,8 @@ void Display::ui_main() {
   LV_IMG_DECLARE(icon_wifi);
   LV_IMG_DECLARE(icon_chatgpt);
   LV_IMG_DECLARE(icon_contact);
-  LV_IMG_DECLARE(icon_mail);
-  LV_IMG_DECLARE(icon_lora);
+  //LV_IMG_DECLARE(icon_mail);
+  //LV_IMG_DECLARE(icon_lora);
   LV_IMG_DECLARE(icon_lora2);
 
   ui_Main_Screen = lv_obj_create(NULL);
@@ -687,7 +688,7 @@ void Display::ui_WiFi_page() {
   lv_textarea_set_text_selection(ui_WiFiMBoxPassword, false);
   lv_obj_set_size(ui_WiFiMBoxPassword, tft->width() - 70, 40);
   lv_obj_align_to(ui_WiFiMBoxPassword, ui_WiFiMBoxTitle, LV_ALIGN_TOP_LEFT, 0, 20);
-  lv_textarea_set_placeholder_text(ui_WiFiMBoxPassword, "Password?");
+  lv_textarea_set_placeholder_text(ui_WiFiMBoxPassword, "Password");
   lv_textarea_set_max_length(ui_WiFiMBoxPassword, 64);
   lv_obj_add_event_cb(ui_WiFiMBoxPassword, textarea_event_cb_thunk, LV_EVENT_FOCUSED, NULL);
   lv_obj_add_event_cb(ui_WiFiMBoxPassword, textarea_event_cb_thunk, LV_EVENT_DEFOCUSED, NULL);
