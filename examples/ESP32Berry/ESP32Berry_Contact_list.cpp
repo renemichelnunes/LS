@@ -2,6 +2,22 @@
 #include <exception>
 #include <string>
 #include <RadioLib.h>
+#include <random>
+#include <Preferences.h>
+
+Preferences prefs;
+
+std::string generate_ID(){
+  srand(time(NULL));
+  static const char alphanum[] = "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  std::string ss;
+
+  for (int i = 0; i < 6; ++i) {
+    ss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+  }
+  return ss;
+}
 
 static AppContactList *instance = NULL;
 
@@ -328,6 +344,15 @@ static void close_config(lv_event_t * e){
   }
 }
 
+static void genID(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_SHORT_CLICKED){
+    lv_obj_t * txtID = (lv_obj_t*)lv_event_get_user_data(e);
+    std::string id = generate_ID();
+    lv_textarea_set_text(txtID, id.c_str());
+  }
+}
+
 static void config_radio(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_SHORT_CLICKED){
@@ -340,7 +365,7 @@ static void config_radio(lv_event_t * e){
     lv_obj_align(btnTitle, LV_ALIGN_TOP_LEFT, -15, -15);
 
     lv_obj_t * lblBtnTitle = lv_label_create(btnTitle);
-    lv_label_set_text(lblBtnTitle, "Radio settings");
+    lv_label_set_text(lblBtnTitle, "LoRa settings");
     lv_obj_align(lblBtnTitle, LV_ALIGN_CENTER, 0, 0);
 
     lv_obj_t * btnClose = lv_btn_create(window);
@@ -355,6 +380,29 @@ static void config_radio(lv_event_t * e){
     lv_obj_set_size(winConfig, 320, 220);
     lv_obj_align(winConfig, LV_ALIGN_TOP_MID, 0, 10);
     //lv_obj_set_style_bg_color(winConfig, lv_palette_darken(LV_PALETTE_GREY, 3), 0);
+    /*Lora name*/
+    lv_obj_t * txtName = lv_textarea_create(winConfig);
+    lv_obj_set_size(txtName, 200, 30);
+    lv_obj_align(txtName, LV_ALIGN_TOP_LEFT, 0, -10);
+    lv_textarea_set_placeholder_text(txtName, "Name");
+    
+    /*Lora unique ID*/
+    lv_obj_t * txtID = lv_textarea_create(winConfig);
+    lv_obj_set_size(txtID, 100, 30);
+    lv_obj_align(txtID, LV_ALIGN_TOP_LEFT, 0, 20);
+    lv_textarea_set_placeholder_text(txtID, "Unique ID");
+    lv_textarea_set_max_length(txtID, 6);
+
+    /*Generate ID button*/
+    lv_obj_t * btnGenerate = lv_btn_create(winConfig);
+    lv_obj_set_size(btnGenerate, 80, 20);
+    lv_obj_align(btnGenerate, LV_ALIGN_TOP_RIGHT, -100, 25);
+
+    lv_obj_t * lblBtnGenerate = lv_label_create(btnGenerate);
+    lv_label_set_text(lblBtnGenerate, "Generate");
+    lv_obj_align(lblBtnGenerate, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_add_event_cb(btnGenerate, genID, LV_EVENT_SHORT_CLICKED, txtID);
   }
 }
 
