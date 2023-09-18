@@ -49,7 +49,7 @@ static void sendMessage(lv_event_t * e){
     String message = lv_textarea_get_text(txtReply);
     Serial.print("Message: ");
     Serial.println(message);
-    if(msg != NULL){
+    if(!message.isEmpty()){
       lv_list_add_text(msg->list, "Me");
       lv_obj_t * btnList = lv_list_add_btn(msg->list, NULL, message.c_str());
       lv_obj_t* label = lv_obj_get_child(btnList, 0);
@@ -110,6 +110,7 @@ static void chat_window(lv_event_t * e){
     lv_obj_set_size(txtReply, 270, 60);
     lv_obj_align(txtReply, LV_ALIGN_TOP_LEFT, -15, 165);
     lv_obj_add_state(txtReply, LV_STATE_FOCUSED);
+    lv_textarea_set_max_length(txtReply, 256);//Per LoRa packet
 
     /*Send button*/
     lv_obj_t * btnSend = lv_btn_create(window);
@@ -341,6 +342,7 @@ static void close_config(lv_event_t * e){
     prefs.begin("lora_settings", false);
     /*Get objects data*/
     lv_obj_t * window = (lv_obj_t *)lv_event_get_user_data(e);
+    prefs.end();
     if(window != NULL)
       lv_obj_del(window);
   }
@@ -391,21 +393,146 @@ static void config_radio(lv_event_t * e){
     /*Lora unique ID*/
     lv_obj_t * txtID = lv_textarea_create(winConfig);
     lv_obj_set_size(txtID, 100, 30);
-    lv_obj_align(txtID, LV_ALIGN_TOP_LEFT, 0, 20);
+    lv_obj_align(txtID, LV_ALIGN_TOP_LEFT, 18, 20);
     lv_textarea_set_placeholder_text(txtID, "Unique ID");
     lv_textarea_set_max_length(txtID, 6);
+
+    lv_obj_t * lblID = lv_label_create(winConfig);
+    lv_label_set_text(lblID, "ID");
+    lv_obj_align(lblID, LV_ALIGN_TOP_LEFT, 0, 30);
 
     /*Generate ID button*/
     lv_obj_t * btnGenerate = lv_btn_create(winConfig);
     lv_obj_set_size(btnGenerate, 80, 20);
-    lv_obj_align(btnGenerate, LV_ALIGN_TOP_RIGHT, -100, 25);
+    lv_obj_align(btnGenerate, LV_ALIGN_TOP_LEFT, 120, 25);
+    lv_obj_add_event_cb(btnGenerate, genID, LV_EVENT_SHORT_CLICKED, txtID);
 
     lv_obj_t * lblBtnGenerate = lv_label_create(btnGenerate);
     lv_label_set_text(lblBtnGenerate, "Generate");
     lv_obj_align(lblBtnGenerate, LV_ALIGN_CENTER, 0, 0);
 
-    lv_obj_add_event_cb(btnGenerate, genID, LV_EVENT_SHORT_CLICKED, txtID);
+    /*Node address*/
+    lv_obj_t * txtAddr = lv_textarea_create(winConfig);
+    lv_obj_set_size(txtAddr, 100, 30);
+    lv_obj_align(txtAddr, LV_ALIGN_TOP_LEFT, 100, 50);
+    lv_textarea_set_placeholder_text(txtAddr, "Address");
+    lv_textarea_set_max_length(txtAddr, 3);
+
+    lv_obj_t * lblAddr = lv_label_create(winConfig);
+    lv_label_set_text(lblAddr, "Address");
+    lv_obj_align(lblAddr, LV_ALIGN_TOP_LEFT, 0, 60);
+
+    /*Current limiter*/
+    lv_obj_t * lblCurrent= lv_label_create(winConfig);
+    lv_label_set_text(lblCurrent, "Current limit");
+    lv_obj_align(lblCurrent, LV_ALIGN_TOP_LEFT, 0, 90);
+
+    lv_obj_t * ddCurrent = lv_dropdown_create(winConfig);
+    lv_dropdown_set_options(ddCurrent, "45\n"
+                                        "60\n"
+                                        "80\n"
+                                        "100\n"
+                                        "120\n"
+                                        "140\n"
+                                        "160\n"
+                                        "180\n"
+                                        "200\n"
+                                        "220\n"
+                                        "240\n"
+                                        "no limit");
+    lv_obj_set_size(ddCurrent, 100, 30);
+    lv_obj_align(ddCurrent, LV_ALIGN_TOP_LEFT, 100, 80);
+
+    /*Bandwidth*/
+    lv_obj_t * lblBW= lv_label_create(winConfig);
+    lv_label_set_text(lblBW, "Bandwidth");
+    lv_obj_align(lblBW, LV_ALIGN_TOP_LEFT, 0, 120);
+
+    lv_obj_t * ddBW = lv_dropdown_create(winConfig);
+    lv_dropdown_set_options(ddBW, "7.8\n"
+                                        "10.4\n"
+                                        "15.6\n"
+                                        "20.8\n"
+                                        "31.25\n"
+                                        "41.7\n"
+                                        "62.5\n"
+                                        "125.0\n"
+                                        "250.0\n"
+                                        "500.0");
+    lv_obj_set_size(ddBW, 100, 30);
+    lv_obj_align(ddBW, LV_ALIGN_TOP_LEFT, 100, 110);
+
+    /*Spread factor*/
+    lv_obj_t * lblSF = lv_label_create(winConfig);
+    lv_label_set_text(lblSF, "Spread factor");
+    lv_obj_align(lblSF, LV_ALIGN_TOP_LEFT, 0, 150);
+
+    lv_obj_t * ddSF = lv_dropdown_create(winConfig);
+    lv_dropdown_set_options(ddSF, "5\n"
+                                        "6\n"
+                                        "7\n"
+                                        "8\n"
+                                        "9\n"
+                                        "10\n"
+                                        "11\n"
+                                        "12");
+    lv_obj_set_size(ddSF, 100, 30);
+    lv_obj_align(ddSF, LV_ALIGN_TOP_LEFT, 100, 140);
+
+    /*Coding rate*/
+    lv_obj_t * lblCR = lv_label_create(winConfig);
+    lv_label_set_text(lblCR, "Coding rate");
+    lv_obj_align(lblCR, LV_ALIGN_TOP_LEFT, 0, 180);
+
+    lv_obj_t * ddCR = lv_dropdown_create(winConfig);
+    lv_dropdown_set_options(ddCR, "5\n"
+                                        "6\n"
+                                        "7\n"
+                                        "8");
+    lv_obj_set_size(ddCR, 100, 30);
+    lv_obj_align(ddCR, LV_ALIGN_TOP_LEFT, 100, 170);
+
+    /*Sync word*/
+    lv_obj_t * txtSyncW = lv_textarea_create(winConfig);
+    lv_obj_set_size(txtSyncW, 100, 30);
+    lv_obj_align(txtSyncW, LV_ALIGN_TOP_LEFT, 100, 200);
+    lv_textarea_set_placeholder_text(txtSyncW, "hex 5B");
+    lv_textarea_set_max_length(txtSyncW, 2);
+
+    lv_obj_t * lblSyncW = lv_label_create(winConfig);
+    lv_label_set_text(lblSyncW, "Sync word");
+    lv_obj_align(lblSyncW, LV_ALIGN_TOP_LEFT, 0, 210);
+
+    /*Power output in dbm*/
+    lv_obj_t * lblPower = lv_label_create(winConfig);
+    lv_label_set_text(lblPower, "TX power");
+    lv_obj_align(lblPower, LV_ALIGN_TOP_LEFT, 0, 240);
+
+    lv_obj_t * ddPower = lv_dropdown_create(winConfig);
+    lv_dropdown_set_options(ddPower, "-17\n"
+                                        "-10\n"
+                                        "-5\n"
+                                        "0\n"
+                                        "5\n"
+                                        "10\n"
+                                        "15\n"
+                                        "20\n"
+                                        "22");
+    lv_obj_set_size(ddPower, 100, 30);
+    lv_obj_align(ddPower, LV_ALIGN_TOP_LEFT, 100, 230);
+
+    /*Preamble symbols*/
+    lv_obj_t * txtPreamble = lv_textarea_create(winConfig);
+    lv_obj_set_size(txtPreamble, 100, 30);
+    lv_obj_align(txtPreamble, LV_ALIGN_TOP_LEFT, 100, 260);
+    lv_textarea_set_placeholder_text(txtPreamble, "0-65535");
+    lv_textarea_set_max_length(txtPreamble, 5);
+
+    lv_obj_t * lblPreamble = lv_label_create(winConfig);
+    lv_label_set_text(lblPreamble, "Preamble");
+    lv_obj_align(lblPreamble, LV_ALIGN_TOP_LEFT, 0, 270);
   }
+  
 }
 
 void AppContactList::draw_ui(){
