@@ -338,6 +338,8 @@ static void add_btn_event_cb(lv_event_t * e)
 static void close_config(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_SHORT_CLICKED){
+    prefs.begin("lora_settings", false);
+    /*Get objects data*/
     lv_obj_t * window = (lv_obj_t *)lv_event_get_user_data(e);
     if(window != NULL)
       lv_obj_del(window);
