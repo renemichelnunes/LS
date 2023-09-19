@@ -159,6 +159,8 @@ void Display::ui_event_callback(lv_event_t *e) {
   } else if (target == ui_BtnWiFi && event_code == LV_EVENT_CLICKED) {
     lv_obj_clear_flag(ui_WiFiPanel, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_ControlPanel, LV_OBJ_FLAG_HIDDEN);
+  }else if (target == ui_BtnLoRa && event_code == LV_EVENT_CLICKED){
+    /*LoRa actions*/
   }
 }
 
@@ -585,13 +587,13 @@ void Display::ui_main() {
   lv_obj_add_event_cb(ui_SliderBrightness, ui_event_callback_thunk, LV_EVENT_VALUE_CHANGED, NULL);
 
   lv_obj_t *ui_PanelWifi = lv_obj_create(ui_ControlPanel);
-  lv_obj_set_width(ui_PanelWifi, 100);
+  lv_obj_set_width(ui_PanelWifi, 70);
   lv_obj_set_height(ui_PanelWifi, 30);
   lv_obj_set_align(ui_PanelWifi, LV_ALIGN_BOTTOM_LEFT);
   lv_obj_clear_flag(ui_PanelWifi, LV_OBJ_FLAG_SCROLLABLE);
 
   ui_BtnWiFi = lv_btn_create(ui_PanelWifi);
-  lv_obj_set_width(ui_BtnWiFi, 60);
+  lv_obj_set_width(ui_BtnWiFi, 40);
   lv_obj_set_height(ui_BtnWiFi, 50);
   lv_obj_set_x(ui_BtnWiFi, 16);
   lv_obj_set_y(ui_BtnWiFi, 0);
@@ -631,6 +633,18 @@ void Display::ui_main() {
   lv_obj_set_style_bg_opa(ui_ImgBtnWiFi, 255, LV_PART_MAIN | LV_STATE_CHECKED);
   lv_obj_add_event_cb(ui_ImgBtnWiFi, ui_event_callback_thunk, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(ui_TopPanel, ui_event_callback_thunk, LV_EVENT_CLICKED, NULL);
+
+  /*Lora button*/
+  lv_obj_t *ui_BtnLoRa = lv_obj_create(ui_ControlPanel);
+  lv_obj_set_width(ui_BtnLoRa, 60);
+  lv_obj_set_height(ui_BtnLoRa, 30);
+  lv_obj_set_align(ui_BtnLoRa, LV_ALIGN_BOTTOM_RIGHT);
+  lv_obj_clear_flag(ui_BtnLoRa, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_event_cb(ui_BtnLoRa, ui_event_callback_thunk, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_t * lblBtnLoRa = lv_label_create(ui_BtnLoRa);
+  lv_label_set_text(lblBtnLoRa, "LoRa");
+  lv_obj_align(lblBtnLoRa, LV_ALIGN_CENTER, 0, 0);
 
   ui_WiFi_page();
   lv_disp_load_scr(ui_Main_Screen);

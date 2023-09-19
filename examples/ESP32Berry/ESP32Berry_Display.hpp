@@ -35,6 +35,7 @@ private:
   lv_obj_t *ui_SliderBrightness;
   lv_obj_t *ui_ImgBtnWiFi;
   lv_obj_t *ui_BtnWiFi;
+  lv_obj_t *ui_BtnLoRa;
   lv_obj_t *ui_WiFiPanel;
   lv_obj_t *ui_WiFiPanelCloseBtn;
   lv_obj_t *ui_WiFiLabel;
