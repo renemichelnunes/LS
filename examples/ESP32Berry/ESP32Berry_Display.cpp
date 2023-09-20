@@ -15,6 +15,8 @@ Display::Display(FuncPtrInt callback) {
   menu_event_cb = callback;
   ui_Focused_Obj = NULL;
   initTFT();
+  radio.getRadio()->reset();
+  radio.initialized = false;
 }
 
 Display::~Display() {
@@ -34,8 +36,6 @@ void Display::initTFT() {
   tft->fillScreen(TFT_BLACK);
   this->initLVGL();
 
-  //lora radio
-  radio = lora_radio();
 }
 
 void Display::my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
@@ -161,6 +161,20 @@ void Display::ui_event_callback(lv_event_t *e) {
     lv_obj_add_flag(ui_ControlPanel, LV_OBJ_FLAG_HIDDEN);
   }else if (target == ui_BtnLoRa && event_code == LV_EVENT_CLICKED){
     /*LoRa actions*/
+    if(!lora_state){
+      //lora radio
+      radio = lora_radio();
+      lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xE95622), NULL);
+      Serial.println("lora on");
+      lora_state = true;
+    }
+    else{
+      radio.getRadio()->reset();
+      radio.initialized = false;
+      lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xffffff), NULL);
+      Serial.println("lora off");
+      lora_state = false;
+    }
   }
 }
 
@@ -635,7 +649,7 @@ void Display::ui_main() {
   lv_obj_add_event_cb(ui_TopPanel, ui_event_callback_thunk, LV_EVENT_CLICKED, NULL);
 
   /*Lora button*/
-  lv_obj_t *ui_BtnLoRa = lv_obj_create(ui_ControlPanel);
+  ui_BtnLoRa = lv_obj_create(ui_ControlPanel);
   lv_obj_set_width(ui_BtnLoRa, 60);
   lv_obj_set_height(ui_BtnLoRa, 30);
   lv_obj_set_align(ui_BtnLoRa, LV_ALIGN_BOTTOM_RIGHT);

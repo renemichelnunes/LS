@@ -104,7 +104,10 @@ lora_radio::lora_radio(){
 }
 
 lora_radio::~lora_radio(){
-    
+    if(this != NULL){
+        radio.reset(false);
+        initialized = false;
+    }
 }
 
 SX1262 * lora_radio::getRadio(){

@@ -57,6 +57,8 @@ private:
   lv_obj_t *ui_BasePopupTitle;
   lv_obj_t *ui_BasePopupMsg;
 
+  bool lora_state = false;
+
   uint32_t keypad_get_key();
   void initLVGL();
   void ui_main();
