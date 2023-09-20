@@ -31,7 +31,7 @@ struct lora_conf{
 
 class lora_settings{
     private:
-        lora_conf settings;
+        lora_conf conf;
     public:
         void setName(String name);
         void setId(String id);
