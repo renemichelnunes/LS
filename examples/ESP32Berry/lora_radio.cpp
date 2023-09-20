@@ -4,7 +4,7 @@
 #define LORA_FREQ 915.0
 
 bool lora_radio::initBasicConfig(){
-    Serial.println("Initialising with standard configuration");
+    Serial.println("Initiating standard configuration");
 
     digitalWrite(BOARD_SDCARD_CS, HIGH);
     digitalWrite(RADIO_CS_PIN, HIGH);
@@ -94,7 +94,6 @@ bool lora_radio::initBasicConfig(){
 }
 
 lora_radio::lora_radio(){
-    Serial.println("initialising radio");
     radio.reset(false);
     if(initBasicConfig()){
         Serial.println("Radio initialisation complete");
@@ -112,4 +111,99 @@ lora_radio::~lora_radio(){
 
 SX1262 * lora_radio::getRadio(){
     return &radio;
+}
+
+void lora_settings::setName(String name){
+    this->conf.name = name;
+}
+
+void lora_settings::setId(String id){
+    this->conf.id = id;
+}
+
+void lora_settings::setAddr(uint8_t addr){
+    this->conf.addr = addr;
+}
+
+void lora_settings::setFreq(float freq){
+    this->conf.freq = freq;
+}
+
+void lora_settings::setBandwidth(float bw){
+    this->conf.bandwidth = bw;
+}
+
+void lora_settings::setSpreadFactor(uint8_t sf){
+    this->conf.spread_factor = sf;
+}
+
+void lora_settings::setCodeRate(uint8_t cr){
+    this->conf.coding_rate = cr;
+}
+
+void lora_settings::setSyncWord(uint32_t sw){
+    this->conf.sync_word = sw;
+}
+
+void lora_settings::setOutputPower(int8_t power){
+    this->conf.output_power = power;
+}
+
+void lora_settings::setCurrentLimit(uint8_t limit){
+    this->conf.current_limit = limit;
+}
+
+void lora_settings::setPreamble(uint16_t preamble){
+    this->conf.preamble = preamble;
+}
+
+String lora_settings::getName(){
+    return this->conf.name;
+}
+
+String lora_settings::getID(){
+    return this->conf.id;
+}
+
+uint8_t lora_settings::getAddr(){
+    return this->conf.addr;
+}
+
+float lora_settings::getFreq(){
+    return this->conf.freq;
+}
+float lora_settings::getBandwidth(){
+    return this->conf.bandwidth;
+}
+
+uint8_t lora_settings::getSpreadFactor(){
+    return this->conf.spread_factor;
+}
+
+uint8_t lora_settings::getCodingRate(){
+    return this->conf.coding_rate;
+}
+
+uint32_t lora_settings::getSyncWord(){
+    return this->conf.sync_word;
+}
+
+int8_t lora_settings::getOutputPower(){
+    return this->conf.output_power;
+}
+
+uint8_t lora_settings::getCurrentLimit(){
+    return this->conf.current_limit;
+}
+
+uint16_t lora_settings::getPreamble(){
+    return this->conf.preamble;
+}
+
+void load(){
+
+}
+
+void save(){
+
 }
