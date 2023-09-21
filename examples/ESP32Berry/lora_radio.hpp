@@ -3,17 +3,6 @@
 #include "utilities.h"
 #include <string>
 
-class lora_radio{
-    private:
-        SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
-        bool initBasicConfig();
-    public:
-        bool initialized = false;
-        lora_radio();
-        ~lora_radio();
-        SX1262 * getRadio();
-};  
-
 struct lora_conf{
     String name;
     String id;
@@ -60,3 +49,16 @@ class lora_settings{
         lora_settings();
         ~lora_settings();
 };
+
+class lora_radio{
+    private:
+        SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
+        bool initBasicConfig();
+    public:
+        bool initialized = false;
+        lora_settings settings;
+        lora_radio();
+        ~lora_radio();
+        SX1262 * getRadio();
+};  
+

@@ -113,6 +113,14 @@ SX1262 * lora_radio::getRadio(){
     return &radio;
 }
 
+lora_settings::lora_settings(){
+
+}
+
+lora_settings::~lora_settings(){
+    
+}
+
 void lora_settings::setName(String name){
     this->conf.name = name;
 }
@@ -200,10 +208,10 @@ uint16_t lora_settings::getPreamble(){
     return this->conf.preamble;
 }
 
-void load(){
+void lora_settings::load(){
 
 }
 
-void save(){
+void lora_settings::save(){
 
 }
