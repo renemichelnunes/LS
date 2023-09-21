@@ -2,6 +2,7 @@
 #include <RadioLib.h>
 #include "utilities.h"
 #include <string>
+#include <Preferences.h>
 
 struct lora_conf{
     String name;

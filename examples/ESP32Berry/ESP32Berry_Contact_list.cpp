@@ -357,6 +357,17 @@ static void genID(lv_event_t * e){
   }
 }
 
+static void ddGetCurrentLimit(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_CLICKED){
+    lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
+    char strvalue[10] = {'\0'};
+    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
+    Serial.print("selection: ");
+    Serial.println(strvalue);
+  }
+}
+
 static void config_radio(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_SHORT_CLICKED){
@@ -442,6 +453,7 @@ static void config_radio(lv_event_t * e){
                                         "no limit");
     lv_obj_set_size(ddCurrent, 100, 30);
     lv_obj_align(ddCurrent, LV_ALIGN_TOP_LEFT, 100, 80);
+    lv_obj_add_event_cb(ddCurrent, ddGetCurrentLimit, LV_EVENT_CLICKED, ddCurrent);
 
     /*Bandwidth*/
     lv_obj_t * lblBW= lv_label_create(winConfig);

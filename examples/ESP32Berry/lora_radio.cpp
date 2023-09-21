@@ -4,7 +4,7 @@
 #define LORA_FREQ 915.0
 
 bool lora_radio::initBasicConfig(){
-    Serial.println("Initiating standard configuration");
+    Serial.println("Initiating basic configuration");
 
     digitalWrite(BOARD_SDCARD_CS, HIGH);
     digitalWrite(RADIO_CS_PIN, HIGH);
@@ -90,6 +90,7 @@ bool lora_radio::initBasicConfig(){
         return false;
     }else
         Serial.println("No CRC check");
+    Serial.println("Done");
     return true;
 }
 
@@ -213,5 +214,32 @@ void lora_settings::load(){
 }
 
 void lora_settings::save(){
-
+    if(conf.name.isEmpty())
+        return;
+    Serial.println("===============LoRa Config================");
+    Serial.print("Name: ");
+    Serial.println(conf.name);
+    Serial.print("ID: ");
+    Serial.println(conf.id);
+    Serial.print("Address: ");
+    Serial.println(conf.addr);
+    Serial.print("Frequency: ");
+    Serial.println(conf.freq);
+    Serial.print("Bandwidth: ");
+    Serial.println(conf.bandwidth);
+    Serial.print("Spread factor: ");
+    Serial.println(conf.spread_factor);
+    Serial.print("Coding rate: ");
+    Serial.println(conf.coding_rate);
+    Serial.print("Sync word: ");
+    Serial.println(conf.sync_word);
+    Serial.print("Output power: ");
+    Serial.println(conf.output_power);
+    Serial.print("Current limit: ");
+    Serial.println(conf.current_limit);
+    Serial.print("Preamble: ");
+    Serial.println(conf.preamble);
+    Serial.print("CRC check: ");
+    Serial.println(conf.crc ? "True" : "False");
+    Serial.println("==========================================");
 }
