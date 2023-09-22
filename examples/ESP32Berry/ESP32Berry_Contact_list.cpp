@@ -4,6 +4,7 @@
 #include <RadioLib.h>
 #include <random>
 #include <Preferences.h>
+#include <iomanip>
 
 Preferences prefs;
 
@@ -335,15 +336,69 @@ static void add_btn_event_cb(lv_event_t * e)
     }
 }
 
+struct config_radio_objs{
+  lv_obj_t * window;
+  lv_obj_t * name;
+  lv_obj_t * id;
+  lv_obj_t * addr;
+  lv_obj_t * sync_word;
+  lv_obj_t * preamble;
+}config_objs;
+
 static void close_config(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_SHORT_CLICKED){
-    prefs.begin("lora_settings", false);
     /*Get objects data*/
-    lv_obj_t * window = (lv_obj_t *)lv_event_get_user_data(e);
-    prefs.end();
-    if(window != NULL)
-      lv_obj_del(window);
+    config_radio_objs * config = (config_radio_objs *)lv_event_get_user_data(e);
+    if(prefs.begin("lora_settings", false)){
+      String name, id, addr, sync_word, preamble;
+      char * end;
+      uint32_t n;
+      
+      name = lv_textarea_get_text(config->name);
+      id = lv_textarea_get_text(config->id);
+      addr = lv_textarea_get_text(config->addr);
+      sync_word = lv_textarea_get_text(config->sync_word);
+      preamble = lv_textarea_get_text(config->preamble);
+
+      instance->_display->radio.settings.setName(name);
+      instance->_display->radio.settings.setId(id);
+      n = strtoll(addr.c_str(), &end, 16);
+      instance->_display->radio.settings.setAddr(n);
+      n = strtoll(sync_word.c_str(), &end, 16);
+      instance->_display->radio.settings.setSyncWord(n);
+      n = strtoll(preamble.c_str(), &end, 16);
+      instance->_display->radio.settings.setPreamble(n);
+
+      Serial.println("=========================LoRa Settings===================================");
+      Serial.print("Name: ");
+      Serial.println(instance->_display->radio.settings.getName());
+      Serial.print("ID: ");
+      Serial.println(instance->_display->radio.settings.getID());
+      Serial.print("Address: ");
+      Serial.println(instance->_display->radio.settings.getAddr());
+      Serial.print("Current limit: ");
+      Serial.println(instance->_display->radio.settings.getCurrentLimit());
+      Serial.print("Bandwidth: ");
+      Serial.println(instance->_display->radio.settings.getBandwidth());
+      Serial.print("Spread factor: ");
+      Serial.println(instance->_display->radio.settings.getSpreadFactor());
+      Serial.print("Coding rate: ");
+      Serial.println(instance->_display->radio.settings.getCodingRate());
+      Serial.print("Sync word: ");
+      Serial.println(instance->_display->radio.settings.getSyncWord());
+      Serial.print("TX power: ");
+      Serial.println(instance->_display->radio.settings.getOutputPower());
+      Serial.print("Preamble symbols: ");
+      Serial.println(instance->_display->radio.settings.getPreamble());
+      Serial.print("LoRa chip carrier: ");
+      Serial.println(instance->_display->radio.settings.getFreq());
+      Serial.println("=========================================================================");
+
+      prefs.end();
+    }
+    if(config->window != NULL)
+      lv_obj_del(config->window);
   }
 }
 
@@ -358,12 +413,90 @@ static void genID(lv_event_t * e){
 
 static void ddGetCurrentLimit(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
-  if(code == LV_EVENT_CLICKED){
+  if(code == LV_EVENT_VALUE_CHANGED){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
     char strvalue[10] = {'\0'};
     lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
-    Serial.print("selection: ");
+    Serial.print("Current limit: ");
     Serial.println(strvalue);
+    uint16_t value;
+
+    if(strvalue == "no limit")
+      value = 0;
+    else
+      value = atoi(strvalue);
+    
+    instance->_display->radio.settings.setCurrentLimit(value);
+  }
+}
+
+static void ddGetBW(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_VALUE_CHANGED){
+    lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
+    char strvalue[32] = {'\0'};
+    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
+    Serial.print("Bandwidth: ");
+    Serial.println(strvalue);
+    float bw;
+    bw = atof(strvalue);
+    instance->_display->radio.settings.setBandwidth(bw);
+  }
+}
+
+static void ddGetSF(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_VALUE_CHANGED){
+    lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
+    char strvalue[32] = {'\0'};
+    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
+    Serial.print("Spread factor: ");
+    Serial.println(strvalue);
+    uint8_t sf;
+    sf = atoi(strvalue);
+    instance->_display->radio.settings.setSpreadFactor(sf);
+  }
+}
+
+static void ddGetCR(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_VALUE_CHANGED){
+    lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
+    char strvalue[32] = {'\0'};
+    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
+    Serial.print("Coding rate: ");
+    Serial.println(strvalue);
+    uint8_t cr;
+    cr = atoi(strvalue);
+    instance->_display->radio.settings.setCodeRate(cr);
+  }
+}
+
+static void ddGetPower(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_VALUE_CHANGED){
+    lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
+    char strvalue[32] = {'\0'};
+    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
+    Serial.print("TX Power: ");
+    Serial.println(strvalue);
+    int8_t txpower;
+    txpower = atoi(strvalue);
+    instance->_display->radio.settings.setOutputPower(txpower);
+  }
+}
+
+static void ddGetLoraFreq(lv_event_t * e){
+  lv_event_code_t code = lv_event_get_code(e);
+  if(code == LV_EVENT_VALUE_CHANGED){
+    lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
+    char strvalue[32] = {'\0'};
+    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
+    Serial.print("LoRa carrier frequency: ");
+    Serial.println(strvalue);
+    float freq;
+    freq = atof(strvalue);
+    instance->_display->radio.settings.setFreq(freq);
   }
 }
 
@@ -387,7 +520,7 @@ static void config_radio(lv_event_t * e){
     lv_obj_align(btnClose, LV_ALIGN_TOP_RIGHT, +15, -15);
     //lv_obj_set_style_radius(btnClose, 0, 0);
     lv_obj_set_style_bg_img_src(btnClose, LV_SYMBOL_CLOSE, 0);
-    lv_obj_add_event_cb(btnClose, close_config, LV_EVENT_SHORT_CLICKED, window);
+    lv_obj_add_event_cb(btnClose, close_config, LV_EVENT_SHORT_CLICKED, &config_objs);
 
     /*Lora configs*/
     lv_obj_t * winConfig = lv_obj_create(window);
@@ -450,9 +583,11 @@ static void config_radio(lv_event_t * e){
                                         "220\n"
                                         "240\n"
                                         "no limit");
+    lv_dropdown_set_selected(ddCurrent, 5);
     lv_obj_set_size(ddCurrent, 100, 30);
     lv_obj_align(ddCurrent, LV_ALIGN_TOP_LEFT, 100, 80);
-    lv_obj_add_event_cb(ddCurrent, ddGetCurrentLimit, LV_EVENT_CLICKED, ddCurrent);
+    lv_obj_add_event_cb(ddCurrent, ddGetCurrentLimit, LV_EVENT_VALUE_CHANGED, ddCurrent);
+    
 
     /*Bandwidth*/
     lv_obj_t * lblBW= lv_label_create(winConfig);
@@ -470,8 +605,10 @@ static void config_radio(lv_event_t * e){
                                         "125.0\n"
                                         "250.0\n"
                                         "500.0");
+    lv_dropdown_set_selected(ddBW, 8);
     lv_obj_set_size(ddBW, 100, 30);
     lv_obj_align(ddBW, LV_ALIGN_TOP_LEFT, 100, 110);
+    lv_obj_add_event_cb(ddBW, ddGetBW, LV_EVENT_VALUE_CHANGED, ddBW);
 
     /*Spread factor*/
     lv_obj_t * lblSF = lv_label_create(winConfig);
@@ -487,8 +624,10 @@ static void config_radio(lv_event_t * e){
                                         "10\n"
                                         "11\n"
                                         "12");
+    lv_dropdown_set_selected(ddSF, 5);
     lv_obj_set_size(ddSF, 100, 30);
     lv_obj_align(ddSF, LV_ALIGN_TOP_LEFT, 100, 140);
+    lv_obj_add_event_cb(ddSF, ddGetSF, LV_EVENT_VALUE_CHANGED, ddSF);
 
     /*Coding rate*/
     lv_obj_t * lblCR = lv_label_create(winConfig);
@@ -500,8 +639,10 @@ static void config_radio(lv_event_t * e){
                                         "6\n"
                                         "7\n"
                                         "8");
+    lv_dropdown_set_selected(ddCR, 1);
     lv_obj_set_size(ddCR, 100, 30);
     lv_obj_align(ddCR, LV_ALIGN_TOP_LEFT, 100, 170);
+    lv_obj_add_event_cb(ddCR, ddGetCR, LV_EVENT_VALUE_CHANGED, ddCR);
 
     /*Sync word*/
     lv_obj_t * txtSyncW = lv_textarea_create(winConfig);
@@ -529,8 +670,10 @@ static void config_radio(lv_event_t * e){
                                         "15\n"
                                         "20\n"
                                         "22");
+    lv_dropdown_set_selected(ddPower, 5);
     lv_obj_set_size(ddPower, 100, 30);
     lv_obj_align(ddPower, LV_ALIGN_TOP_LEFT, 100, 230);
+    lv_obj_add_event_cb(ddPower, ddGetPower, LV_EVENT_VALUE_CHANGED, ddPower);
 
     /*Preamble symbols*/
     lv_obj_t * txtPreamble = lv_textarea_create(winConfig);
@@ -552,8 +695,17 @@ static void config_radio(lv_event_t * e){
     lv_dropdown_set_options(ddFreq, "433.0\n"
                                     "868.0\n"
                                     "915.0");
+    lv_dropdown_set_selected(ddFreq, 2);
     lv_obj_set_size(ddFreq, 100, 30);
     lv_obj_align(ddFreq, LV_ALIGN_TOP_LEFT, 100, 290);
+    lv_obj_add_event_cb(ddFreq, ddGetLoraFreq, LV_EVENT_VALUE_CHANGED, ddFreq);
+    /*Objects to obtain the text value in close_config()*/
+    config_objs.window = window;
+    config_objs.name = txtName;
+    config_objs.id = txtID;
+    config_objs.addr = txtAddr;
+    config_objs.sync_word = txtSyncW;
+    config_objs.preamble = txtPreamble;
   }
   
 }

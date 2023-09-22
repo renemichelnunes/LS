@@ -118,7 +118,17 @@ SX1262 * lora_radio::getRadio(){
 }
 
 lora_settings::lora_settings(){
-
+    conf.name = "";
+    conf.id = "";
+    conf.addr = 0;
+    conf.current_limit = 140;
+    conf.bandwidth = 250.0;
+    conf.spread_factor = 10;
+    conf.coding_rate = 6;
+    conf.sync_word = 0xAB;
+    conf.output_power = 10;
+    conf.preamble = 15;
+    conf.freq = 915.0;
 }
 
 lora_settings::~lora_settings(){
@@ -161,7 +171,7 @@ void lora_settings::setOutputPower(int8_t power){
     this->conf.output_power = power;
 }
 
-void lora_settings::setCurrentLimit(uint8_t limit){
+void lora_settings::setCurrentLimit(uint16_t limit){
     this->conf.current_limit = limit;
 }
 

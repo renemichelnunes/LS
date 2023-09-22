@@ -32,7 +32,7 @@ class lora_settings{
         void setCodeRate(uint8_t cr);
         void setSyncWord(uint32_t sw);
         void setOutputPower(int8_t power);
-        void setCurrentLimit(uint8_t limit);
+        void setCurrentLimit(uint16_t limit);
         void setPreamble(uint16_t preamble);
         String getName();
         String getID();
