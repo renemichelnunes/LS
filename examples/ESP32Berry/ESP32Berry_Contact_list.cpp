@@ -5,8 +5,16 @@
 #include <random>
 #include <Preferences.h>
 #include <iomanip>
+#include <vector>
 
 Preferences prefs;
+
+uint8_t vcurrent_limit[] = {45, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 0};
+float vbandwidth[] = {7.8, 10.4, 15.6, 20.8, 31.25, 41.7, 62.5, 125.0, 250.0, 500.0};
+uint8_t vspread_factor[] = {5, 6, 7, 8, 9, 10, 11, 12};
+uint8_t vcoding_rate[] = {5, 6, 7, 8};
+int8_t vtx_power[] = {-17, -10, -5, 0, 5, 10, 15, 20, 22};
+float vlora_freq[] = {433.0, 868.0, 915.0};
 
 std::string generate_ID(){
   srand(time(NULL));
@@ -23,6 +31,7 @@ std::string generate_ID(){
 static AppContactList *instance = NULL;
 
 lv_obj_t * AppContactList::getList(){
+  
   return list;
 }
 
@@ -343,7 +352,62 @@ struct config_radio_objs{
   lv_obj_t * addr;
   lv_obj_t * sync_word;
   lv_obj_t * preamble;
+  lv_obj_t * chkCRC;
 }config_objs;
+
+static void print_lora_settings(){
+  if(prefs.begin("lora_settings", true)){
+    String name, id;
+    uint8_t addr, current_limit, spread_factor, coding_rate, bandwidth, tx_power, freq;
+    uint16_t preamble;
+    uint32_t sync_word;
+    bool crc;
+
+    name = prefs.getString("name");
+    id = prefs.getString("id");
+    addr = prefs.getUChar("address");
+    current_limit = prefs.getUChar("current_limit");
+    bandwidth = prefs.getFloat("bandwidth");
+    spread_factor = prefs.getUChar("spread_factor");
+    coding_rate = prefs.getUChar("coding_rate");
+    sync_word = prefs.getULong("sync_word");
+    tx_power = prefs.getChar("tx_power");
+    preamble = prefs.getUShort("preamble");
+    freq = prefs.getFloat("lora_freq");
+    crc = prefs.getBool("crc");
+    char v[32];
+
+    Serial.println("=========================LoRa Settings===================================");
+    Serial.print("Name: ");
+    Serial.println(name);
+    Serial.print("ID: ");
+    Serial.println(id);
+    Serial.print("Address: ");
+    sprintf(v, "%x", addr);
+    Serial.println(v);
+    Serial.print("Current limit: ");
+    Serial.println(current_limit);
+    Serial.print("Bandwidth: ");
+    Serial.println(bandwidth);
+    Serial.print("Spread factor: ");
+    Serial.println(spread_factor);
+    Serial.print("Coding rate: ");
+    Serial.println(coding_rate);
+    Serial.print("Sync word: ");
+    sprintf(v, "%x", sync_word);
+    Serial.println(v);
+    Serial.print("TX power: ");
+    Serial.println(tx_power);
+    Serial.print("Preamble symbols: ");
+    Serial.println(preamble);
+    Serial.print("LoRa chip carrier: ");
+    Serial.println(freq);
+    Serial.print("CRC check ");
+    Serial.println(crc ? "true" : "false");
+    Serial.println("=========================================================================");
+    prefs.end();
+  }
+}
 
 static void close_config(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
@@ -352,6 +416,7 @@ static void close_config(lv_event_t * e){
     config_radio_objs * config = (config_radio_objs *)lv_event_get_user_data(e);
     if(prefs.begin("lora_settings", false)){
       String name, id, addr, sync_word, preamble;
+      bool CRC;
       char * end;
       uint32_t n;
       
@@ -360,6 +425,7 @@ static void close_config(lv_event_t * e){
       addr = lv_textarea_get_text(config->addr);
       sync_word = lv_textarea_get_text(config->sync_word);
       preamble = lv_textarea_get_text(config->preamble);
+      CRC = lv_obj_get_state(config->chkCRC) & LV_STATE_CHECKED;
 
       instance->_display->radio.settings.setName(name);
       instance->_display->radio.settings.setId(id);
@@ -367,9 +433,10 @@ static void close_config(lv_event_t * e){
       instance->_display->radio.settings.setAddr(n);
       n = strtoll(sync_word.c_str(), &end, 16);
       instance->_display->radio.settings.setSyncWord(n);
-      n = strtoll(preamble.c_str(), &end, 16);
+      n = strtoll(preamble.c_str(), &end, 10);
       instance->_display->radio.settings.setPreamble(n);
-
+      instance->_display->radio.settings.setCRC(CRC);
+      
       Serial.println("=========================LoRa Settings===================================");
       Serial.print("Name: ");
       Serial.println(instance->_display->radio.settings.getName());
@@ -388,14 +455,42 @@ static void close_config(lv_event_t * e){
       Serial.print("Sync word: ");
       Serial.println(instance->_display->radio.settings.getSyncWord());
       Serial.print("TX power: ");
-      Serial.println(instance->_display->radio.settings.getOutputPower());
+      Serial.println(instance->_display->radio.settings.getTXPower());
       Serial.print("Preamble symbols: ");
       Serial.println(instance->_display->radio.settings.getPreamble());
       Serial.print("LoRa chip carrier: ");
       Serial.println(instance->_display->radio.settings.getFreq());
+      Serial.print("CRC check ");
+      Serial.println(instance->_display->radio.settings.getCRC() ? "true" : "false");
       Serial.println("=========================================================================");
-
+      
+      try{
+        if(prefs.clear())
+          Serial.println("Settings cleared");
+        else
+          Serial.println("Settings could not be cleared");
+        prefs.putString("name", instance->_display->radio.settings.getName());
+        prefs.putString("id", instance->_display->radio.settings.getID());
+        prefs.putUChar("address", instance->_display->radio.settings.getAddr());
+        prefs.putUShort("current_limit", instance->_display->radio.settings.getCurrentLimit());
+        prefs.putUShort("bandwidth", instance->_display->radio.settings.getBandwidth());
+        prefs.putUShort("spread_factor", instance->_display->radio.settings.getSpreadFactor());
+        prefs.putUShort("coding_rate", instance->_display->radio.settings.getCodingRate());
+        prefs.putULong("sync_word", instance->_display->radio.settings.getSyncWord());
+        prefs.putUShort("tx_power", instance->_display->radio.settings.getTXPower());
+        prefs.putUShort("preamble", instance->_display->radio.settings.getPreamble());
+        prefs.putUShort("lora_freq", instance->_display->radio.settings.getFreq());
+        prefs.putBool("crc", instance->_display->radio.settings.getCRC());
+        Serial.println("Settings saved");
+      }catch(exception ex){
+        Serial.print("failed to save settings - ");
+        Serial.println(ex.what());
+      }
+      
       prefs.end();
+
+      print_lora_settings();
+
     }
     if(config->window != NULL)
       lv_obj_del(config->window);
@@ -415,18 +510,10 @@ static void ddGetCurrentLimit(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_VALUE_CHANGED){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
-    char strvalue[10] = {'\0'};
-    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
+    uint16_t index = lv_dropdown_get_selected(dd);
     Serial.print("Current limit: ");
-    Serial.println(strvalue);
-    uint16_t value;
-
-    if(strvalue == "no limit")
-      value = 0;
-    else
-      value = atoi(strvalue);
-    
-    instance->_display->radio.settings.setCurrentLimit(value);
+    Serial.println(vcurrent_limit[index]);
+    instance->_display->radio.settings.setCurrentLimit(index);
   }
 }
 
@@ -434,13 +521,10 @@ static void ddGetBW(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_VALUE_CHANGED){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
-    char strvalue[32] = {'\0'};
-    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
-    Serial.print("Bandwidth: ");
-    Serial.println(strvalue);
-    float bw;
-    bw = atof(strvalue);
-    instance->_display->radio.settings.setBandwidth(bw);
+    uint16_t index = lv_dropdown_get_selected(dd);
+    Serial.print("bandwidth: ");
+    Serial.println(vbandwidth[index]);
+    instance->_display->radio.settings.setBandwidth(index);
   }
 }
 
@@ -448,13 +532,10 @@ static void ddGetSF(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_VALUE_CHANGED){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
-    char strvalue[32] = {'\0'};
-    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
+    uint16_t index = lv_dropdown_get_selected(dd);
     Serial.print("Spread factor: ");
-    Serial.println(strvalue);
-    uint8_t sf;
-    sf = atoi(strvalue);
-    instance->_display->radio.settings.setSpreadFactor(sf);
+    Serial.println(vspread_factor[index]);
+    instance->_display->radio.settings.setSpreadFactor(index);
   }
 }
 
@@ -462,13 +543,10 @@ static void ddGetCR(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_VALUE_CHANGED){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
-    char strvalue[32] = {'\0'};
-    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
+    uint16_t index = lv_dropdown_get_selected(dd);
     Serial.print("Coding rate: ");
-    Serial.println(strvalue);
-    uint8_t cr;
-    cr = atoi(strvalue);
-    instance->_display->radio.settings.setCodeRate(cr);
+    Serial.println(vcoding_rate[index]);
+    instance->_display->radio.settings.setCodeRate(index);
   }
 }
 
@@ -476,13 +554,10 @@ static void ddGetPower(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_VALUE_CHANGED){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
-    char strvalue[32] = {'\0'};
-    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
-    Serial.print("TX Power: ");
-    Serial.println(strvalue);
-    int8_t txpower;
-    txpower = atoi(strvalue);
-    instance->_display->radio.settings.setOutputPower(txpower);
+    uint16_t index = lv_dropdown_get_selected(dd);
+    Serial.print("TX power: ");
+    Serial.println(vtx_power[index]);
+    instance->_display->radio.settings.setTXPower(index);
   }
 }
 
@@ -490,19 +565,17 @@ static void ddGetLoraFreq(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_VALUE_CHANGED){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
-    char strvalue[32] = {'\0'};
-    lv_dropdown_get_selected_str(dd, strvalue, sizeof(strvalue));
-    Serial.print("LoRa carrier frequency: ");
-    Serial.println(strvalue);
-    float freq;
-    freq = atof(strvalue);
-    instance->_display->radio.settings.setFreq(freq);
+    uint16_t index = lv_dropdown_get_selected(dd);
+    Serial.print("LoRa carrier: ");
+    Serial.println(vlora_freq[index]);
+    instance->_display->radio.settings.setFreq(index);
   }
 }
 
 static void config_radio(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_SHORT_CLICKED){
+    char s[32];
     lv_obj_t * window = lv_obj_create(lv_scr_act());
     lv_obj_set_size(window, 320, 240);
     lv_obj_clear_flag(window, LV_OBJ_FLAG_SCROLLABLE);
@@ -532,6 +605,7 @@ static void config_radio(lv_event_t * e){
     lv_obj_set_size(txtName, 200, 30);
     lv_obj_align(txtName, LV_ALIGN_TOP_LEFT, 0, -10);
     lv_textarea_set_placeholder_text(txtName, "Name");
+    lv_textarea_set_text(txtName, instance->_display->radio.settings.getName().c_str());
     
     /*Lora unique ID*/
     lv_obj_t * txtID = lv_textarea_create(winConfig);
@@ -539,6 +613,7 @@ static void config_radio(lv_event_t * e){
     lv_obj_align(txtID, LV_ALIGN_TOP_LEFT, 18, 20);
     lv_textarea_set_placeholder_text(txtID, "Unique ID");
     lv_textarea_set_max_length(txtID, 6);
+    lv_textarea_set_text(txtID, instance->_display->radio.settings.getID().c_str());
 
     lv_obj_t * lblID = lv_label_create(winConfig);
     lv_label_set_text(lblID, "ID");
@@ -560,6 +635,11 @@ static void config_radio(lv_event_t * e){
     lv_obj_align(txtAddr, LV_ALIGN_TOP_LEFT, 100, 50);
     lv_textarea_set_placeholder_text(txtAddr, "Address");
     lv_textarea_set_max_length(txtAddr, 3);
+    if(instance->_display->radio.settings.getAddr() != 0)
+      sprintf(s, "%x", instance->_display->radio.settings.getAddr());
+    else
+      strcpy(s, "");
+    lv_textarea_set_text(txtAddr, s);
 
     lv_obj_t * lblAddr = lv_label_create(winConfig);
     lv_label_set_text(lblAddr, "Address");
@@ -583,7 +663,7 @@ static void config_radio(lv_event_t * e){
                                         "220\n"
                                         "240\n"
                                         "no limit");
-    lv_dropdown_set_selected(ddCurrent, 5);
+    lv_dropdown_set_selected(ddCurrent, instance->_display->radio.settings.getCurrentLimit());
     lv_obj_set_size(ddCurrent, 100, 30);
     lv_obj_align(ddCurrent, LV_ALIGN_TOP_LEFT, 100, 80);
     lv_obj_add_event_cb(ddCurrent, ddGetCurrentLimit, LV_EVENT_VALUE_CHANGED, ddCurrent);
@@ -605,7 +685,7 @@ static void config_radio(lv_event_t * e){
                                         "125.0\n"
                                         "250.0\n"
                                         "500.0");
-    lv_dropdown_set_selected(ddBW, 8);
+    lv_dropdown_set_selected(ddBW, instance->_display->radio.settings.getBandwidth());
     lv_obj_set_size(ddBW, 100, 30);
     lv_obj_align(ddBW, LV_ALIGN_TOP_LEFT, 100, 110);
     lv_obj_add_event_cb(ddBW, ddGetBW, LV_EVENT_VALUE_CHANGED, ddBW);
@@ -624,7 +704,7 @@ static void config_radio(lv_event_t * e){
                                         "10\n"
                                         "11\n"
                                         "12");
-    lv_dropdown_set_selected(ddSF, 5);
+    lv_dropdown_set_selected(ddSF, instance->_display->radio.settings.getSpreadFactor());
     lv_obj_set_size(ddSF, 100, 30);
     lv_obj_align(ddSF, LV_ALIGN_TOP_LEFT, 100, 140);
     lv_obj_add_event_cb(ddSF, ddGetSF, LV_EVENT_VALUE_CHANGED, ddSF);
@@ -639,7 +719,7 @@ static void config_radio(lv_event_t * e){
                                         "6\n"
                                         "7\n"
                                         "8");
-    lv_dropdown_set_selected(ddCR, 1);
+    lv_dropdown_set_selected(ddCR, instance->_display->radio.settings.getCodingRate());
     lv_obj_set_size(ddCR, 100, 30);
     lv_obj_align(ddCR, LV_ALIGN_TOP_LEFT, 100, 170);
     lv_obj_add_event_cb(ddCR, ddGetCR, LV_EVENT_VALUE_CHANGED, ddCR);
@@ -650,6 +730,8 @@ static void config_radio(lv_event_t * e){
     lv_obj_align(txtSyncW, LV_ALIGN_TOP_LEFT, 100, 200);
     lv_textarea_set_placeholder_text(txtSyncW, "hex 5B");
     lv_textarea_set_max_length(txtSyncW, 2);
+    sprintf(s, "%x", instance->_display->radio.settings.getSyncWord());
+    lv_textarea_set_text(txtSyncW, s);
 
     lv_obj_t * lblSyncW = lv_label_create(winConfig);
     lv_label_set_text(lblSyncW, "Sync word");
@@ -670,7 +752,7 @@ static void config_radio(lv_event_t * e){
                                         "15\n"
                                         "20\n"
                                         "22");
-    lv_dropdown_set_selected(ddPower, 5);
+    lv_dropdown_set_selected(ddPower, instance->_display->radio.settings.getTXPower());
     lv_obj_set_size(ddPower, 100, 30);
     lv_obj_align(ddPower, LV_ALIGN_TOP_LEFT, 100, 230);
     lv_obj_add_event_cb(ddPower, ddGetPower, LV_EVENT_VALUE_CHANGED, ddPower);
@@ -681,6 +763,8 @@ static void config_radio(lv_event_t * e){
     lv_obj_align(txtPreamble, LV_ALIGN_TOP_LEFT, 100, 260);
     lv_textarea_set_placeholder_text(txtPreamble, "0-65535");
     lv_textarea_set_max_length(txtPreamble, 5);
+    itoa(instance->_display->radio.settings.getPreamble(), s, 10);
+    lv_textarea_set_text(txtPreamble, s);
 
     lv_obj_t * lblPreamble = lv_label_create(winConfig);
     lv_label_set_text(lblPreamble, "Preamble");
@@ -695,10 +779,15 @@ static void config_radio(lv_event_t * e){
     lv_dropdown_set_options(ddFreq, "433.0\n"
                                     "868.0\n"
                                     "915.0");
-    lv_dropdown_set_selected(ddFreq, 2);
+    lv_dropdown_set_selected(ddFreq, instance->_display->radio.settings.getFreq());
     lv_obj_set_size(ddFreq, 100, 30);
     lv_obj_align(ddFreq, LV_ALIGN_TOP_LEFT, 100, 290);
     lv_obj_add_event_cb(ddFreq, ddGetLoraFreq, LV_EVENT_VALUE_CHANGED, ddFreq);
+
+    lv_obj_t * chkCRC = lv_checkbox_create(winConfig);
+    lv_checkbox_set_text(chkCRC, "CRC check");
+    lv_obj_align(chkCRC, LV_ALIGN_OUT_TOP_LEFT, 0, 320);
+
     /*Objects to obtain the text value in close_config()*/
     config_objs.window = window;
     config_objs.name = txtName;
@@ -706,6 +795,7 @@ static void config_radio(lv_event_t * e){
     config_objs.addr = txtAddr;
     config_objs.sync_word = txtSyncW;
     config_objs.preamble = txtPreamble;
+    config_objs.chkCRC = chkCRC;
   }
   
 }

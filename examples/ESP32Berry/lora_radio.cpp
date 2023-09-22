@@ -121,14 +121,15 @@ lora_settings::lora_settings(){
     conf.name = "";
     conf.id = "";
     conf.addr = 0;
-    conf.current_limit = 140;
-    conf.bandwidth = 250.0;
-    conf.spread_factor = 10;
-    conf.coding_rate = 6;
+    conf.current_limit = 5;
+    conf.bandwidth = 8;
+    conf.spread_factor = 5;
+    conf.coding_rate = 1;
     conf.sync_word = 0xAB;
-    conf.output_power = 10;
+    conf.tx_power = 5;
     conf.preamble = 15;
-    conf.freq = 915.0;
+    conf.freq = 2;
+    conf.crc = false;
 }
 
 lora_settings::~lora_settings(){
@@ -147,19 +148,19 @@ void lora_settings::setAddr(uint8_t addr){
     this->conf.addr = addr;
 }
 
-void lora_settings::setFreq(float freq){
+void lora_settings::setFreq(uint16_t freq){
     this->conf.freq = freq;
 }
 
-void lora_settings::setBandwidth(float bw){
+void lora_settings::setBandwidth(uint16_t bw){
     this->conf.bandwidth = bw;
 }
 
-void lora_settings::setSpreadFactor(uint8_t sf){
+void lora_settings::setSpreadFactor(uint16_t sf){
     this->conf.spread_factor = sf;
 }
 
-void lora_settings::setCodeRate(uint8_t cr){
+void lora_settings::setCodeRate(uint16_t cr){
     this->conf.coding_rate = cr;
 }
 
@@ -167,8 +168,8 @@ void lora_settings::setSyncWord(uint32_t sw){
     this->conf.sync_word = sw;
 }
 
-void lora_settings::setOutputPower(int8_t power){
-    this->conf.output_power = power;
+void lora_settings::setTXPower(uint16_t power){
+    this->conf.tx_power = power;
 }
 
 void lora_settings::setCurrentLimit(uint16_t limit){
@@ -177,6 +178,11 @@ void lora_settings::setCurrentLimit(uint16_t limit){
 
 void lora_settings::setPreamble(uint16_t preamble){
     this->conf.preamble = preamble;
+}
+
+void lora_settings::setCRC(bool check)
+{
+    this->conf.crc = check;
 }
 
 String lora_settings::getName(){
@@ -191,18 +197,18 @@ uint8_t lora_settings::getAddr(){
     return this->conf.addr;
 }
 
-float lora_settings::getFreq(){
+uint16_t lora_settings::getFreq(){
     return this->conf.freq;
 }
-float lora_settings::getBandwidth(){
+uint16_t lora_settings::getBandwidth(){
     return this->conf.bandwidth;
 }
 
-uint8_t lora_settings::getSpreadFactor(){
+uint16_t lora_settings::getSpreadFactor(){
     return this->conf.spread_factor;
 }
 
-uint8_t lora_settings::getCodingRate(){
+uint16_t lora_settings::getCodingRate(){
     return this->conf.coding_rate;
 }
 
@@ -210,11 +216,11 @@ uint32_t lora_settings::getSyncWord(){
     return this->conf.sync_word;
 }
 
-int8_t lora_settings::getOutputPower(){
-    return this->conf.output_power;
+uint16_t lora_settings::getTXPower(){
+    return this->conf.tx_power;
 }
 
-uint8_t lora_settings::getCurrentLimit(){
+uint16_t lora_settings::getCurrentLimit(){
     return this->conf.current_limit;
 }
 
@@ -224,6 +230,11 @@ uint16_t lora_settings::getPreamble(){
 
 void lora_settings::load(){
 
+}
+
+bool lora_settings::getCRC()
+{
+    return this->conf.crc;
 }
 
 void lora_settings::save(){
@@ -247,7 +258,7 @@ void lora_settings::save(){
     Serial.print("Sync word: ");
     Serial.println(conf.sync_word);
     Serial.print("Output power: ");
-    Serial.println(conf.output_power);
+    Serial.println(conf.tx_power);
     Serial.print("Current limit: ");
     Serial.println(conf.current_limit);
     Serial.print("Preamble: ");
