@@ -4,7 +4,7 @@
 #define LORA_FREQ 915.0
 
 bool lora_radio::initBasicConfig(){
-    Serial.println("Initiating basic configuration");
+    Serial.println("Starting basic configuration");
 
     digitalWrite(BOARD_SDCARD_CS, HIGH);
     digitalWrite(RADIO_CS_PIN, HIGH);
@@ -14,9 +14,9 @@ bool lora_radio::initBasicConfig(){
 
     int state = radio.begin(LORA_FREQ);
     if (state == RADIOLIB_ERR_NONE) {
-        Serial.println("Start Radio success!");
+        Serial.println("Radio start success!");
     } else {
-        Serial.print("Start Radio failed,code:");
+        Serial.print("Radio start failed,code:");
         Serial.println(state);
         return false;
     }
@@ -97,15 +97,18 @@ bool lora_radio::initBasicConfig(){
 lora_radio::lora_radio(){
     radio.reset(false);
     if(initBasicConfig()){
-        Serial.println("Radio initialisation complete");
+        Serial.println("Radio configuration complete");
         initialized = true;
-    }else
-        Serial.println("radio initialisation failed");
+    }else{
+        Serial.println("radio configuration failed");
+        initialized = false;
+    }
 }
 
 lora_radio::~lora_radio(){
     if(this != NULL){
-        radio.reset(false);
+        radio.reset();
+        radio.sleep(false);
         initialized = false;
     }
 }

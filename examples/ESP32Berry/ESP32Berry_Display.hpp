@@ -73,6 +73,7 @@ private:
 
 public:
   lora_radio radio;
+  bool isLoRaOn();
   lv_obj_t *ui_NotiLabel;
   FuncPtrInt menu_event_cb;
   TaskHandle_t uiNotiTaskHandler;

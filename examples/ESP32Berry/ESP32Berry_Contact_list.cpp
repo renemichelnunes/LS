@@ -264,8 +264,7 @@ const char* title) : AppBase(display, system, network, title){
   display_width = display->get_display_width();
   contact_list = Contact_list();
   this->draw_ui();
-  
-  if(instance->_display->radio.initialized)
+  if(instance->_display->isLoRaOn())
     Serial.println("LoRa radio ready");
   else
     Serial.println("LoRa radio not ready");
@@ -543,6 +542,18 @@ static void config_radio(lv_event_t * e){
     lv_obj_t * lblPreamble = lv_label_create(winConfig);
     lv_label_set_text(lblPreamble, "Preamble");
     lv_obj_align(lblPreamble, LV_ALIGN_TOP_LEFT, 0, 270);
+
+    /*Lora chip frequency*/
+    lv_obj_t * lblFreq = lv_label_create(winConfig);
+    lv_label_set_text(lblFreq, "LoRa freq");
+    lv_obj_align(lblFreq, LV_ALIGN_TOP_LEFT, 0, 300);
+
+    lv_obj_t * ddFreq = lv_dropdown_create(winConfig);
+    lv_dropdown_set_options(ddFreq, "433.0\n"
+                                    "868.0\n"
+                                    "915.0");
+    lv_obj_set_size(ddFreq, 100, 30);
+    lv_obj_align(ddFreq, LV_ALIGN_TOP_LEFT, 100, 290);
   }
   
 }

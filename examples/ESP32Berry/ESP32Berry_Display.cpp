@@ -15,8 +15,6 @@ Display::Display(FuncPtrInt callback) {
   menu_event_cb = callback;
   ui_Focused_Obj = NULL;
   initTFT();
-  radio.getRadio()->reset();
-  radio.initialized = false;
 }
 
 Display::~Display() {
@@ -35,7 +33,9 @@ void Display::initTFT() {
   tft->setRotation(1);
   tft->fillScreen(TFT_BLACK);
   this->initLVGL();
-
+  radio = lora_radio();
+  radio.getRadio()->sleep();
+  radio.initialized = false;
 }
 
 void Display::my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
@@ -163,19 +163,22 @@ void Display::ui_event_callback(lv_event_t *e) {
     /*LoRa actions*/
     if(!lora_state){
       //lora radio
-      radio = lora_radio();
+      radio.getRadio()->reset();
       lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xE95622), NULL);
       Serial.println("lora on");
       lora_state = true;
     }
     else{
-      radio.getRadio()->reset();
-      radio.initialized = false;
+      radio.getRadio()->sleep();
       lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xffffff), NULL);
       Serial.println("lora off");
       lora_state = false;
     }
   }
+}
+
+bool Display::isLoRaOn(){
+  return lora_state;
 }
 
 void Display::ui_app_btns_callback(lv_event_t *e) {
