@@ -58,6 +58,12 @@ class lora_radio{
         SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
         bool initBasicConfig();
     public:
+        uint8_t vcurrent_limit[12] = {45, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 0};
+        float vbandwidth[10] = {7.8, 10.4, 15.6, 20.8, 31.25, 41.7, 62.5, 125.0, 250.0, 500.0};
+        uint8_t vspread_factor[8] = {5, 6, 7, 8, 9, 10, 11, 12};
+        uint8_t vcoding_rate[4] = {5, 6, 7, 8};
+        int8_t vtx_power[9] = {-17, -10, -5, 0, 5, 10, 15, 20, 22};
+        float vlora_freq[3] = {433.0, 868.0, 915.0};
         bool initialized = false;
         lora_settings settings;
         lora_radio();

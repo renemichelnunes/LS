@@ -102,4 +102,5 @@ public:
   void lv_port_sem_give(void);
   int get_display_width();
   int get_display_height();
+  void lora_apply_config();
 };

@@ -9,13 +9,6 @@
 
 Preferences prefs;
 
-uint8_t vcurrent_limit[] = {45, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 0};
-float vbandwidth[] = {7.8, 10.4, 15.6, 20.8, 31.25, 41.7, 62.5, 125.0, 250.0, 500.0};
-uint8_t vspread_factor[] = {5, 6, 7, 8, 9, 10, 11, 12};
-uint8_t vcoding_rate[] = {5, 6, 7, 8};
-int8_t vtx_power[] = {-17, -10, -5, 0, 5, 10, 15, 20, 22};
-float vlora_freq[] = {433.0, 868.0, 915.0};
-
 std::string generate_ID(){
   srand(time(NULL));
   static const char alphanum[] = "0123456789"
@@ -392,22 +385,22 @@ static void print_lora_settings(){
     sprintf(v, "%x", addr);
     Serial.println(v);
     Serial.print(F("Current limit: "));
-    Serial.println(vcurrent_limit[current_limit]);
+    Serial.println(instance->_display->radio.vcurrent_limit[current_limit]);
     Serial.print(F("Bandwidth: "));
-    Serial.println(vbandwidth[bandwidth]);
+    Serial.println(instance->_display->radio.vbandwidth[bandwidth]);
     Serial.print(F("Spread factor: "));
-    Serial.println(vspread_factor[spread_factor]);
+    Serial.println(instance->_display->radio.vspread_factor[spread_factor]);
     Serial.print(F("Coding rate: "));
-    Serial.println(vcoding_rate[coding_rate]);
+    Serial.println(instance->_display->radio.vcoding_rate[coding_rate]);
     Serial.print(F("Sync word: "));
     sprintf(v, "%x", sync_word);
     Serial.println(v);
     Serial.print(F("TX power: "));
-    Serial.println(vtx_power[tx_power]);
+    Serial.println(instance->_display->radio.vtx_power[tx_power]);
     Serial.print(F("Preamble symbols: "));
     Serial.println(preamble);
     Serial.print(F("LoRa chip carrier: "));
-    Serial.println(vlora_freq[freq]);
+    Serial.println(instance->_display->radio.vlora_freq[freq]);
     Serial.print(F("CRC check "));
     Serial.println(crc ? "true" : "false");
     Serial.println(F("========================================================================="));
@@ -451,7 +444,7 @@ static void close_config(lv_event_t * e){
       n = strtoll(preamble.c_str(), &end, 10);
       instance->_display->radio.settings.setPreamble(n);
       instance->_display->radio.settings.setCRC(CRC);
-      
+      /*
       Serial.println(F("=========================LoRa Settings==================================="));
       Serial.print(F("Name: "));
       Serial.println(instance->_display->radio.settings.getName());
@@ -478,7 +471,7 @@ static void close_config(lv_event_t * e){
       Serial.print(F("CRC check "));
       Serial.println(instance->_display->radio.settings.getCRC() ? "true" : "false");
       Serial.println(F("========================================================================="));
-      
+      */
       try{
         if(prefs.clear())
           Serial.println(F("Settings cleared"));
@@ -506,6 +499,8 @@ static void close_config(lv_event_t * e){
 
       print_lora_settings();
 
+      /*Apply the configuration on the lora chip*/
+      instance->_display->lora_apply_config();
     }
     if(config->window != NULL)
       lv_obj_del(config->window);
@@ -527,7 +522,7 @@ static void ddGetCurrentLimit(lv_event_t * e){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
     uint16_t index = lv_dropdown_get_selected(dd);
     Serial.print(F("Current limit: "));
-    Serial.println(vcurrent_limit[index]);
+    Serial.println(instance->_display->radio.vcurrent_limit[index]);
     instance->_display->radio.settings.setCurrentLimit(index);
   }
 }
@@ -538,7 +533,7 @@ static void ddGetBW(lv_event_t * e){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
     uint16_t index = lv_dropdown_get_selected(dd);
     Serial.print(F("bandwidth: "));
-    Serial.println(vbandwidth[index]);
+    Serial.println(instance->_display->radio.vbandwidth[index]);
     instance->_display->radio.settings.setBandwidth(index);
   }
 }
@@ -549,7 +544,7 @@ static void ddGetSF(lv_event_t * e){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
     uint16_t index = lv_dropdown_get_selected(dd);
     Serial.print(F("Spread factor: "));
-    Serial.println(vspread_factor[index]);
+    Serial.println(instance->_display->radio.vspread_factor[index]);
     instance->_display->radio.settings.setSpreadFactor(index);
   }
 }
@@ -560,7 +555,7 @@ static void ddGetCR(lv_event_t * e){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
     uint16_t index = lv_dropdown_get_selected(dd);
     Serial.print(F("Coding rate: "));
-    Serial.println(vcoding_rate[index]);
+    Serial.println(instance->_display->radio.vcoding_rate[index]);
     instance->_display->radio.settings.setCodeRate(index);
   }
 }
@@ -571,7 +566,7 @@ static void ddGetPower(lv_event_t * e){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
     uint16_t index = lv_dropdown_get_selected(dd);
     Serial.print(F("TX power: "));
-    Serial.println(vtx_power[index]);
+    Serial.println(instance->_display->radio.vtx_power[index]);
     instance->_display->radio.settings.setTXPower(index);
   }
 }
@@ -582,7 +577,7 @@ static void ddGetLoraFreq(lv_event_t * e){
     lv_obj_t * dd = (lv_obj_t *)lv_event_get_user_data(e);
     uint16_t index = lv_dropdown_get_selected(dd);
     Serial.print(F("LoRa carrier: "));
-    Serial.println(vlora_freq[index]);
+    Serial.println(instance->_display->radio.vlora_freq[index]);
     instance->_display->radio.settings.setFreq(index);
   }
 }

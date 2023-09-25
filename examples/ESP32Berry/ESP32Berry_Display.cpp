@@ -181,6 +181,73 @@ void Display::my_key_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
   data->key = last_key;
 }
 
+void Display::lora_apply_config(){
+  /*Address*/
+  if(radio.settings.getAddr() != 0){
+    if(radio.getRadio()->setNodeAddress(radio.settings.getAddr()) != RADIOLIB_ERR_INVALID_FREQUENCY)
+      Serial.println(F("Address applied"));
+    else
+      Serial.println(F("Invalid address"));
+  }
+  else
+    if(radio.getRadio()->disableAddressFiltering() == RADIOLIB_ERR_NONE)
+      Serial.println(F("Node address filtering disabled"));
+
+  /*Current limit*/
+  if(radio.getRadio()->setCurrentLimit(radio.vcurrent_limit[radio.settings.getCurrentLimit()]) != RADIOLIB_ERR_INVALID_CURRENT_LIMIT)
+    Serial.println(F("Current limit applied"));
+  else
+    Serial.println(F("Invalid current limit"));
+
+  /*Bandwidth*/
+  if(radio.getRadio()->setBandwidth(radio.vbandwidth[radio.settings.getBandwidth()]) != RADIOLIB_ERR_INVALID_BANDWIDTH)
+    Serial.println(F("Bandwidth applied"));
+  else
+    Serial.println(F("Invalid bandwidth"));
+
+  /*Spread factor*/
+  if(radio.getRadio()->setBandwidth(radio.vspread_factor[radio.settings.getSpreadFactor()]) != RADIOLIB_ERR_INVALID_SPREADING_FACTOR)
+    Serial.println(F("Spread factor applied"));
+  else
+    Serial.println(F("Invalid spread factor"));
+
+  /*Coding rate*/
+  if(radio.getRadio()->setBandwidth(radio.vcoding_rate[radio.settings.getCodingRate()]) != RADIOLIB_ERR_INVALID_CODING_RATE)
+    Serial.println(F("Coding rate applied"));
+  else
+    Serial.println(F("Invalid Coding rate"));
+
+  /*Sync word*/
+  if(radio.getRadio()->setSyncWord(radio.settings.getSyncWord()) != RADIOLIB_ERR_NONE)
+    Serial.println(F("Invalid Sync word"));
+  else
+    Serial.println(F("Sync word applied"));
+
+  /*TX power*/
+  if(radio.getRadio()->setOutputPower(radio.vtx_power[radio.settings.getTXPower()]) != RADIOLIB_ERR_INVALID_OUTPUT_POWER)
+    Serial.println(F("TX power applied"));
+  else
+    Serial.println(F("Invalid TX power"));
+
+  /*Preamble*/
+  if(radio.getRadio()->setPreambleLength(radio.settings.getPreamble()) != RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH)
+    Serial.println(F("Preamble applied"));
+  else
+    Serial.println(F("Invalid preamble"));
+
+  /*Lora freq*/
+  if(radio.getRadio()->setFrequency(radio.vlora_freq[radio.settings.getFreq()]) != RADIOLIB_ERR_INVALID_FREQUENCY)
+    Serial.println(F("LoRa frequency applied"));
+  else
+    Serial.println(F("Invalid LoRa frequency"));
+
+  /*CRC check*/
+  if(radio.getRadio()->setCRC(radio.settings.getCRC()) != RADIOLIB_ERR_INVALID_CRC_CONFIGURATION)
+    Serial.println(F("CRC check applied"));
+  else
+    Serial.println(F("Invalid CRC configuration"));
+}
+
 void Display::ui_event_callback(lv_event_t *e) {
   lv_event_code_t event_code = lv_event_get_code(e);
   lv_obj_t *target = lv_event_get_target(e);
@@ -210,13 +277,14 @@ void Display::ui_event_callback(lv_event_t *e) {
     if(!lora_state){
       //lora radio
       radio.getRadio()->reset();
-      lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xE95622), NULL);
+      lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xE95622), 0);
       Serial.println("lora on");
       lora_state = true;
+      //lora_apply_config();
     }
     else{
       radio.getRadio()->sleep();
-      lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xffffff), NULL);
+      lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xffffff), 0);
       Serial.println("lora off");
       lora_state = false;
     }
