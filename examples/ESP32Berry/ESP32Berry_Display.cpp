@@ -6,6 +6,9 @@
 */
 /////////////////////////////////////////////////////////////////
 #include "ESP32Berry_Display.hpp"
+#include <Preferences.h>
+
+Preferences lora_conf;
 
 static Display *instance = NULL;
 
@@ -21,6 +24,46 @@ Display::~Display() {
   delete tft;
 }
 
+void loadConfig(){
+  if(lora_conf.begin("lora_settings", true)){
+    String name, id;
+    uint16_t addr, current_limit, spread_factor, coding_rate, bandwidth, tx_power, freq;
+    uint16_t preamble;
+    uint32_t sync_word;
+    bool crc;
+
+    name = lora_conf.getString("name");
+    id = lora_conf.getString("id");
+    addr = lora_conf.getUChar("address");
+    current_limit = lora_conf.getUShort("current_limit");
+    bandwidth = lora_conf.getUShort("bandwidth");
+    spread_factor = lora_conf.getUShort("spread_factor");
+    coding_rate = lora_conf.getUShort("coding_rate");
+    sync_word = lora_conf.getULong("sync_word");
+    tx_power = lora_conf.getUShort("tx_power");
+    preamble = lora_conf.getUShort("preamble");
+    freq = lora_conf.getUShort("lora_freq");
+    crc = lora_conf.getBool("crc");
+    lora_conf.end();
+
+    instance->radio.settings.setName(name);
+    instance->radio.settings.setId(id);
+    instance->radio.settings.setAddr(addr);
+    instance->radio.settings.setCurrentLimit(current_limit);
+    instance->radio.settings.setBandwidth(bandwidth);
+    instance->radio.settings.setSpreadFactor(spread_factor);
+    instance->radio.settings.setCodeRate(coding_rate);
+    instance->radio.settings.setSyncWord(sync_word);
+    instance->radio.settings.setTXPower(tx_power);
+    instance->radio.settings.setPreamble(preamble);
+    instance->radio.settings.setFreq(freq);
+    instance->radio.settings.setCRC(crc);
+
+    Serial.println(F("Lora settings loaded"));
+  }else 
+    Serial.println(F("first time settings"));
+}
+
 void Display::initTFT() {
   //Mouse Pin setup
   pinMode(BOARD_BOOT_PIN, INPUT_PULLUP);
@@ -33,9 +76,12 @@ void Display::initTFT() {
   tft->setRotation(1);
   tft->fillScreen(TFT_BLACK);
   this->initLVGL();
+
+
   radio = lora_radio();
   radio.getRadio()->sleep();
   radio.initialized = false;
+  loadConfig();
 }
 
 void Display::my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {

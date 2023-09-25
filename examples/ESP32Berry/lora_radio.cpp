@@ -4,7 +4,7 @@
 #define LORA_FREQ 915.0
 
 bool lora_radio::initBasicConfig(){
-    Serial.println("Starting basic configuration");
+    Serial.println(F("Starting basic configuration"));
 
     digitalWrite(BOARD_SDCARD_CS, HIGH);
     digitalWrite(RADIO_CS_PIN, HIGH);
@@ -14,9 +14,9 @@ bool lora_radio::initBasicConfig(){
 
     int state = radio.begin(LORA_FREQ);
     if (state == RADIOLIB_ERR_NONE) {
-        Serial.println("Radio start success!");
+        Serial.println(F("Radio start success!"));
     } else {
-        Serial.print("Radio start failed,code:");
+        Serial.print(F("Radio start failed,code:"));
         Serial.println(state);
         return false;
     }
@@ -25,42 +25,42 @@ bool lora_radio::initBasicConfig(){
         Serial.println(F("Selected frequency is invalid for this module!"));
         return false;
     }else
-    Serial.println("Carrier 915MHz");
+    Serial.println(F("Carrier 915MHz"));
 
     // set bandwidth to 250 kHz
     if (radio.setBandwidth(250.0) == RADIOLIB_ERR_INVALID_BANDWIDTH) {
         Serial.println(F("Selected bandwidth is invalid for this module!"));
         return false;
     }else
-    Serial.println("Bandwidth 250KHz");
+    Serial.println(F("Bandwidth 250KHz"));
 
     // set spreading factor to 10
     if (radio.setSpreadingFactor(10) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
         Serial.println(F("Selected spreading factor is invalid for this module!"));
         return false;
     }else
-    Serial.println("Spread factor 10");
+    Serial.println(F("Spread factor 10"));
 
     // set coding rate to 6
     if (radio.setCodingRate(6) == RADIOLIB_ERR_INVALID_CODING_RATE) {
         Serial.println(F("Selected coding rate is invalid for this module!"));
         return false;
     }else 
-    Serial.println("Coding rate 6");
+    Serial.println(F("Coding rate 6"));
 
     // set LoRa sync word to 0xAB
     if (radio.setSyncWord(0xAB) != RADIOLIB_ERR_NONE) {
         Serial.println(F("Unable to set sync word!"));
         return false;
     }else
-    Serial.println("Sync word 0xAB");
+    Serial.println(F("Sync word 0xAB"));
 
     // set output power to 10 dBm (accepted range is -17 - 22 dBm)
     if (radio.setOutputPower(17) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
         Serial.println(F("Selected output power is invalid for this module!"));
         return false;
     }else
-    Serial.println("Output power 10dBm");
+    Serial.println(F("Output power 10dBm"));
 
     // set over current protection limit to 140 mA (accepted range is 45 - 140 mA)
     // NOTE: set value to 0 to disable overcurrent protection
@@ -68,39 +68,39 @@ bool lora_radio::initBasicConfig(){
         Serial.println(F("Selected current limit is invalid for this module!"));
         return false;
     }else
-    Serial.println("Over current protection 140ma");
+    Serial.println(F("Over current protection 140ma"));
 
     // set LoRa preamble length to 15 symbols (accepted range is 0 - 65535)
     if (radio.setPreambleLength(15) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
         return false;
     }else
-    Serial.println("Preable 15 symbols");
+    Serial.println(F("Preable 15 symbols"));
 
     // disable CRC
     if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
         Serial.println(F("Selected CRC is invalid for this module!"));
         return false;
     }else
-    Serial.println("No CRC check");
+    Serial.println(F("No CRC check"));
     return true;
     // disable CRC
     if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
         Serial.println(F("Selected CRC is invalid for this module!"));
         return false;
     }else
-        Serial.println("No CRC check");
-    Serial.println("Done");
+        Serial.println(F("No CRC check"));
+    Serial.println(F("Done"));
     return true;
 }
 
 lora_radio::lora_radio(){
     radio.reset(false);
     if(initBasicConfig()){
-        Serial.println("Radio configuration complete");
+        Serial.println(F("Radio configuration complete"));
         initialized = true;
     }else{
-        Serial.println("radio configuration failed");
+        Serial.println(F("radio configuration failed"));
         initialized = false;
     }
 }

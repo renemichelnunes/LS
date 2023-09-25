@@ -861,6 +861,7 @@ void AppContactList::draw_ui(){
   }catch (exception &e){
     Serial.println(e.what());
   }
+
 }
 
 void AppContactList::tg_event_handler(lv_event_t* e){
