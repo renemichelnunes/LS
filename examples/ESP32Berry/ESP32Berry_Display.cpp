@@ -182,16 +182,34 @@ void Display::my_key_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 }
 
 void Display::lora_apply_config(){
+  int16_t err_code;
   /*Address*/
+  radio.getRadio()->reset();
+  //radio.getRadio()->sleep();
+  radio.getRadio()->setTCXO(2.4);
+  if (radio.getRadio()->setDio2AsRfSwitch() != RADIOLIB_ERR_NONE) {
+    Serial.println(F("Failed to set DIO2 as RF switch!"));
+  }else
+    Serial.println(F("RF switch"));
+  //radio.getRadio()->begin();
   if(radio.settings.getAddr() != 0){
-    if(radio.getRadio()->setNodeAddress(radio.settings.getAddr()) != RADIOLIB_ERR_INVALID_FREQUENCY)
+    err_code = radio.getRadio()->setNodeAddress(radio.settings.getAddr());
+    if(err_code == RADIOLIB_ERR_NONE)
       Serial.println(F("Address applied"));
-    else
-      Serial.println(F("Invalid address"));
+    else{
+      Serial.print(F("Invalid address - code "));
+      Serial.println(err_code);
+    }
   }
-  else
-    if(radio.getRadio()->disableAddressFiltering() == RADIOLIB_ERR_NONE)
+  else{
+    err_code = radio.getRadio()->disableAddressFiltering();
+    if(err_code == RADIOLIB_ERR_NONE)
       Serial.println(F("Node address filtering disabled"));
+    else{
+      Serial.print(F("Disabling node address filtering failed - code "));
+      Serial.println(err_code);
+    }
+  }
 
   /*Current limit*/
   if(radio.getRadio()->setCurrentLimit(radio.vcurrent_limit[radio.settings.getCurrentLimit()]) != RADIOLIB_ERR_INVALID_CURRENT_LIMIT)
@@ -218,8 +236,11 @@ void Display::lora_apply_config(){
     Serial.println(F("Invalid Coding rate"));
 
   /*Sync word*/
-  if(radio.getRadio()->setSyncWord(radio.settings.getSyncWord()) != RADIOLIB_ERR_NONE)
-    Serial.println(F("Invalid Sync word"));
+  err_code = radio.getRadio()->setSyncWord(radio.settings.getSyncWord());
+  if(err_code != RADIOLIB_ERR_NONE){
+    Serial.print(F("Invalid Sync word - code "));
+    Serial.println(err_code);
+  }
   else
     Serial.println(F("Sync word applied"));
 

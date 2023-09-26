@@ -2,8 +2,13 @@
 #include <RadioLib.h>
 
 #define LORA_FREQ 915.0
-
+int count = 1;
 bool lora_radio::initBasicConfig(){
+    if(count > 1)
+        return true;
+    Serial.print("count ");
+    Serial.println(count);
+    count++;
     Serial.println(F("Starting basic configuration"));
 
     digitalWrite(BOARD_SDCARD_CS, HIGH);
@@ -11,8 +16,8 @@ bool lora_radio::initBasicConfig(){
     digitalWrite(BOARD_TFT_CS, HIGH);
     SPI.end();
     SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI); //SD
-
-    int state = radio.begin(LORA_FREQ);
+    delay(5000);
+    int state = radio.begin();
     if (state == RADIOLIB_ERR_NONE) {
         Serial.println(F("Radio start success!"));
     } else {
@@ -26,6 +31,11 @@ bool lora_radio::initBasicConfig(){
         return false;
     }else
     Serial.println(F("Carrier 915MHz"));
+    
+    radio.setTCXO(2.4);
+    
+    /*Disable address filtering*/
+    radio.disableAddressFiltering();
 
     // set bandwidth to 250 kHz
     if (radio.setBandwidth(250.0) == RADIOLIB_ERR_INVALID_BANDWIDTH) {
@@ -91,6 +101,7 @@ bool lora_radio::initBasicConfig(){
     }else
         Serial.println(F("No CRC check"));
     Serial.println(F("Done"));
+ 
     return true;
 }
 
