@@ -1,6 +1,8 @@
 #include "lora_radio.hpp"
 #include <RadioLib.h>
 
+#define basic_config 1
+
 #define LORA_FREQ 915.0
 int count = 1;
 bool lora_radio::initBasicConfig(){
@@ -25,6 +27,7 @@ bool lora_radio::initBasicConfig(){
         Serial.println(state);
         return false;
     }
+
     // set carrier frequency to 868.0 MHz
     if (radio.setFrequency(LORA_FREQ) == RADIOLIB_ERR_INVALID_FREQUENCY) {
         Serial.println(F("Selected frequency is invalid for this module!"));
@@ -33,7 +36,8 @@ bool lora_radio::initBasicConfig(){
     Serial.println(F("Carrier 915MHz"));
     
     radio.setTCXO(2.4);
-    
+
+    #if basic_config == 1
     /*Disable address filtering*/
     radio.disableAddressFiltering();
 
@@ -100,8 +104,8 @@ bool lora_radio::initBasicConfig(){
         return false;
     }else
         Serial.println(F("No CRC check"));
+    #endif
     Serial.println(F("Done"));
- 
     return true;
 }
 

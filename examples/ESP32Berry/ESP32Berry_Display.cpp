@@ -82,6 +82,7 @@ void Display::initTFT() {
   radio.getRadio()->sleep();
   radio.initialized = false;
   loadConfig();
+  radio.getRadio()->sleep();
 }
 
 void Display::my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
@@ -183,6 +184,9 @@ void Display::my_key_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 
 void Display::lora_apply_config(){
   int16_t err_code;
+  digitalWrite(BOARD_SDCARD_CS, HIGH);
+  digitalWrite(RADIO_CS_PIN, HIGH);
+  digitalWrite(BOARD_TFT_CS, HIGH);
   /*Address*/
   radio.getRadio()->reset();
   //radio.getRadio()->sleep();
@@ -269,6 +273,30 @@ void Display::lora_apply_config(){
     Serial.println(F("Invalid CRC configuration"));
 }
 
+TaskHandle_t lora_listen_task = NULL;
+
+static void lora_listen(void * prameter){
+  int16_t state = 0;
+  digitalWrite(BOARD_SDCARD_CS, HIGH);
+  digitalWrite(RADIO_CS_PIN, HIGH);
+  digitalWrite(BOARD_TFT_CS, HIGH);
+  SPI.end();
+  SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
+  
+  while(true){
+    state = instance->radio.getRadio()->scanChannel();
+    if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE)
+      Serial.println(F("LoRa signal detected"));
+    else if(state == RADIOLIB_CHANNEL_FREE)
+      Serial.println(F("channel is free"));
+    else{
+      Serial.print("Scan channel failed - code ");
+      Serial.println(state);
+    }
+    vTaskDelay(1000);
+  }
+}
+
 void Display::ui_event_callback(lv_event_t *e) {
   lv_event_code_t event_code = lv_event_get_code(e);
   lv_obj_t *target = lv_event_get_target(e);
@@ -282,6 +310,7 @@ void Display::ui_event_callback(lv_event_t *e) {
     tft->setBrightness(sliderValue);
   } else if (target == ui_SliderSpeaker && event_code == LV_EVENT_VALUE_CHANGED) {
     int sliderValue = lv_slider_get_value(ui_SliderSpeaker);
+    
 
   } else if (target == ui_ImgBtnWiFi && event_code == LV_EVENT_CLICKED) {
     if (lv_obj_get_state(ui_ImgBtnWiFi) & LV_STATE_CHECKED) {
@@ -297,16 +326,21 @@ void Display::ui_event_callback(lv_event_t *e) {
     /*LoRa actions*/
     if(!lora_state){
       //lora radio
-      radio.getRadio()->reset();
+      //radio.getRadio()->standby();
       lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xE95622), 0);
       Serial.println("lora on");
+      
+      xTaskCreate(lora_listen, "lora_listen_task", 10000, NULL, 2, &lora_listen_task);
       lora_state = true;
       //lora_apply_config();
+      
     }
     else{
-      radio.getRadio()->sleep();
+      //radio.getRadio()->sleep();
       lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xffffff), 0);
       Serial.println("lora off");
+      if(lora_listen_task != NULL)
+        vTaskDelete(lora_listen_task);
       lora_state = false;
     }
   }

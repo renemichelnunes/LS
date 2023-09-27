@@ -46,6 +46,7 @@ msgAndList * msg = new msgAndList;
 
 static void sendMessage(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
+  int16_t err_code;
   if(code == LV_EVENT_SHORT_CLICKED){
     msgAndList * msg = (msgAndList *)lv_event_get_user_data(e);
     lv_obj_t * txtReply = msg->txtReply;
@@ -59,6 +60,8 @@ static void sendMessage(lv_event_t * e){
       lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
       lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
       //delay(2000);
+      //err_code = instance->_display->radio.getRadio()->transmit(message);
+      
       lv_list_add_text(msg->list, msg->c->getName().c_str());
       lv_obj_t * btnList2 = lv_list_add_btn(msg->list, NULL, "You're welcome! If you have any more questions or need further assistance, please don't hesitate to ask. Happy coding!");
       lv_obj_t* label2 = lv_obj_get_child(btnList2, 0);
@@ -500,7 +503,7 @@ static void close_config(lv_event_t * e){
       print_lora_settings();
 
       /*Apply the configuration on the lora chip*/
-      instance->_display->lora_apply_config();
+      //instance->_display->lora_apply_config();
     }
     if(config->window != NULL)
       lv_obj_del(config->window);
