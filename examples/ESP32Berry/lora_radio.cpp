@@ -5,6 +5,149 @@
 
 #define LORA_FREQ 915.0
 int count = 1;
+
+bool lora_radio::initFSKBasicConfig()
+{   
+    if(count > 1)
+        return true;
+    count++;
+    digitalWrite(BOARD_SDCARD_CS, HIGH);
+    digitalWrite(RADIO_CS_PIN, HIGH);
+    digitalWrite(BOARD_TFT_CS, HIGH);
+    SPI.end();
+    SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
+    delay(5000);
+    int16_t state;
+    state = radio.beginFSK();
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("FSK mode done"));
+    else{
+        Serial.print(F("failed to set FSK mode - code "));
+        Serial.println(state);
+        return false;
+    }
+    
+    state = radio.setFrequency(LORA_FREQ);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("LoRa frequency 915.0"));
+    else{
+        Serial.print(F("failed to set chip carrier - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setBitRate(100.0);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("bit rate 100"));
+    else{
+        Serial.print(F("failed to set bit rate - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setFrequencyDeviation(10.0);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("frequency deviation 10"));
+    else{
+        Serial.print(F("failed to set frequency deviation - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setRxBandwidth(250.0);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("RX bandwidth 250"));
+    else{
+        Serial.print(F("failed to set RX bandwidth - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setOutputPower(10.0);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("Output power 10"));
+    else{
+        Serial.print(F("failed to set output power - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setOutputPower(10.0);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("Output power 10"));
+    else{
+        Serial.print(F("failed to set output power - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setCurrentLimit(100.0);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("Current limit 100mah"));
+    else{
+        Serial.print(F("failed to set current limit - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setDataShaping(RADIOLIB_SHAPING_1_0);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("Data shaping set to 1_0"));
+    else{
+        Serial.print(F("failed to set data shaping - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setDataShaping(RADIOLIB_SHAPING_1_0);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("Data shaping set to 1_0"));
+    else{
+        Serial.print(F("failed to set data shaping - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    uint8_t syncWord[] = {0x01, 0x23, 0x45, 0x67,
+                        0x89, 0xAB, 0xCD, 0xEF};
+    state = radio.setSyncWord(syncWord, 8);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("sync word applied"));
+    else{
+        Serial.print(F("failed to set sync work - code "));
+        Serial.println(state);
+        return false;
+    } 
+
+    state = radio.setSyncBits(syncWord, 64);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("sync bits applied 64"));
+    else{
+        Serial.print(F("failed to set sync bits 64 - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setSyncBits(syncWord, 12);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("sync bits applied 12"));
+    else{
+        Serial.print(F("failed to set sync bits 12 - code "));
+        Serial.println(state);
+        return false;
+    }
+
+    state = radio.setCRC(2, 0xFFFF, 0x8005, false);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("CRC applied"));
+    else{
+        Serial.print(F("failed to set CRC - code "));
+        Serial.println(state);
+        return false;
+    }
+    return true;
+}
+
 bool lora_radio::initBasicConfig(){
     if(count > 1)
         return true;
@@ -111,11 +254,11 @@ bool lora_radio::initBasicConfig(){
 
 lora_radio::lora_radio(){
     radio.reset(false);
-    if(initBasicConfig()){
+    if(initFSKBasicConfig()){
         Serial.println(F("Radio configuration complete"));
         initialized = true;
     }else{
-        Serial.println(F("radio configuration failed"));
+        Serial.println(F("Radio configuration failed"));
         initialized = false;
     }
 }

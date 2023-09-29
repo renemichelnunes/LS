@@ -276,23 +276,19 @@ void Display::lora_apply_config(){
 TaskHandle_t lora_listen_task = NULL;
 
 static void lora_listen(void * prameter){
+    
   int16_t state = 0;
-  digitalWrite(BOARD_SDCARD_CS, HIGH);
-  digitalWrite(RADIO_CS_PIN, HIGH);
-  digitalWrite(BOARD_TFT_CS, HIGH);
-  SPI.end();
-  SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
-  
-  while(true){
-    state = instance->radio.getRadio()->scanChannel();
-    if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE)
+  state = instance->radio.getRadio()->scanChannel();
+  if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE)
       Serial.println(F("LoRa signal detected"));
-    else if(state == RADIOLIB_CHANNEL_FREE)
-      Serial.println(F("channel is free"));
-    else{
-      Serial.print("Scan channel failed - code ");
-      Serial.println(state);
-    }
+  else if(state == RADIOLIB_CHANNEL_FREE)
+    Serial.println(F("channel is free"));
+  else{
+    Serial.print("Scan channel failed - code ");
+    Serial.println(state);
+  }
+  while(true){
+    
     vTaskDelay(1000);
   }
 }
