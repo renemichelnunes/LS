@@ -12,6 +12,9 @@ Preferences lora_conf;
 
 static Display *instance = NULL;
 
+bool transmissionFlag1 = true;
+bool enableInterrupt1 = true;
+
 Display::Display(FuncPtrInt callback) {
   instance = this;
   tft = new LGFX();
@@ -266,22 +269,40 @@ void Display::lora_apply_config(){
     Serial.println(F("Invalid CRC configuration"));
 }
 
+void setFlag(void)
+{
+    // check if the interrupt is enabled
+    if (!enableInterrupt1) {
+        return;
+    }
+    // we got a packet, set the flag
+    transmissionFlag1 = true;
+}
+
 TaskHandle_t lora_listen_task = NULL;
 
 static void lora_listen(void * prameter){
     
   int16_t state = 0;
-  state = instance->radio->getRadio()->scanChannel();
-  if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE)
-      Serial.println(F("LoRa signal detected"));
-  else if(state == RADIOLIB_CHANNEL_FREE)
-    Serial.println(F("channel is free"));
-  else{
-    Serial.print("Scan channel failed - code ");
-    Serial.println(state);
-  }
+  uint8_t buff[256];
+  
   while(true){
-    
+    instance->lv_port_sem_take();
+    digitalWrite(BOARD_SDCARD_CS, HIGH);
+    digitalWrite(RADIO_CS_PIN, HIGH);
+    digitalWrite(BOARD_TFT_CS, HIGH);
+    state = instance->radio->getRadio()->scanChannel();
+    instance->lv_port_sem_give();
+    if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE){
+        Serial.print(F("LoRa receiving - code "));
+        Serial.println(state);
+    }
+    else if(state == RADIOLIB_CHANNEL_FREE)
+      Serial.println(F("channel is free"));
+    else{
+      Serial.print("Scan channel failed - code ");
+      Serial.println(state);
+    }
     vTaskDelay(1000);
   }
 }
@@ -318,7 +339,7 @@ void Display::ui_event_callback(lv_event_t *e) {
       //radio.getRadio()->standby();
       lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xE95622), 0);
       Serial.println("lora on");
-      
+      radio->getRadio()->setDio1Action(setFlag);
       xTaskCreate(lora_listen, "lora_listen_task", 10000, NULL, 2, &lora_listen_task);
       lora_state = true;
       //lora_apply_config();

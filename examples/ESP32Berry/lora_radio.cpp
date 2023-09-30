@@ -16,7 +16,7 @@ bool lora_radio::initFSKBasicConfig()
     digitalWrite(BOARD_TFT_CS, HIGH);
     SPI.end();
     SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
-    delay(5000);
+    //delay(5000);
     int16_t state;
 
 
@@ -28,7 +28,7 @@ bool lora_radio::initFSKBasicConfig()
         Serial.println(state);
         return false;
     }
-    
+
     state = radio.setTCXO(2.4);
     if(state == RADIOLIB_ERR_NONE)
         Serial.println(F("TCXO done"));
@@ -129,6 +129,16 @@ bool lora_radio::initFSKBasicConfig()
         Serial.println(state);
         return false;
     }
+
+    state = radio.disableAddressFiltering();
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("Address filtering disabled"));
+    else{
+        Serial.print(F("failed to disable address filtering - code "));
+        Serial.println(state);
+        return false;
+    }
+
     return true;
 }
 
