@@ -15,6 +15,7 @@ void setup() {
   initBoard();
   _ESP32Berry = new ESP32Berry();
   _ESP32Berry->begin();
+  
 }
 
 void loop() {}

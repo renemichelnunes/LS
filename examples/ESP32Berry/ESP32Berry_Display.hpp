@@ -72,7 +72,7 @@ private:
   typedef void (*FuncPtrInt)(Menu_Event_t, void *);
 
 public:
-  lora_radio radio;
+  lora_radio * radio;
   bool isLoRaOn();
   lv_obj_t *ui_NotiLabel;
   FuncPtrInt menu_event_cb;

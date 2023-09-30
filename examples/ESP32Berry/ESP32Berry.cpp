@@ -6,6 +6,7 @@
 */
 /////////////////////////////////////////////////////////////////
 #include "ESP32Berry.hpp"
+#include "lora_radio.hpp"
 
 static ESP32Berry* instance = NULL;
 
@@ -79,8 +80,19 @@ void systemInfo(System_Event_t event, void* param) {
 }
 
 void ESP32Berry::begin() {
+
   void (*iptr)(Menu_Event_t, void*) = &displayEventHandler;
   display = new Display(displayEventHandler);
+
+  /*Lora*/
+  display->set_notification("LoRa...");
+  display->lv_port_sem_take();
+  display->radio = new lora_radio();
+  display->lv_port_sem_give();
+  if(display->radio->initialized)
+    display->set_notification("LoRa ready");
+  else
+    display->set_notification("LoRa failed");
 
   void (*vptr)(Network_Event_t, void*, void*) = &networkResponse;
   network = new Network(networkResponse);

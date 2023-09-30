@@ -18,11 +18,22 @@ bool lora_radio::initFSKBasicConfig()
     SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
     delay(5000);
     int16_t state;
+
+
     state = radio.beginFSK();
     if(state == RADIOLIB_ERR_NONE)
         Serial.println(F("FSK mode done"));
     else{
         Serial.print(F("failed to set FSK mode - code "));
+        Serial.println(state);
+        return false;
+    }
+    
+    state = radio.setTCXO(2.4);
+    if(state == RADIOLIB_ERR_NONE)
+        Serial.println(F("TCXO done"));
+    else{
+        Serial.print(F("failed to set TCXO - code "));
         Serial.println(state);
         return false;
     }
@@ -54,20 +65,11 @@ bool lora_radio::initFSKBasicConfig()
         return false;
     }
 
-    state = radio.setRxBandwidth(250.0);
+    state = radio.setRxBandwidth(234.3);
     if(state == RADIOLIB_ERR_NONE)
-        Serial.println(F("RX bandwidth 250"));
+        Serial.println(F("RX bandwidth 234.3"));
     else{
         Serial.print(F("failed to set RX bandwidth - code "));
-        Serial.println(state);
-        return false;
-    }
-
-    state = radio.setOutputPower(10.0);
-    if(state == RADIOLIB_ERR_NONE)
-        Serial.println(F("Output power 10"));
-    else{
-        Serial.print(F("failed to set output power - code "));
         Serial.println(state);
         return false;
     }
@@ -99,15 +101,6 @@ bool lora_radio::initFSKBasicConfig()
         return false;
     }
 
-    state = radio.setDataShaping(RADIOLIB_SHAPING_1_0);
-    if(state == RADIOLIB_ERR_NONE)
-        Serial.println(F("Data shaping set to 1_0"));
-    else{
-        Serial.print(F("failed to set data shaping - code "));
-        Serial.println(state);
-        return false;
-    }
-
     uint8_t syncWord[] = {0x01, 0x23, 0x45, 0x67,
                         0x89, 0xAB, 0xCD, 0xEF};
     state = radio.setSyncWord(syncWord, 8);
@@ -118,15 +111,6 @@ bool lora_radio::initFSKBasicConfig()
         Serial.println(state);
         return false;
     } 
-
-    state = radio.setSyncBits(syncWord, 64);
-    if(state == RADIOLIB_ERR_NONE)
-        Serial.println(F("sync bits applied 64"));
-    else{
-        Serial.print(F("failed to set sync bits 64 - code "));
-        Serial.println(state);
-        return false;
-    }
 
     state = radio.setSyncBits(syncWord, 12);
     if(state == RADIOLIB_ERR_NONE)
