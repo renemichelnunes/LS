@@ -248,7 +248,7 @@ bool lora_radio::initBasicConfig(){
 
 lora_radio::lora_radio(){
     radio.reset(false);
-    if(initFSKBasicConfig()){
+    if(initBasicConfig()){
         Serial.println(F("Radio configuration complete"));
         initialized = true;
     }else{

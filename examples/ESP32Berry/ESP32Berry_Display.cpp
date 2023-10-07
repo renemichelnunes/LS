@@ -186,32 +186,18 @@ void Display::lora_apply_config(){
   /*Address*/
   radio->getRadio()->reset();
   //radio.getRadio()->sleep();
-  radio->getRadio()->setTCXO(2.4);
-  if (radio->getRadio()->setDio2AsRfSwitch() != RADIOLIB_ERR_NONE) {
-    Serial.println(F("Failed to set DIO2 as RF switch!"));
-  }else
-    Serial.println(F("RF switch"));
+
   //radio.getRadio()->begin();
-  if(radio->settings.getAddr() != 0){
-    err_code = radio->getRadio()->setNodeAddress(radio->settings.getAddr());
-    if(err_code == RADIOLIB_ERR_NONE)
-      Serial.println(F("Address applied"));
-    else{
-      Serial.print(F("Invalid address - code "));
-      Serial.println(err_code);
-    }
-  }
-  else{
-    err_code = radio->getRadio()->disableAddressFiltering();
-    if(err_code == RADIOLIB_ERR_NONE)
-      Serial.println(F("Node address filtering disabled"));
-    else{
-      Serial.print(F("Disabling node address filtering failed - code "));
-      Serial.println(err_code);
-    }
-  }
+
 
   /*Current limit*/
+
+  /*Lora freq*/
+  if(radio->getRadio()->setFrequency(radio->vlora_freq[radio->settings.getFreq()]) != RADIOLIB_ERR_INVALID_FREQUENCY)
+    Serial.println(F("LoRa frequency applied"));
+  else
+    Serial.println(F("Invalid LoRa frequency"));
+
   if(radio->getRadio()->setCurrentLimit(radio->vcurrent_limit[radio->settings.getCurrentLimit()]) != RADIOLIB_ERR_INVALID_CURRENT_LIMIT)
     Serial.println(F("Current limit applied"));
   else
@@ -224,13 +210,13 @@ void Display::lora_apply_config(){
     Serial.println(F("Invalid bandwidth"));
 
   /*Spread factor*/
-  if(radio->getRadio()->setBandwidth(radio->vspread_factor[radio->settings.getSpreadFactor()]) != RADIOLIB_ERR_INVALID_SPREADING_FACTOR)
+  if(radio->getRadio()->setSpreadingFactor(radio->vspread_factor[radio->settings.getSpreadFactor()]) != RADIOLIB_ERR_INVALID_SPREADING_FACTOR)
     Serial.println(F("Spread factor applied"));
   else
     Serial.println(F("Invalid spread factor"));
 
   /*Coding rate*/
-  if(radio->getRadio()->setBandwidth(radio->vcoding_rate[radio->settings.getCodingRate()]) != RADIOLIB_ERR_INVALID_CODING_RATE)
+  if(radio->getRadio()->setCodingRate(radio->vcoding_rate[radio->settings.getCodingRate()]) != RADIOLIB_ERR_INVALID_CODING_RATE)
     Serial.println(F("Coding rate applied"));
   else
     Serial.println(F("Invalid Coding rate"));
@@ -255,12 +241,6 @@ void Display::lora_apply_config(){
     Serial.println(F("Preamble applied"));
   else
     Serial.println(F("Invalid preamble"));
-
-  /*Lora freq*/
-  if(radio->getRadio()->setFrequency(radio->vlora_freq[radio->settings.getFreq()]) != RADIOLIB_ERR_INVALID_FREQUENCY)
-    Serial.println(F("LoRa frequency applied"));
-  else
-    Serial.println(F("Invalid LoRa frequency"));
 
   /*CRC check*/
   if(radio->getRadio()->setCRC(radio->settings.getCRC()) != RADIOLIB_ERR_INVALID_CRC_CONFIGURATION)
@@ -288,13 +268,10 @@ static void lora_listen(void * prameter){
   
   while(true){
     instance->lv_port_sem_take();
-    digitalWrite(BOARD_SDCARD_CS, HIGH);
-    digitalWrite(RADIO_CS_PIN, HIGH);
-    digitalWrite(BOARD_TFT_CS, HIGH);
     state = instance->radio->getRadio()->scanChannel();
     instance->lv_port_sem_give();
     if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE){
-        Serial.print(F("LoRa receiving - code "));
+        Serial.print(F("LoRa detected - code "));
         Serial.println(state);
     }
     else if(state == RADIOLIB_CHANNEL_FREE)
@@ -303,7 +280,7 @@ static void lora_listen(void * prameter){
       Serial.print("Scan channel failed - code ");
       Serial.println(state);
     }
-    vTaskDelay(1000);
+    vTaskDelay(100);
   }
 }
 
