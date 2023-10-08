@@ -8,8 +8,6 @@
 #include "ESP32Berry_System.hpp"
 
 static System* instance = NULL;
-bool enableInterrupt = true;
-bool transmissionFlag = true;
 
 void systemTask(void* pvParameters) {
   while (1) {
