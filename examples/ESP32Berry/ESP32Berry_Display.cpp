@@ -7,13 +7,15 @@
 /////////////////////////////////////////////////////////////////
 #include "ESP32Berry_Display.hpp"
 #include <Preferences.h>
+#include <RadioLib.h>
 
 Preferences lora_conf;
 
 static Display *instance = NULL;
 
 bool transmissionFlag1 = true;
-bool enableInterrupt1 = true;
+bool receiveFlag = false;
+bool enableInterrupt1 = false;
 
 Display::Display(FuncPtrInt callback) {
   instance = this;
@@ -256,7 +258,7 @@ void setFlag(void)
         return;
     }
     // we got a packet, set the flag
-    transmissionFlag1 = true;
+    receiveFlag = true;
 }
 
 TaskHandle_t lora_listen_task = NULL;
@@ -273,6 +275,24 @@ static void lora_listen(void * prameter){
     if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE){
         Serial.print(F("LoRa detected - code "));
         Serial.println(state);
+        if(receiveFlag){
+          String data;
+          receiveFlag = false;
+          enableInterrupt1 = false;
+          state = instance->radio->getRadio()->receive(data);
+          if(state != RADIOLIB_ERR_NONE){
+            Serial.print("receive error - ");
+            Serial.println(state);
+          }
+          /*state = instance->radio->getRadio()->readData(data);
+          if(state != RADIOLIB_ERR_NONE){
+            Serial.print("read data error - ");
+            Serial.println(state);
+          }else*/
+          Serial.println(data);
+          enableInterrupt1 = true;
+          receiveFlag = false;
+        }
     }
     else if(state == RADIOLIB_CHANNEL_FREE)
       Serial.println(F("channel is free"));
