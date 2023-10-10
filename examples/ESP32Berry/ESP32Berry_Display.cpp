@@ -13,9 +13,9 @@ Preferences lora_conf;
 
 static Display *instance = NULL;
 
-bool transmissionFlag1 = true;
-bool receiveFlag = false;
-bool enableInterrupt1 = false;
+bool transmissionFlag = false;
+bool receiveFlag = true;
+bool enableInterrupt = true;
 
 Display::Display(FuncPtrInt callback) {
   instance = this;
@@ -253,12 +253,14 @@ void Display::lora_apply_config(){
 
 void setFlag(void)
 {
+  
     // check if the interrupt is enabled
-    if (!enableInterrupt1) {
-        return;
+    if (!enableInterrupt) {
+      //Serial.println("interrupt disabled");
+      return;
     }
     // we got a packet, set the flag
-    receiveFlag = true;
+    transmissionFlag = false;
 }
 
 TaskHandle_t lora_listen_task = NULL;
@@ -267,39 +269,70 @@ static void lora_listen(void * prameter){
     
   int16_t state = 0;
   uint8_t buff[256];
-  
+  String data;
   while(true){
+    enableInterrupt = false;
     instance->lv_port_sem_take();
+    digitalWrite(BOARD_SDCARD_CS, HIGH);
+    digitalWrite(RADIO_CS_PIN, HIGH);
+    digitalWrite(BOARD_TFT_CS, HIGH);
     state = instance->radio->getRadio()->scanChannel();
     instance->lv_port_sem_give();
     if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE){
-        Serial.print(F("LoRa detected - code "));
+        Serial.print(F("LoRa detected code "));
         Serial.println(state);
-        if(receiveFlag){
-          String data;
-          receiveFlag = false;
-          enableInterrupt1 = false;
-          state = instance->radio->getRadio()->receive(data);
+        transmissionFlag = false;
+        if(!transmissionFlag){
+          
+          transmissionFlag = true;
+          instance->lv_port_sem_take();
+          state = instance->radio->getRadio()->readData(data);
+          instance->lv_port_sem_give();
           if(state != RADIOLIB_ERR_NONE){
-            Serial.print("receive error - ");
+            Serial.print("receive error ");
             Serial.println(state);
           }
-          /*state = instance->radio->getRadio()->readData(data);
-          if(state != RADIOLIB_ERR_NONE){
-            Serial.print("read data error - ");
-            Serial.println(state);
-          }else*/
+          Serial.print("data: ");
           Serial.println(data);
-          enableInterrupt1 = true;
-          receiveFlag = false;
+          instance->radio->getRadio()->startReceive();
+          enableInterrupt = true;
         }
     }
-    else if(state == RADIOLIB_CHANNEL_FREE)
-      Serial.println(F("channel is free"));
+    else if(state == RADIOLIB_CHANNEL_FREE){
+      //Serial.println(F("channel is free"));
+      //instance->radio->getRadio()->transmit("ola");
+    }
     else{
       Serial.print("Scan channel failed - code ");
       Serial.println(state);
     }
+/*
+    //if(receiveFlag){
+
+      String data;
+      //receiveFlag = false;
+      //enableInterrupt1 = false;
+      instance->lv_port_sem_take();
+      digitalWrite(BOARD_SDCARD_CS, HIGH);
+      digitalWrite(RADIO_CS_PIN, HIGH);
+      digitalWrite(BOARD_TFT_CS, HIGH);
+      state = instance->radio->getRadio()->startReceive();
+      
+      if(state != RADIOLIB_ERR_NONE){
+        Serial.print("receive error ");
+        Serial.println(state);
+      }
+      state = instance->radio->getRadio()->readData(data);
+      instance->lv_port_sem_give();
+      if(state != RADIOLIB_ERR_NONE){
+        Serial.print("receive error ");
+        Serial.println(state);
+      }
+      Serial.println(data);
+      enableInterrupt1 = true;
+      receiveFlag = false;
+    //}*/
+
     vTaskDelay(100);
   }
 }
@@ -336,14 +369,16 @@ void Display::ui_event_callback(lv_event_t *e) {
       //radio.getRadio()->standby();
       lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xE95622), 0);
       Serial.println("lora on");
+      transmissionFlag = false;
       radio->getRadio()->setDio1Action(setFlag);
+      radio->getRadio()->startReceive();
       xTaskCreate(lora_listen, "lora_listen_task", 10000, NULL, 2, &lora_listen_task);
       lora_state = true;
       //lora_apply_config();
       
     }
     else{
-      //radio.getRadio()->sleep();
+      radio->getRadio()->standby();
       lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xffffff), 0);
       Serial.println("lora off");
       if(lora_listen_task != NULL)

@@ -172,11 +172,11 @@ bool lora_radio::initBasicConfig(){
     }else
     Serial.println(F("Carrier 915MHz"));
     
-    radio.setTCXO(2.4);
+    //radio.setTCXO(2.4);
 
     #if basic_config == 1
     /*Disable address filtering*/
-    radio.disableAddressFiltering();
+    //radio.disableAddressFiltering();
 
     // set bandwidth to 250 kHz
     if (radio.setBandwidth(250.0) == RADIOLIB_ERR_INVALID_BANDWIDTH) {
