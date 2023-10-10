@@ -270,7 +270,7 @@ static void lora_listen(void * prameter){
   int16_t state = 0;
   uint8_t buff[256];
   String data;
-  while(true){
+  while(true){ 
     enableInterrupt = false;
     instance->lv_port_sem_take();
     digitalWrite(BOARD_SDCARD_CS, HIGH);
