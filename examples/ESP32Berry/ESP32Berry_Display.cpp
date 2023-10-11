@@ -17,12 +17,24 @@ bool transmissionFlag = false;
 bool receiveFlag = true;
 bool enableInterrupt = true;
 
+void Display::initDebug(){
+    debug_window = lv_obj_create(ui_Main_Screen);
+    lv_obj_set_size(debug_window, 300, 80);
+    lv_obj_align(debug_window, LV_ALIGN_CENTER, 0,-30);
+    lv_obj_clear_flag(debug_window, LV_OBJ_FLAG_SCROLLABLE);
+    txt_debug = lv_textarea_create(debug_window);
+    lv_obj_set_size(txt_debug, 300, 80);
+    lv_obj_align(txt_debug, LV_ALIGN_TOP_LEFT, -15, -15);
+    lv_obj_move_background(debug_window);
+}
+
 Display::Display(FuncPtrInt callback) {
   instance = this;
   tft = new LGFX();
   menu_event_cb = callback;
   ui_Focused_Obj = NULL;
   initTFT();
+  initDebug();
 }
 
 Display::~Display() {
@@ -269,7 +281,11 @@ static void lora_listen(void * prameter){
     
   int16_t state = 0;
   uint8_t buff[256];
+  char buffer[256];
   String data;
+
+  lv_textarea_set_text(instance->txt_debug, "");
+  lv_textarea_add_text(instance->txt_debug, "Lora on\n");
   while(true){ 
     enableInterrupt = false;
     instance->lv_port_sem_take();
@@ -281,6 +297,7 @@ static void lora_listen(void * prameter){
     if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE){
         Serial.print(F("LoRa detected code "));
         Serial.println(state);
+        lv_textarea_add_text(instance->txt_debug, "Lora detected\n");
         transmissionFlag = false;
         if(!transmissionFlag){
           
@@ -291,9 +308,14 @@ static void lora_listen(void * prameter){
           if(state != RADIOLIB_ERR_NONE){
             Serial.print("receive error ");
             Serial.println(state);
+            sprintf(buffer, "%d\n", state);
+            lv_textarea_add_text(instance->txt_debug, buffer);
           }
           Serial.print("data: ");
           Serial.println(data);
+          lv_textarea_add_text(instance->txt_debug, "data: ");
+          lv_textarea_add_text(instance->txt_debug, data.c_str());
+          lv_textarea_add_text(instance->txt_debug, "\n");
           instance->radio->getRadio()->startReceive();
           enableInterrupt = true;
         }
@@ -381,6 +403,7 @@ void Display::ui_event_callback(lv_event_t *e) {
       radio->getRadio()->standby();
       lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xffffff), 0);
       Serial.println("lora off");
+      lv_textarea_add_text(instance->txt_debug, "Lora off\n");
       if(lora_listen_task != NULL)
         vTaskDelete(lora_listen_task);
       lora_state = false;
