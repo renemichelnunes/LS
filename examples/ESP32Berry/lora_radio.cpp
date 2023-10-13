@@ -211,7 +211,7 @@ bool lora_radio::initBasicConfig(){
         Serial.println(F("Selected output power is invalid for this module!"));
         return false;
     }else
-    Serial.println(F("Output power 10dBm"));
+    Serial.println(F("Output power 17dBm"));
 
     // set over current protection limit to 140 mA (accepted range is 45 - 140 mA)
     // NOTE: set value to 0 to disable overcurrent protection
@@ -222,7 +222,7 @@ bool lora_radio::initBasicConfig(){
     Serial.println(F("Over current protection 140ma"));
 
     // set LoRa preamble length to 15 symbols (accepted range is 0 - 65535)
-    if (radio.setPreambleLength(15) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+    if (radio.setPreambleLength(16) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
         return false;
     }else

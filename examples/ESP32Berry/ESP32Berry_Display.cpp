@@ -265,7 +265,6 @@ void Display::lora_apply_config(){
 
 void setFlag(void)
 {
-  
     // check if the interrupt is enabled
     if (!enableInterrupt) {
       //Serial.println("interrupt disabled");
@@ -276,7 +275,7 @@ void setFlag(void)
 }
 
 TaskHandle_t lora_listen_task = NULL;
-
+uint8_t count_msg = 0;
 static void lora_listen(void * prameter){
     
   int16_t state = 0;
@@ -303,6 +302,7 @@ static void lora_listen(void * prameter){
           
           transmissionFlag = true;
           instance->lv_port_sem_take();
+          instance->radio->getRadio()->startReceive();
           state = instance->radio->getRadio()->readData(data);
           instance->lv_port_sem_give();
           if(state != RADIOLIB_ERR_NONE){
@@ -316,8 +316,12 @@ static void lora_listen(void * prameter){
           lv_textarea_add_text(instance->txt_debug, "data: ");
           lv_textarea_add_text(instance->txt_debug, data.c_str());
           lv_textarea_add_text(instance->txt_debug, "\n");
-          instance->radio->getRadio()->startReceive();
           enableInterrupt = true;
+        }
+        count_msg++;
+        if(count_msg == 10){
+          count_msg = 0;
+          lv_textarea_set_text(instance->txt_debug, "");
         }
     }
     else if(state == RADIOLIB_CHANNEL_FREE){
@@ -354,8 +358,50 @@ static void lora_listen(void * prameter){
       enableInterrupt1 = true;
       receiveFlag = false;
     //}*/
-
+    
     vTaskDelay(100);
+  }
+}
+
+static void lora_listen2(void * prameter){
+  int16_t state = 0;
+  uint8_t buff[256];
+  char buffer[256];
+  String data;
+
+  lv_textarea_set_text(instance->txt_debug, "");
+  lv_textarea_add_text(instance->txt_debug, "Lora on\n");
+  while(true){ 
+    enableInterrupt = false;
+    instance->lv_port_sem_take();
+    digitalWrite(BOARD_SDCARD_CS, HIGH);
+    digitalWrite(RADIO_CS_PIN, HIGH);
+    digitalWrite(BOARD_TFT_CS, HIGH);
+    state = instance->radio->getRadio()->readData(data);
+    instance->lv_port_sem_give();
+    if(state != RADIOLIB_ERR_NONE){
+      Serial.print("start receive ");
+      Serial.println(state);
+      sprintf(buffer,"start receive %d\n", state);
+      lv_textarea_set_text(instance->txt_debug, buffer);
+    }else{
+      if(!data.isEmpty()){
+      
+        Serial.print("start receive ok ");
+        Serial.println(state);
+        sprintf(buffer,"start receive %d\n", state);
+        lv_textarea_set_text(instance->txt_debug, buffer);
+        Serial.print("data: ");
+        Serial.println(data);
+        lv_textarea_set_text(instance->txt_debug, "data: ");
+        lv_textarea_set_text(instance->txt_debug, data.c_str());
+        lv_textarea_set_text(instance->txt_debug, "\n");
+      }
+    }
+    instance->lv_port_sem_take();
+    state = instance->radio->getRadio()->startReceive();
+    instance->lv_port_sem_give();
+    vTaskDelay(5);
   }
 }
 
@@ -394,7 +440,7 @@ void Display::ui_event_callback(lv_event_t *e) {
       transmissionFlag = false;
       radio->getRadio()->setDio1Action(setFlag);
       radio->getRadio()->startReceive();
-      xTaskCreate(lora_listen, "lora_listen_task", 10000, NULL, 2, &lora_listen_task);
+      xTaskCreate(lora_listen2, "lora_listen_task", 10000, NULL, 2, &lora_listen_task);
       lora_state = true;
       //lora_apply_config();
       
