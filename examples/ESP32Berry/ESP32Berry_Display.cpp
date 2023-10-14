@@ -263,8 +263,11 @@ void Display::lora_apply_config(){
     Serial.println(F("Invalid CRC configuration"));
 }
 
+bool gotPacket = false;
 void setFlag(void)
 {
+    gotPacket = true;
+    
     // check if the interrupt is enabled
     if (!enableInterrupt) {
       //Serial.println("interrupt disabled");
@@ -371,37 +374,38 @@ static void lora_listen2(void * prameter){
 
   lv_textarea_set_text(instance->txt_debug, "");
   lv_textarea_add_text(instance->txt_debug, "Lora on\n");
+  //digitalWrite(BOARD_SDCARD_CS, HIGH);
+  //digitalWrite(RADIO_CS_PIN, HIGH);
+  //digitalWrite(BOARD_TFT_CS, HIGH);
+  //SPI.end();
+  //SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
   while(true){ 
-    enableInterrupt = false;
-    instance->lv_port_sem_take();
-    digitalWrite(BOARD_SDCARD_CS, HIGH);
-    digitalWrite(RADIO_CS_PIN, HIGH);
-    digitalWrite(BOARD_TFT_CS, HIGH);
-    state = instance->radio->getRadio()->readData(data);
-    instance->lv_port_sem_give();
-    if(state != RADIOLIB_ERR_NONE){
-      Serial.print("start receive ");
-      Serial.println(state);
-      sprintf(buffer,"start receive %d\n", state);
-      lv_textarea_set_text(instance->txt_debug, buffer);
-    }else{
-      if(!data.isEmpty()){
-      
-        Serial.print("start receive ok ");
-        Serial.println(state);
-        sprintf(buffer,"start receive %d\n", state);
-        lv_textarea_set_text(instance->txt_debug, buffer);
-        Serial.print("data: ");
-        Serial.println(data);
-        lv_textarea_set_text(instance->txt_debug, "data: ");
-        lv_textarea_set_text(instance->txt_debug, data.c_str());
-        lv_textarea_set_text(instance->txt_debug, "\n");
+    if(gotPacket){  
+      enableInterrupt = false;
+      instance->lv_port_sem_take();
+      state = instance->radio->getRadio()->readData(data);
+      instance->lv_port_sem_give();
+      if(state != RADIOLIB_ERR_NONE){
+        sprintf(buffer,"read data error %d\n", state);
+        Serial.print(buffer);
+        //lv_textarea_set_text(instance->txt_debug, buffer);
+      }else{
+        if(!data.isEmpty()){
+          sprintf(buffer,"data: %s\n", data);
+          Serial.print(buffer);
+          //lv_textarea_add_text(instance->txt_debug, "data: ");
+          //lv_textarea_add_text(instance->txt_debug, data.c_str());
+          //lv_textarea_add_text(instance->txt_debug, "\n");
+        }
       }
+      instance->lv_port_sem_take();
+      state = instance->radio->getRadio()->startReceive();
+      instance->lv_port_sem_give();
+      enableInterrupt = true;
+      gotPacket = false;
     }
-    instance->lv_port_sem_take();
-    state = instance->radio->getRadio()->startReceive();
-    instance->lv_port_sem_give();
-    vTaskDelay(5);
+  
+    vTaskDelay(500);
   }
 }
 

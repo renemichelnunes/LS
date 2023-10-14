@@ -155,7 +155,7 @@ bool lora_radio::initBasicConfig(){
     digitalWrite(BOARD_TFT_CS, HIGH);
     SPI.end();
     SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI); //SD
-    delay(5000);
+    //delay(5000);
     int state = radio.begin();
     if (state == RADIOLIB_ERR_NONE) {
         Serial.println(F("Radio start success!"));
@@ -222,7 +222,7 @@ bool lora_radio::initBasicConfig(){
     Serial.println(F("Over current protection 140ma"));
 
     // set LoRa preamble length to 15 symbols (accepted range is 0 - 65535)
-    if (radio.setPreambleLength(16) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+    if (radio.setPreambleLength(15) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
         return false;
     }else
