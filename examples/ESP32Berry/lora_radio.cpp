@@ -172,7 +172,7 @@ bool lora_radio::initBasicConfig(){
     }else
     Serial.println(F("Carrier 915MHz"));
     
-    //radio.setTCXO(2.4);
+    radio.setTCXO(2.4);
 
     #if basic_config == 1
     /*Disable address filtering*/

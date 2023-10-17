@@ -366,7 +366,38 @@ static void lora_listen(void * prameter){
   }
 }
 
-static void lora_listen2(void * prameter){
+static void transmit(void * parameter){
+  int16_t state = 0;
+  char buffer[256];
+  char msg[34] = "xxxxxxxxxxxxx";
+  while(true){ 
+    gotPacket = false;
+    if(!gotPacket){  
+      digitalWrite(BOARD_SDCARD_CS, HIGH);
+      digitalWrite(RADIO_CS_PIN, HIGH);
+      digitalWrite(BOARD_TFT_CS, HIGH);
+      SPI.end();
+      SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
+      enableInterrupt = false;
+      instance->lv_port_sem_take();
+      state = instance->radio->getRadio()->startTransmit((uint8_t *)&msg, sizeof(msg));
+      instance->lv_port_sem_give();
+      if(state != RADIOLIB_ERR_NONE){
+        sprintf(buffer,"transmit data error %d\n", state);
+        Serial.print(buffer);
+        //lv_textarea_set_text(instance->txt_debug, buffer);
+      }else{
+        Serial.println("transmitted");
+      }
+      enableInterrupt = true;
+      gotPacket = false;
+    }
+  
+    vTaskDelay(5000);
+  }
+}
+
+static void lora_listen2(void * parameter){
   int16_t state = 0;
   uint8_t buff[256];
   char buffer[256];
@@ -374,13 +405,19 @@ static void lora_listen2(void * prameter){
 
   lv_textarea_set_text(instance->txt_debug, "");
   lv_textarea_add_text(instance->txt_debug, "Lora on\n");
-  //digitalWrite(BOARD_SDCARD_CS, HIGH);
-  //digitalWrite(RADIO_CS_PIN, HIGH);
-  //digitalWrite(BOARD_TFT_CS, HIGH);
-  //SPI.end();
-  //SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
   while(true){ 
+    
     if(gotPacket){  
+      digitalWrite(BOARD_SDCARD_CS, HIGH);
+      digitalWrite(RADIO_CS_PIN, HIGH);
+      digitalWrite(BOARD_TFT_CS, HIGH);
+      SPI.end();
+      SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
+      count_msg++;
+      if(count_msg > 10){
+        count_msg = 0;
+        lv_textarea_set_text(instance->txt_debug, "");
+      }
       enableInterrupt = false;
       instance->lv_port_sem_take();
       state = instance->radio->getRadio()->readData(data);
@@ -388,12 +425,12 @@ static void lora_listen2(void * prameter){
       if(state != RADIOLIB_ERR_NONE){
         sprintf(buffer,"read data error %d\n", state);
         Serial.print(buffer);
-        //lv_textarea_set_text(instance->txt_debug, buffer);
+        lv_textarea_set_text(instance->txt_debug, buffer);
       }else{
         if(!data.isEmpty()){
           sprintf(buffer,"data: %s\n", data);
           Serial.print(buffer);
-          //lv_textarea_add_text(instance->txt_debug, "data: ");
+          lv_textarea_add_text(instance->txt_debug, buffer);
           //lv_textarea_add_text(instance->txt_debug, data.c_str());
           //lv_textarea_add_text(instance->txt_debug, "\n");
         }
@@ -444,7 +481,7 @@ void Display::ui_event_callback(lv_event_t *e) {
       transmissionFlag = false;
       radio->getRadio()->setDio1Action(setFlag);
       radio->getRadio()->startReceive();
-      xTaskCreate(lora_listen2, "lora_listen_task", 10000, NULL, 2, &lora_listen_task);
+      xTaskCreate(transmit, "lora_listen_task", 10000, NULL, 1, &lora_listen_task);
       lora_state = true;
       //lora_apply_config();
       
