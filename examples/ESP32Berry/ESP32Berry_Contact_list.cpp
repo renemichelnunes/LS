@@ -116,7 +116,7 @@ static void chat_window(lv_event_t * e){
     lv_obj_set_size(txtReply, 270, 60);
     lv_obj_align(txtReply, LV_ALIGN_TOP_LEFT, -15, 165);
     lv_obj_add_state(txtReply, LV_STATE_FOCUSED);
-    lv_textarea_set_max_length(txtReply, 256);//Per LoRa packet
+    lv_textarea_set_max_length(txtReply, 200);//Per LoRa packet
 
     /*Send button*/
     lv_obj_t * btnSend = lv_btn_create(window);
@@ -149,15 +149,15 @@ static void close_edit_window(lv_event_t* e){
   Contact * cc = data_->c;//The contact data
   cc = instance->contact_list.getContactByName(cc->getName());
   lv_obj_t * txtName = lv_obj_get_child(window, 0);
-  lv_obj_t * txtLoraAddr = lv_obj_get_child(window, 1);
-  String name, laddr;
+  lv_obj_t * txtID = lv_obj_get_child(window, 1);
+  String name, id;
 
   if(code == LV_EVENT_CLICKED){
 
     name = lv_textarea_get_text(txtName);
-    laddr = lv_textarea_get_text(txtLoraAddr);
+    id = lv_textarea_get_text(txtID);
     cc->setName(name);
-    cc->setLAddr(laddr);
+    cc->setID(id);
 
     lv_obj_del(window);
     instance->refresh_contact_list();
@@ -197,8 +197,8 @@ static void edit_contact(lv_event_t* e){
 
     lv_obj_t* txtLoraAddr = lv_textarea_create(window);
     lv_obj_set_size(txtLoraAddr, 250, 40);
-    lv_textarea_set_placeholder_text(txtLoraAddr, "LoRa Address");
-    lv_textarea_set_text(txtLoraAddr, ce->getLoraAddress().c_str());
+    lv_textarea_set_placeholder_text(txtLoraAddr, "ID");
+    lv_textarea_set_text(txtLoraAddr, ce->getID().c_str());
     lv_obj_align(txtLoraAddr, LV_ALIGN_TOP_MID, 0, 30);
 
     lv_obj_t* btnAdd = lv_btn_create(window);
@@ -286,7 +286,7 @@ static void add(lv_event_t* e){
   name = lv_textarea_get_text(txtName);
   Serial.println(name);
   lv_obj_t* txtLoRaAddr = lv_obj_get_child(window, 1);
-  Serial.print(F("LoRa Address: "));
+  Serial.print(F("ID: "));
   lora_addr = lv_textarea_get_text(txtLoRaAddr);
   Serial.println(lora_addr);
   if(name != "" && lora_addr != ""){
@@ -321,7 +321,7 @@ static void add_btn_event_cb(lv_event_t * e)
 
       lv_obj_t* txtLoraAddr = lv_textarea_create(window);
       lv_obj_set_size(txtLoraAddr, 250, 40);
-      lv_textarea_set_placeholder_text(txtLoraAddr, "LoRa Address");
+      lv_textarea_set_placeholder_text(txtLoraAddr, "ID");
       lv_obj_align(txtLoraAddr, LV_ALIGN_TOP_MID, 0, 30);
 
       lv_obj_t* btnAdd = lv_btn_create(window);

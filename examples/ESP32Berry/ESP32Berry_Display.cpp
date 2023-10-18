@@ -368,16 +368,16 @@ static void lora_listen(void * prameter){
 
 static void transmit(void * parameter){
   int16_t state = 0;
-  char buffer[256];
-  char msg[34] = "xxxxxxxxxxxxx";
+  char buffer[255];
+  char msg[255] = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
   while(true){ 
     gotPacket = false;
     if(!gotPacket){  
       digitalWrite(BOARD_SDCARD_CS, HIGH);
       digitalWrite(RADIO_CS_PIN, HIGH);
       digitalWrite(BOARD_TFT_CS, HIGH);
-      SPI.end();
-      SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
+      //SPI.end();
+      //SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
       enableInterrupt = false;
       instance->lv_port_sem_take();
       state = instance->radio->getRadio()->startTransmit((uint8_t *)&msg, sizeof(msg));
@@ -387,7 +387,13 @@ static void transmit(void * parameter){
         Serial.print(buffer);
         //lv_textarea_set_text(instance->txt_debug, buffer);
       }else{
-        Serial.println("transmitted");
+        count_msg++;
+        if(count_msg > 10){
+          count_msg = 0;
+          lv_textarea_set_text(instance->txt_debug, "");
+        }
+        Serial.println("sent");
+        lv_textarea_add_text(instance->txt_debug, "sent\n");
       }
       enableInterrupt = true;
       gotPacket = false;
@@ -420,17 +426,18 @@ static void lora_listen2(void * parameter){
       }
       enableInterrupt = false;
       instance->lv_port_sem_take();
-      state = instance->radio->getRadio()->readData(data);
+      state = instance->radio->getRadio()->readData((uint8_t*)&buffer, 255);
       instance->lv_port_sem_give();
       if(state != RADIOLIB_ERR_NONE){
         sprintf(buffer,"read data error %d\n", state);
         Serial.print(buffer);
         lv_textarea_set_text(instance->txt_debug, buffer);
       }else{
-        if(!data.isEmpty()){
-          sprintf(buffer,"data: %s\n", data);
-          Serial.print(buffer);
+        if(buffer != ""){
+          //sprintf(buffer,"data: %s\n", data);
+          Serial.println(buffer);
           lv_textarea_add_text(instance->txt_debug, buffer);
+          lv_textarea_add_text(instance->txt_debug, "\n");
           //lv_textarea_add_text(instance->txt_debug, data.c_str());
           //lv_textarea_add_text(instance->txt_debug, "\n");
         }

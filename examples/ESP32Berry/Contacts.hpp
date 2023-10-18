@@ -7,16 +7,16 @@ using namespace std;
 
 class Contact{
     public:
-        Contact( String name,  String lora_address);
+        Contact( String name,  String id);
         Contact();
         bool operator==( Contact other);
         String getName();
-        String getLoraAddress();
+        String getID();
         void setName(String name);
-        void setLAddr(String laddr);
+        void setID(String id);
     private:
         String name;
-        String lora_address;
+        String id;
 };
 
 class Contact_list{

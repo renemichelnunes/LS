@@ -4,9 +4,9 @@
 #include <algorithm>
 #include <iostream>
 
-Contact::Contact(String name, String lora_address){
+Contact::Contact(String name, String id){
     this->name = name;
-    this->lora_address = lora_address;
+    this->id = id;
 }
 
 Contact::Contact(){
@@ -17,8 +17,8 @@ String Contact::getName(){
     return this->name;
 }
 
-String Contact::getLoraAddress(){
-    return this->lora_address;
+String Contact::getID(){
+    return this->id;
 }
 
 bool Contact::operator==( Contact other){
@@ -29,8 +29,8 @@ void Contact::setName(String name){
     this->name = name;
 }
 
-void Contact::setLAddr(String laddr){
-    this->lora_address = laddr;
+void Contact::setID(String id){
+    this->id = id;
 }
 
 static bool cmp_name( Contact &c1,  Contact &c2){
