@@ -279,90 +279,36 @@ void setFlag(void)
 
 TaskHandle_t lora_listen_task = NULL;
 uint8_t count_msg = 0;
-static void lora_listen(void * prameter){
-    
-  int16_t state = 0;
-  uint8_t buff[256];
-  char buffer[256];
-  String data;
 
-  lv_textarea_set_text(instance->txt_debug, "");
-  lv_textarea_add_text(instance->txt_debug, "Lora on\n");
-  while(true){ 
-    enableInterrupt = false;
-    instance->lv_port_sem_take();
+void Display::lora_transmit(void * data){
+  int16_t state = 0;
+  char buffer[255];
+  char msg[255] = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+  if(!gotPacket){  
     digitalWrite(BOARD_SDCARD_CS, HIGH);
     digitalWrite(RADIO_CS_PIN, HIGH);
     digitalWrite(BOARD_TFT_CS, HIGH);
-    state = instance->radio->getRadio()->scanChannel();
+    //SPI.end();
+    //SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
+    enableInterrupt = false;
+    instance->lv_port_sem_take();
+    state = instance->radio->getRadio()->startTransmit((uint8_t *)&msg, sizeof(msg));
     instance->lv_port_sem_give();
-    if(state == RADIOLIB_LORA_DETECTED || state == RADIOLIB_ERR_NONE){
-        Serial.print(F("LoRa detected code "));
-        Serial.println(state);
-        lv_textarea_add_text(instance->txt_debug, "Lora detected\n");
-        transmissionFlag = false;
-        if(!transmissionFlag){
-          
-          transmissionFlag = true;
-          instance->lv_port_sem_take();
-          instance->radio->getRadio()->startReceive();
-          state = instance->radio->getRadio()->readData(data);
-          instance->lv_port_sem_give();
-          if(state != RADIOLIB_ERR_NONE){
-            Serial.print("receive error ");
-            Serial.println(state);
-            sprintf(buffer, "%d\n", state);
-            lv_textarea_add_text(instance->txt_debug, buffer);
-          }
-          Serial.print("data: ");
-          Serial.println(data);
-          lv_textarea_add_text(instance->txt_debug, "data: ");
-          lv_textarea_add_text(instance->txt_debug, data.c_str());
-          lv_textarea_add_text(instance->txt_debug, "\n");
-          enableInterrupt = true;
-        }
-        count_msg++;
-        if(count_msg == 10){
-          count_msg = 0;
-          lv_textarea_set_text(instance->txt_debug, "");
-        }
-    }
-    else if(state == RADIOLIB_CHANNEL_FREE){
-      //Serial.println(F("channel is free"));
-      //instance->radio->getRadio()->transmit("ola");
-    }
-    else{
-      Serial.print("Scan channel failed - code ");
-      Serial.println(state);
-    }
-/*
-    //if(receiveFlag){
-
-      String data;
-      //receiveFlag = false;
-      //enableInterrupt1 = false;
-      instance->lv_port_sem_take();
-      digitalWrite(BOARD_SDCARD_CS, HIGH);
-      digitalWrite(RADIO_CS_PIN, HIGH);
-      digitalWrite(BOARD_TFT_CS, HIGH);
-      state = instance->radio->getRadio()->startReceive();
-      
-      if(state != RADIOLIB_ERR_NONE){
-        Serial.print("receive error ");
-        Serial.println(state);
+    if(state != RADIOLIB_ERR_NONE){
+      sprintf(buffer,"transmit data error %d\n", state);
+      Serial.print(buffer);
+      //lv_textarea_set_text(instance->txt_debug, buffer);
+    }else{
+      count_msg++;
+      if(count_msg > 10){
+        count_msg = 0;
+        lv_textarea_set_text(instance->txt_debug, "");
       }
-      state = instance->radio->getRadio()->readData(data);
-      instance->lv_port_sem_give();
-      if(state != RADIOLIB_ERR_NONE){
-        Serial.print("receive error ");
-        Serial.println(state);
-      }
-      Serial.println(data);
-      enableInterrupt1 = true;
-      receiveFlag = false;
-    //}*/
-    
-    vTaskDelay(100);
+      Serial.println("sent");
+      lv_textarea_add_text(instance->txt_debug, "sent\n");
+    }
+    enableInterrupt = true;
+    gotPacket = false;
   }
 }
 
