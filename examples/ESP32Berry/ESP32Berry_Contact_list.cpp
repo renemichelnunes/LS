@@ -47,6 +47,9 @@ msgAndList * msg = new msgAndList;
 static void sendMessage(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   int16_t err_code;
+  lv_obj_t * btnList2;
+  lv_obj_t* label2;
+
   if(code == LV_EVENT_SHORT_CLICKED){
     msgAndList * msg = (msgAndList *)lv_event_get_user_data(e);
     lv_obj_t * txtReply = msg->txtReply;
@@ -59,16 +62,24 @@ static void sendMessage(lv_event_t * e){
       lv_obj_t* label = lv_obj_get_child(btnList, 0);
       lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
       lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
-      //delay(2000);
-      //err_code = instance->_display->radio.getRadio()->transmit(message);
       
-      lv_list_add_text(msg->list, msg->c->getName().c_str());
-      lv_obj_t * btnList2 = lv_list_add_btn(msg->list, NULL, "You're welcome! If you have any more questions or need further assistance, please don't hesitate to ask. Happy coding!");
-      lv_obj_t* label2 = lv_obj_get_child(btnList2, 0);
+      lora_packet packet;
+      strcpy(packet.id, "aaaaaa");
+      strcpy(packet.msg, message.c_str());
+      instance->_display->lv_port_sem_take();
+      err_code = instance->_display->radio->getRadio()->startTransmit((uint8_t*)&packet, sizeof(packet));
+      instance->_display->lv_port_sem_give();
+      if(err_code != RADIOLIB_ERR_NONE){
+        lv_list_add_text(msg->list, "fail to send");  
+      }else{
+        lv_list_add_text(msg->list, "Me");
+        btnList2 = lv_list_add_btn(msg->list, NULL, message.c_str());
+        label2 = lv_obj_get_child(btnList2, 0);
+      }
       lv_label_set_long_mode(label2, LV_LABEL_LONG_WRAP);
       lv_obj_scroll_to_view(btnList2, LV_ANIM_OFF);
+      lv_textarea_set_text(txtReply, "");
     }
-    lv_textarea_set_text(txtReply, "");
   }
 }
 

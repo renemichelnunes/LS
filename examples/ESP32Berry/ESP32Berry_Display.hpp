@@ -19,6 +19,11 @@ typedef enum {
   APP
 } Menu_Event_t;
 
+struct lora_packet{
+  char id[7];
+  char msg[200];
+};
+
 LV_IMG_DECLARE(mouse_cursor_icon);
 
 class Display {
