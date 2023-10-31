@@ -12,6 +12,8 @@
 #include "LGFX_T-Deck.h"
 #include "ESP32Berry_Config.hpp"
 #include "lora_radio.hpp"
+#include <vector>
+#include <iostream>
 
 typedef enum {
   WIFI_OFF,
@@ -19,9 +21,20 @@ typedef enum {
   APP
 } Menu_Event_t;
 
-struct lora_packet{
-  char id[7];
-  char msg[200];
+class lora_incomming_messages{
+  struct lora_packet{
+    char id[7];
+    char msg[200];
+  };
+
+  struct lora_contact_messages{
+    char id[7];
+    std::vector <lora_packet> messages;
+  };
+  private:
+    std::vector <lora_contact_messages> lora_contacts_messages_list;
+  public:
+
 };
 
 LV_IMG_DECLARE(mouse_cursor_icon);

@@ -8,6 +8,7 @@
 #include "ESP32Berry_Display.hpp"
 #include <Preferences.h>
 #include <RadioLib.h>
+#include "lora_messages.h"
 
 Preferences lora_conf;
 
