@@ -11,6 +11,7 @@
 #include "lora_messages.hpp"
 
 Preferences lora_conf;
+lora_incomming_messages lim;
 
 static Display *instance = NULL;
 
@@ -416,6 +417,31 @@ static void lora_listen2(void * parameter){
   }
 }
 
+void t(){
+  lora_packet p;
+  strcpy(p.id, "aaaaaa");
+  strcpy(p.msg, "test1");
+  lim.addMessage(p);
+  strcpy(p.msg, "test2");
+  lim.addMessage(p);
+  strcpy(p.msg, "test2");
+  lim.addMessage(p);
+  strcpy(p.id, "bbbbbb");
+  strcpy(p.msg, "t1");
+  lim.addMessage(p);
+  strcpy(p.id, "bbbbbb");
+  strcpy(p.msg, "t2");
+  lim.addMessage(p);
+  strcpy(p.id, "bbbbbb");
+  strcpy(p.msg, "t3");
+  lim.addMessage(p);
+
+  for(int i = 0; i < lim.getMessages("aaaaaa").size(); i++)
+    Serial.println(lim.getMessages("aaaaaa")[i].msg);
+  for(int i = 0; i < lim.getMessages("bbbbbb").size(); i++)
+    Serial.println(lim.getMessages("bbbbbb")[i].msg);
+}
+
 void Display::ui_event_callback(lv_event_t *e) {
   lv_event_code_t event_code = lv_event_get_code(e);
   lv_obj_t *target = lv_event_get_target(e);
@@ -454,7 +480,7 @@ void Display::ui_event_callback(lv_event_t *e) {
       xTaskCreate(lora_listen2, "lora_listen_task", 10000, NULL, 1, &lora_listen_task);
       lora_state = true;
       //lora_apply_config();
-      
+      t();
     }
     else{
       radio->getRadio()->standby();
