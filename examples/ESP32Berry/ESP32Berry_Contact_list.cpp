@@ -6,7 +6,7 @@
 #include <Preferences.h>
 #include <iomanip>
 #include <vector>
-#include "lora_messages.h"
+#include "lora_messages.hpp"
 
 Preferences prefs;
 
