@@ -391,7 +391,7 @@ static void lora_listen2(void * parameter){
         Serial.print(buffer);
         lv_textarea_set_text(instance->txt_debug, buffer);
       }else{
-        if(packet.msg != ""){
+        if(packet.msg != "" && packet.status != "recv"){
           //sprintf(buffer,"data: %s\n", data);
           Serial.println(packet.id);
           Serial.println(packet.msg);
@@ -401,6 +401,21 @@ static void lora_listen2(void * parameter){
           lv_textarea_add_text(instance->txt_debug, "\n");
           //lv_textarea_add_text(instance->txt_debug, data.c_str());
           //lv_textarea_add_text(instance->txt_debug, "\n");
+          //Response after packet received with success
+          vTaskDelay(50);
+          sprintf(packet.msg,"");
+          sprintf(packet.status,"recv");
+          instance->lv_port_sem_take();
+          state = instance->radio->getRadio()->startTransmit((uint8_t*)&packet, sizeof(lora_packet));
+          instance->lv_port_sem_give();
+          vTaskDelay(50);
+        }else if(packet.status != "recv"){
+          Serial.println(packet.id);
+          Serial.println(packet.status);
+          lv_textarea_add_text(instance->txt_debug, packet.id);
+          lv_textarea_add_text(instance->txt_debug, "\n");
+          lv_textarea_add_text(instance->txt_debug, packet.status);
+          lv_textarea_add_text(instance->txt_debug, "\n");
         }
       }
       instance->lv_port_sem_take();

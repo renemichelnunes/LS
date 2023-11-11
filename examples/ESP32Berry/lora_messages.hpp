@@ -5,6 +5,7 @@
 struct lora_packet{
     char id[7];
     char msg[200];
+    char status[7];
 };
 
 struct lora_contact_messages{
