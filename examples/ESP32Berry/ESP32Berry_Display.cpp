@@ -286,8 +286,10 @@ uint8_t count_msg = 0;
 
 void Display::lora_transmit(void * data){
   int16_t state = 0;
-  char buffer[255];
-  char msg[255] = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+  char buffer[200];
+  lora_packet packet;
+  strcpy(packet.id, "aaaaaa");
+  strcpy(packet.msg, "00000000000000000000");
   if(!gotPacket){  
     digitalWrite(BOARD_SDCARD_CS, HIGH);
     digitalWrite(RADIO_CS_PIN, HIGH);
@@ -296,7 +298,7 @@ void Display::lora_transmit(void * data){
     //SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
     enableInterrupt = false;
     instance->lv_port_sem_take();
-    state = instance->radio->getRadio()->startTransmit((uint8_t *)&msg, sizeof(msg));
+    state = instance->radio->getRadio()->startTransmit((uint8_t *)&packet, sizeof(packet));
     instance->lv_port_sem_give();
     if(state != RADIOLIB_ERR_NONE){
       sprintf(buffer,"transmit data error %d\n", state);
@@ -304,7 +306,7 @@ void Display::lora_transmit(void * data){
       //lv_textarea_set_text(instance->txt_debug, buffer);
     }else{
       count_msg++;
-      if(count_msg > 10){
+      if(count_msg > 2){
         count_msg = 0;
         lv_textarea_set_text(instance->txt_debug, "");
       }
@@ -318,14 +320,14 @@ void Display::lora_transmit(void * data){
 
 static void transmit(void * parameter){
   int16_t state = 0;
-  char buffer[255];
-  char msg[255] = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+  char buffer[200];
+  char msg[200] = "00000000000000000000";
   lora_packet packet;
   strcpy(packet.id, "aaaaaa");
   strcpy(packet.msg, "00000000000000000000");
 
   while(true){ 
-    gotPacket = false;
+    //gotPacket = false;
     if(!gotPacket){  
       digitalWrite(BOARD_SDCARD_CS, HIGH);
       digitalWrite(RADIO_CS_PIN, HIGH);
@@ -342,7 +344,7 @@ static void transmit(void * parameter){
         //lv_textarea_set_text(instance->txt_debug, buffer);
       }else{
         count_msg++;
-        if(count_msg > 10){
+        if(count_msg > 2){
           count_msg = 0;
           lv_textarea_set_text(instance->txt_debug, "");
         }
@@ -359,8 +361,8 @@ static void transmit(void * parameter){
 
 static void lora_listen2(void * parameter){
   int16_t state = 0;
-  uint8_t buff[256];
-  char buffer[256];
+  uint8_t buff[200];
+  char buffer[200];
   String data;
   lora_packet packet;
 
@@ -392,24 +394,22 @@ static void lora_listen2(void * parameter){
         lv_textarea_set_text(instance->txt_debug, buffer);
       }else{
         if(packet.msg != "" && packet.status != "recv"){
-          //sprintf(buffer,"data: %s\n", data);
+          Serial.println("received msg");
           Serial.println(packet.id);
           Serial.println(packet.msg);
           lv_textarea_add_text(instance->txt_debug, packet.id);
           lv_textarea_add_text(instance->txt_debug, "\n");
           lv_textarea_add_text(instance->txt_debug, packet.msg);
           lv_textarea_add_text(instance->txt_debug, "\n");
-          //lv_textarea_add_text(instance->txt_debug, data.c_str());
-          //lv_textarea_add_text(instance->txt_debug, "\n");
-          //Response after packet received with success
-          vTaskDelay(50);
-          sprintf(packet.msg,"");
-          sprintf(packet.status,"recv");
+          //sending back confirmation
+          strcpy(packet.msg,"");
+          strcpy(packet.status,"recv");
           instance->lv_port_sem_take();
           state = instance->radio->getRadio()->startTransmit((uint8_t*)&packet, sizeof(lora_packet));
           instance->lv_port_sem_give();
-          vTaskDelay(50);
-        }else if(packet.status != "recv"){
+          
+        }else if(packet.status == "recv"){
+          Serial.println("received recv");
           Serial.println(packet.id);
           Serial.println(packet.status);
           lv_textarea_add_text(instance->txt_debug, packet.id);
@@ -489,13 +489,15 @@ void Display::ui_event_callback(lv_event_t *e) {
       //radio.getRadio()->standby();
       lv_obj_set_style_bg_color(ui_BtnLoRa, lv_color_hex(0xE95622), 0);
       Serial.println("lora on");
+      gotPacket = false;
       transmissionFlag = false;
       radio->getRadio()->setDio1Action(setFlag);
       radio->getRadio()->startReceive();
       xTaskCreate(lora_listen2, "lora_listen_task", 10000, NULL, 1, &lora_listen_task);
       lora_state = true;
+      lora_transmit(NULL);
       //lora_apply_config();
-      t();
+      //t();
     }
     else{
       radio->getRadio()->standby();
