@@ -290,6 +290,7 @@ void Display::lora_transmit(void * data){
   lora_packet packet;
   strcpy(packet.id, "aaaaaa");
   strcpy(packet.msg, "00000000000000000000");
+  strcpy(packet.status, "sent");
   if(!gotPacket){  
     digitalWrite(BOARD_SDCARD_CS, HIGH);
     digitalWrite(RADIO_CS_PIN, HIGH);
@@ -397,9 +398,15 @@ static void lora_listen2(void * parameter){
           Serial.println("received msg");
           Serial.println(packet.id);
           Serial.println(packet.msg);
+          Serial.println(packet.status);
+          lv_textarea_add_text(instance->txt_debug, "id: ");
           lv_textarea_add_text(instance->txt_debug, packet.id);
           lv_textarea_add_text(instance->txt_debug, "\n");
+          lv_textarea_add_text(instance->txt_debug, "msg: ");
           lv_textarea_add_text(instance->txt_debug, packet.msg);
+          lv_textarea_add_text(instance->txt_debug, "\n");
+          lv_textarea_add_text(instance->txt_debug, "status: ");
+          lv_textarea_add_text(instance->txt_debug, packet.status);
           lv_textarea_add_text(instance->txt_debug, "\n");
           //sending back confirmation
           strcpy(packet.msg,"");
@@ -411,8 +418,11 @@ static void lora_listen2(void * parameter){
         }else if(packet.status == "recv"){
           Serial.println("received recv");
           Serial.println(packet.id);
+          Serial.println(packet.msg);
           Serial.println(packet.status);
           lv_textarea_add_text(instance->txt_debug, packet.id);
+          lv_textarea_add_text(instance->txt_debug, "\n");
+          lv_textarea_add_text(instance->txt_debug, packet.msg);
           lv_textarea_add_text(instance->txt_debug, "\n");
           lv_textarea_add_text(instance->txt_debug, packet.status);
           lv_textarea_add_text(instance->txt_debug, "\n");
