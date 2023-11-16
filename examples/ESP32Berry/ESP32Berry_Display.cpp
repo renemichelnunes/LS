@@ -394,7 +394,7 @@ static void lora_listen2(void * parameter){
         Serial.print(buffer);
         lv_textarea_set_text(instance->txt_debug, buffer);
       }else{
-        if(packet.msg != "" && packet.status != "recv"){
+        if(strcmp(packet.msg, "") == 0 && strcmp(packet.status,"sent") == 0){
           Serial.println("received msg");
           Serial.println(packet.id);
           Serial.println(packet.msg);
@@ -423,7 +423,7 @@ static void lora_listen2(void * parameter){
           instance->lv_port_sem_give();
           Serial.println("sent recv");
           
-        }else if(packet.status == "recv"){
+        }else if(strcmp(packet.status, "recv") == 0){
           Serial.println("received recv");
           Serial.println(packet.id);
           Serial.println(packet.msg);
@@ -434,6 +434,11 @@ static void lora_listen2(void * parameter){
           lv_textarea_add_text(instance->txt_debug, "\n");
           lv_textarea_add_text(instance->txt_debug, packet.status);
           lv_textarea_add_text(instance->txt_debug, "\n");
+        }else if(strcmp(packet.status, "recv") != 0 || strcmp(packet.status, "sent") != 0 ){
+          Serial.println("received something?");
+          Serial.println(packet.id);
+          Serial.println(packet.msg);
+          Serial.println(strcmp(packet.status, "recv"));
         }
       }
       instance->lv_port_sem_take();
