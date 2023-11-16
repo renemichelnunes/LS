@@ -411,9 +411,17 @@ static void lora_listen2(void * parameter){
           //sending back confirmation
           strcpy(packet.msg,"");
           strcpy(packet.status,"recv");
+          Serial.println("Altered to recv");
+          Serial.print("msg: ");
+          Serial.println(packet.msg);
+          Serial.print("status: ");
+          Serial.println(packet.status);
           instance->lv_port_sem_take();
+          state = instance->radio->getRadio()->startReceive();
+          delay(50);
           state = instance->radio->getRadio()->startTransmit((uint8_t*)&packet, sizeof(lora_packet));
           instance->lv_port_sem_give();
+          Serial.println("sent recv");
           
         }else if(packet.status == "recv"){
           Serial.println("received recv");
