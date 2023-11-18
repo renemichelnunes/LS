@@ -3,9 +3,9 @@
 #include <Arduino.h>
 
 struct lora_packet{
-    char id[7];
-    char msg[200];
-    char status[7];
+    char id[7] = {'\0'};
+    char msg[200] = {'\0'};
+    char status[7] = {'\0'};
 };
 
 struct lora_contact_messages{

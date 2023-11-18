@@ -419,14 +419,19 @@ static void lora_listen2(void * parameter){
           Serial.println(packet.msg);
           Serial.print("status: ");
           Serial.println(packet.status);
+          digitalWrite(BOARD_SDCARD_CS, HIGH);
+          digitalWrite(RADIO_CS_PIN, HIGH);
+          digitalWrite(BOARD_TFT_CS, HIGH);
           instance->lv_port_sem_take();
           //state = instance->radio->getRadio()->startReceive();
-          instance->radio->getRadio()->standby();
+          //instance->radio->getRadio()->standby();
           state = instance->radio->getRadio()->startTransmit((uint8_t*)&pkrecv, sizeof(pkrecv));
-          delay(1000);
+          Serial.print("transmission status: ");
+          Serial.println(state);
           instance->lv_port_sem_give();
+          //vTaskDelay(1000);
           Serial.println("sent recv");
-          
+          lv_textarea_add_text(instance->txt_debug, "sent recv\n");
         }else if(strcmp(packet.status, "recv") == 0){
           Serial.println("received recv");
           Serial.println(packet.id);
