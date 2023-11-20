@@ -65,7 +65,7 @@ static void sendMessage(lv_event_t * e){
       lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
       
       lora_packet packet;
-      strcpy(packet.id, "aaaaaa");
+      strcpy(packet.id, msg->c->getID().c_str());
       strcpy(packet.msg, message.c_str());
       strcpy(packet.status, "sent");
       instance->_display->lv_port_sem_take();
@@ -77,6 +77,8 @@ static void sendMessage(lv_event_t * e){
         lv_list_add_text(msg->list, "Me");
         btnList2 = lv_list_add_btn(msg->list, NULL, message.c_str());
         label2 = lv_obj_get_child(btnList2, 0);
+
+        
       }
       lv_label_set_long_mode(label2, LV_LABEL_LONG_WRAP);
       lv_obj_scroll_to_view(btnList2, LV_ANIM_OFF);
