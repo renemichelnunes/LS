@@ -390,7 +390,7 @@ static void lora_listen2(void * parameter){
       
       enableInterrupt = false;
       instance->lv_port_sem_take();
-      state = instance->radio->getRadio()->readData((uint8_t*)&packet, 0);
+      state = instance->radio->getRadio()->readData((uint8_t*)&packet, sizeof(pkrecv));
       instance->lv_port_sem_give();
       if(state != RADIOLIB_ERR_NONE){
         sprintf(buffer,"read data error %d\n", state);

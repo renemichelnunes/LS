@@ -69,7 +69,7 @@ static void sendMessage(lv_event_t * e){
       strcpy(packet.msg, message.c_str());
       strcpy(packet.status, "sent");
       instance->_display->lv_port_sem_take();
-      err_code = instance->_display->radio->getRadio()->startTransmit((uint8_t*)&packet, 0);
+      err_code = instance->_display->radio->getRadio()->startTransmit((uint8_t*)&packet, sizeof(packet));
       instance->_display->lv_port_sem_give();
       if(err_code != RADIOLIB_ERR_NONE){
         lv_list_add_text(msg->list, "fail to send");  
