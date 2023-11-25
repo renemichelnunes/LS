@@ -525,10 +525,10 @@ void Display::ui_event_callback(lv_event_t *e) {
       transmissionFlag = false;
       radio->getRadio()->setDio1Action(setFlag);
       radio->getRadio()->startReceive();
-      xTaskCreate(lora_listen2, "lora_listen_task", 10000, NULL, 1, &lora_listen_task);
+      xTaskCreate(lora_listen2, "lora_listen_task", 10001, NULL, 0, &lora_listen_task);
       lora_state = true;
       lora_transmit(NULL);
-      delay(1000);
+      delay(100);
       //lora_apply_config();
       //t();
     }

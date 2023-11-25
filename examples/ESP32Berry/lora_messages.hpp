@@ -10,12 +10,13 @@ struct lora_packet{
 
 struct lora_contact_messages{
     char id[7];
+    bool me = false;
     std::vector <lora_packet> messages;
 };
 
 class lora_incomming_messages{
   private:
-    std::vector <lora_contact_messages> messages;
+    std::vector <lora_contact_messages> contacts_messages;
   public:
     lora_incomming_messages();
     ~lora_incomming_messages();
