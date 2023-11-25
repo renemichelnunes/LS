@@ -1,6 +1,8 @@
 #if !defined(_RADIOLIB_TYPES_H)
 #define _RADIOLIB_TYPES_H
 
+// user build options may override the default
+#include "BuildOptUser.h"
 #include "BuildOpt.h"
 
 /*!
@@ -15,22 +17,22 @@
 #define RADIOLIB_SHAPING_NONE                                   (0x00)
 
 /*!
-  \brief Gaussin shaping filter, BT = 0.3
+  \brief Gaussian shaping filter, BT = 0.3
 */
 #define RADIOLIB_SHAPING_0_3                                    (0x01)
 
 /*!
-  \brief Gaussin shaping filter, BT = 0.5
+  \brief Gaussian shaping filter, BT = 0.5
 */
 #define RADIOLIB_SHAPING_0_5                                    (0x02)
 
 /*!
-  \brief Gaussin shaping filter, BT = 0.7
+  \brief Gaussian shaping filter, BT = 0.7
 */
 #define RADIOLIB_SHAPING_0_7                                    (0x03)
 
 /*!
-  \brief Gaussin shaping filter, BT = 1.0
+  \brief Gaussian shaping filter, BT = 1.0
 */
 #define RADIOLIB_SHAPING_1_0                                    (0x04)
 
@@ -58,6 +60,31 @@
   \brief Whitening.
 */
 #define RADIOLIB_ENCODING_WHITENING                             (0x02)
+
+/*!
+  \}
+*/
+
+/*!
+  \defgroup config_standby Standby mode type aliases.
+
+  \{
+*/
+
+/*!
+  \brief Default standby used by the module
+*/
+#define RADIOLIB_STANDBY_DEFAULT                                (0x00)
+
+/*!
+  \brief Warm standby (e.g. crystal left running).
+*/
+#define RADIOLIB_STANDBY_WARM                                   (0x01)
+
+/*!
+  \brief Cold standby (e.g. only internal RC oscillator running).
+*/
+#define RADIOLIB_STANDBY_COLD                                   (0x02)
 
 /*!
   \}
@@ -218,6 +245,11 @@
 */
 #define RADIOLIB_ERR_INVALID_RSSI_THRESHOLD                    (-27)
 
+/*!
+  \brief A `NULL` pointer has been encountered. If you see this, there may be a potential security vulnerability.
+*/
+#define RADIOLIB_ERR_NULL_POINTER                              (-28)
+
 // RF69-specific status codes
 
 /*!
@@ -278,9 +310,31 @@
 #define RADIOLIB_ERR_INVALID_MIC_E_TELEMETRY_LENGTH            (-203)
 
 /*!
-  \brief Mic-E message cannot contaion both telemetry and status text.
+  \brief Mic-E message cannot contain both telemetry and status text.
 */
 #define RADIOLIB_ERR_MIC_E_TELEMETRY_STATUS                    (-204)
+
+// SSDV status codes
+
+/*!
+  \brief SSDV mode is invalid.
+*/
+#define RADIOLIB_ERR_INVALID_SSDV_MODE                         (-301)
+
+/*!
+  \brief Image size is invalid.
+*/
+#define RADIOLIB_ERR_INVALID_IMAGE_SIZE                        (-302)
+
+/*!
+  \brief Image quality is invalid.
+*/
+#define RADIOLIB_ERR_INVALID_IMAGE_QUALITY                     (-303)
+
+/*!
+  \brief Image subsampling is invalid.
+*/
+#define RADIOLIB_ERR_INVALID_SUBSAMPLING                       (-304)
 
 // RTTY status codes
 
@@ -357,6 +411,11 @@
 
 /*!
   \brief SX126x failed to execute SPI command.
+  Often this means that the module is trying to use TCXO while
+  XTAL is connected (or vice versa). Make sure your crystal setup
+  (e.g. TCXO reference voltage) matches your hardware by setting
+  "tcxoVoltage" to 0 when using XTAL module, or to appropriate value
+  when using TCXO module.
 */
 #define RADIOLIB_ERR_SPI_CMD_FAILED                            (-707)
 
@@ -404,6 +463,75 @@
   \brief Timed out waiting for ranging exchange finish.
 */
 #define RADIOLIB_ERR_RANGING_TIMEOUT                           (-901)
+
+// Pager-specific status codes
+
+/*!
+  \brief The provided payload data configuration is invalid.
+*/
+#define RADIOLIB_ERR_INVALID_PAYLOAD                            (-1001)
+
+/*!
+  \brief The requested address was not found in the received data.
+*/
+#define RADIOLIB_ERR_ADDRESS_NOT_FOUND                          (-1002)
+
+/*!
+  \brief The function code is invalid. 2 Bits only.
+*/
+#define RADIOLIB_ERR_INVALID_FUNCTION                           (-1003)
+
+// LoRaWAN-specific status codes
+
+/*!
+  \brief Unable to restore existing LoRaWAN session because this node did not join any network yet.
+*/
+#define RADIOLIB_ERR_NETWORK_NOT_JOINED                         (-1101)
+
+/*!
+  \brief Malformed downlink packet received from network server.
+*/
+#define RADIOLIB_ERR_DOWNLINK_MALFORMED                         (-1102)
+
+/*!
+  \brief Network server requested switch to unsupported LoRaWAN revision.
+*/
+#define RADIOLIB_ERR_INVALID_REVISION                           (-1103)
+
+/*!
+  \brief Invalid LoRaWAN uplink port requested by user.
+*/
+#define RADIOLIB_ERR_INVALID_PORT                               (-1104)
+
+/*!
+  \brief User did not enable downlink in time.
+*/
+#define RADIOLIB_ERR_NO_RX_WINDOW                               (-1105)
+
+/*!
+  \brief No valid channel for the currently active LoRaWAN band was found.
+*/
+#define RADIOLIB_ERR_INVALID_CHANNEL                            (-1106)
+
+/*!
+  \brief Invalid LoRaWAN MAC command ID.
+*/
+#define RADIOLIB_ERR_INVALID_CID                                (-1107)
+
+/*!
+  \brief User requested to start uplink while still inside RX window.
+*/
+#define RADIOLIB_ERR_UPLINK_UNAVAILABLE                         (-1108)
+
+/*!
+  \brief Unable to push new MAC command because the queue is full.
+*/
+#define RADIOLIB_ERR_COMMAND_QUEUE_FULL                         (-1109)
+
+/*!
+  \brief Unable to pop existing MAC command because the queue is empty.
+*/
+#define RADIOLIB_ERR_COMMAND_QUEUE_EMPTY                        (-1110)
 
 /*!
   \}

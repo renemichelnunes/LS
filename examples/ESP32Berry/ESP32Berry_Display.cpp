@@ -391,6 +391,7 @@ static void lora_listen2(void * parameter){
       enableInterrupt = false;
       instance->lv_port_sem_take();
       state = instance->radio->getRadio()->readData((uint8_t*)&packet, sizeof(pkrecv));
+      instance->radio->getRadio()->finishTransmit();
       instance->lv_port_sem_give();
       if(state != RADIOLIB_ERR_NONE){
         sprintf(buffer,"read data error %d\n", state);
@@ -423,14 +424,15 @@ static void lora_listen2(void * parameter){
           digitalWrite(RADIO_CS_PIN, HIGH);
           digitalWrite(BOARD_TFT_CS, HIGH);
           instance->lv_port_sem_take();
-          //state = instance->radio->getRadio()->startReceive();
           //instance->radio->getRadio()->standby();
           state = instance->radio->getRadio()->startTransmit((uint8_t*)&pkrecv, sizeof(pkrecv));
+          instance->lv_port_sem_give();
+          Serial.println("sent recv");
           Serial.print("transmission status: ");
           Serial.println(state);
-          instance->lv_port_sem_give();
-          //vTaskDelay(1000);
-          Serial.println("sent recv");
+          vTaskDelay(5000);
+          instance->radio->getRadio()->available();
+          
           lv_textarea_add_text(instance->txt_debug, "sent recv\n");
         }else if(strcmp(packet.status, "recv") == 0){
           Serial.println("received recv");
@@ -523,7 +525,8 @@ void Display::ui_event_callback(lv_event_t *e) {
       Serial.println("lora on");
       gotPacket = false;
       transmissionFlag = false;
-      radio->getRadio()->setDio1Action(setFlag);
+      radio->getRadio()->setPacketReceivedAction(setFlag);
+      
       radio->getRadio()->startReceive();
       xTaskCreate(lora_listen2, "lora_listen_task", 10001, NULL, 0, &lora_listen_task);
       lora_state = true;

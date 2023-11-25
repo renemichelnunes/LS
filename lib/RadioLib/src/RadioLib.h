@@ -38,6 +38,12 @@
 #include "TypeDef.h"
 #include "Module.h"
 
+#include "Hal.h"
+#if defined(RADIOLIB_BUILD_ARDUINO)
+#include "ArduinoHal.h"
+#endif
+
+
 // warnings are printed in this file since BuildOpt.h is compiled in multiple places
 
 // check God mode
@@ -47,7 +53,16 @@
 
 // print debug info
 #if defined(RADIOLIB_DEBUG)
-  #pragma message "RADIOLIB_PLATFORM: " RADIOLIB_PLATFORM
+  #define RADIOLIB_VALUE_TO_STRING(x) #x
+  #define RADIOLIB_VALUE(x) RADIOLIB_VALUE_TO_STRING(x)
+  #pragma message("\nRadioLib Debug Info\nVersion " \
+  RADIOLIB_VALUE(RADIOLIB_VERSION_MAJOR) "." \
+  RADIOLIB_VALUE(RADIOLIB_VERSION_MINOR) "." \
+  RADIOLIB_VALUE(RADIOLIB_VERSION_PATCH) "." \
+  RADIOLIB_VALUE(RADIOLIB_VERSION_EXTRA) "\n" \
+  "Platform: " RADIOLIB_VALUE(RADIOLIB_PLATFORM) "\n" \
+  "Compiled: " RADIOLIB_VALUE(__DATE__) " " RADIOLIB_VALUE(__TIME__) \
+  )
 #endif
 
 // check unknown/unsupported platform
@@ -71,6 +86,7 @@
 #include "modules/SX126x/SX1261.h"
 #include "modules/SX126x/SX1262.h"
 #include "modules/SX126x/SX1268.h"
+#include "modules/SX126x/STM32WLx.h"
 #include "modules/SX127x/SX1272.h"
 #include "modules/SX127x/SX1273.h"
 #include "modules/SX127x/SX1276.h"
@@ -87,10 +103,19 @@
 #include "protocols/AX25/AX25.h"
 #include "protocols/Hellschreiber/Hellschreiber.h"
 #include "protocols/Morse/Morse.h"
+#include "protocols/Pager/Pager.h"
 #include "protocols/RTTY/RTTY.h"
 #include "protocols/SSTV/SSTV.h"
 #include "protocols/FSK4/FSK4.h"
 #include "protocols/APRS/APRS.h"
+#include "protocols/ExternalRadio/ExternalRadio.h"
+#include "protocols/Print/Print.h"
+#include "protocols/BellModem/BellModem.h"
+#include "protocols/LoRaWAN/LoRaWAN.h"
+
+// utilities
+#include "utils/CRC.h"
+#include "utils/Cryptography.h"
 
 // only create Radio class when using RadioShield
 #if defined(RADIOLIB_RADIOSHIELD)

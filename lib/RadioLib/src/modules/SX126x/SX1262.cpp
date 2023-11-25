@@ -2,7 +2,7 @@
 #if !defined(RADIOLIB_EXCLUDE_SX126X)
 
 SX1262::SX1262(Module* mod) : SX126x(mod) {
-
+  chipType = RADIOLIB_SX1262_CHIP_TYPE;
 }
 
 int16_t SX1262::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t syncWord, int8_t power, uint16_t preambleLength, float tcxoVoltage, bool useRegulatorLDO) {
@@ -20,10 +20,10 @@ int16_t SX1262::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t sync
   state = setFrequency(freq);
   RADIOLIB_ASSERT(state);
 
-  state = setOutputPower(power);
+  state = SX126x::fixPaClamping();
   RADIOLIB_ASSERT(state);
 
-  state = SX126x::fixPaClamping();
+  state = setOutputPower(power);
   RADIOLIB_ASSERT(state);
 
   return(state);
@@ -38,13 +38,17 @@ int16_t SX1262::beginFSK(float freq, float br, float freqDev, float rxBw, int8_t
   state = setFrequency(freq);
   RADIOLIB_ASSERT(state);
 
-  state = setOutputPower(power);
-  RADIOLIB_ASSERT(state);
-
   state = SX126x::fixPaClamping();
   RADIOLIB_ASSERT(state);
 
+  state = setOutputPower(power);
+  RADIOLIB_ASSERT(state);
+
   return(state);
+}
+
+int16_t SX1262::setFrequency(float freq) {
+  return(setFrequency(freq, true));
 }
 
 int16_t SX1262::setFrequency(float freq, bool calibrate) {
@@ -78,7 +82,7 @@ int16_t SX1262::setFrequency(float freq, bool calibrate) {
 }
 
 int16_t SX1262::setOutputPower(int8_t power) {
-  RADIOLIB_CHECK_RANGE(power, -17, 22, RADIOLIB_ERR_INVALID_OUTPUT_POWER);
+  RADIOLIB_CHECK_RANGE(power, -9, 22, RADIOLIB_ERR_INVALID_OUTPUT_POWER);
 
   // get current OCP configuration
   uint8_t ocp = 0;
