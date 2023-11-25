@@ -281,6 +281,11 @@ void setFlag(void)
     transmissionFlag = false;
 }
 
+void TXFlag(){
+  Serial.println("message sent flag");
+  gotPacket = false;
+}
+
 TaskHandle_t lora_listen_task = NULL;
 uint8_t count_msg = 0;
 
@@ -380,8 +385,6 @@ static void lora_listen2(void * parameter){
       digitalWrite(BOARD_SDCARD_CS, HIGH);
       digitalWrite(RADIO_CS_PIN, HIGH);
       digitalWrite(BOARD_TFT_CS, HIGH);
-      //SPI.end();
-      //SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
       count_msg++;
       if(count_msg > 10){
         count_msg = 0;
@@ -391,7 +394,6 @@ static void lora_listen2(void * parameter){
       enableInterrupt = false;
       instance->lv_port_sem_take();
       state = instance->radio->getRadio()->readData((uint8_t*)&packet, sizeof(pkrecv));
-      instance->radio->getRadio()->finishTransmit();
       instance->lv_port_sem_give();
       if(state != RADIOLIB_ERR_NONE){
         sprintf(buffer,"read data error %d\n", state);
@@ -426,12 +428,13 @@ static void lora_listen2(void * parameter){
           instance->lv_port_sem_take();
           //instance->radio->getRadio()->standby();
           state = instance->radio->getRadio()->startTransmit((uint8_t*)&pkrecv, sizeof(pkrecv));
+          vTaskDelay(500);
+          //instance->radio->getRadio()->finishTransmit();
           instance->lv_port_sem_give();
           Serial.println("sent recv");
           Serial.print("transmission status: ");
           Serial.println(state);
-          vTaskDelay(5000);
-          instance->radio->getRadio()->available();
+          vTaskDelay(500);
           
           lv_textarea_add_text(instance->txt_debug, "sent recv\n");
         }else if(strcmp(packet.status, "recv") == 0){
@@ -526,7 +529,7 @@ void Display::ui_event_callback(lv_event_t *e) {
       gotPacket = false;
       transmissionFlag = false;
       radio->getRadio()->setPacketReceivedAction(setFlag);
-      
+      //radio->getRadio()->setPacketSentAction(TXFlag);
       radio->getRadio()->startReceive();
       xTaskCreate(lora_listen2, "lora_listen_task", 10001, NULL, 0, &lora_listen_task);
       lora_state = true;
