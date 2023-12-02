@@ -470,7 +470,7 @@ static void lora_listen2(void * parameter){
 }
 
 void t(){
-  lora_packet p;
+  lora_packet p; 
   strcpy(p.id, "aaaaaa");
   strcpy(p.msg, "test1");
   lim.addMessage(p);
@@ -537,6 +537,7 @@ void Display::ui_event_callback(lv_event_t *e) {
       delay(100);
       //lora_apply_config();
       //t();
+      
     }
     else{
       radio->getRadio()->standby();
