@@ -267,18 +267,93 @@ void Display::lora_apply_config(){
     Serial.println(F("Invalid CRC configuration"));
 }
 
+uint8_t count_msg = 0;
 bool gotPacket = false;
-void setFlag(void)
+void RXFlag(void)
 {
-    gotPacket = true;
-    
-    // check if the interrupt is enabled
-    if (!enableInterrupt) {
-      //Serial.println("interrupt disabled");
-      return;
+  int status;
+  lora_packet packet;
+  char buffer[200] = {'\0'};
+  
+  count_msg++;
+  if(count_msg > 2){
+    count_msg = 0;
+    lv_textarea_set_text(instance->txt_debug, "");
+  }
+
+  digitalWrite(BOARD_SDCARD_CS, HIGH);
+  digitalWrite(RADIO_CS_PIN, HIGH);
+  digitalWrite(BOARD_TFT_CS, HIGH);
+
+  instance->lv_port_sem_take();
+  status = instance->radio->getRadio()->readData((uint8_t*)&packet, sizeof(packet));
+  instance->lv_port_sem_give();
+
+  if(status != RADIOLIB_ERR_NONE){
+    sprintf(buffer,"read data error %d\n", status);
+    Serial.print(buffer);
+    lv_textarea_set_text(instance->txt_debug, buffer);
+  }else{
+    if(strcmp(packet.status,"sent") == 0){
+      Serial.println("received msg");
+      Serial.println(packet.id);
+      Serial.println(packet.msg);
+      Serial.println(packet.status);
+      lv_textarea_add_text(instance->txt_debug, "id: ");
+      lv_textarea_add_text(instance->txt_debug, packet.id);
+      lv_textarea_add_text(instance->txt_debug, "\n");
+      lv_textarea_add_text(instance->txt_debug, "msg: ");
+      lv_textarea_add_text(instance->txt_debug, packet.msg);
+      lv_textarea_add_text(instance->txt_debug, "\n");
+      lv_textarea_add_text(instance->txt_debug, "status: ");
+      lv_textarea_add_text(instance->txt_debug, packet.status);
+      lv_textarea_add_text(instance->txt_debug, "\n");
+      //sending back confirmation
+      strcpy(packet.msg,"");
+      strcpy(packet.status,"recv");
+      Serial.println("Altered to recv");
+      Serial.print("msg: ");
+      Serial.println(packet.msg);
+      Serial.print("status: ");
+      Serial.println(packet.status);
+      digitalWrite(BOARD_SDCARD_CS, HIGH);
+      digitalWrite(RADIO_CS_PIN, HIGH);
+      digitalWrite(BOARD_TFT_CS, HIGH);
+      instance->lv_port_sem_take();
+      //instance->radio->getRadio()->standby();
+      status = instance->radio->getRadio()->startTransmit((uint8_t*)&packet, sizeof(packet));
+      vTaskDelay(500);
+      //instance->radio->getRadio()->finishTransmit();
+      instance->lv_port_sem_give();
+      Serial.println("sent recv");
+      Serial.print("transmission status: ");
+      Serial.println(status);
+      vTaskDelay(500);
+      
+      lv_textarea_add_text(instance->txt_debug, "sent recv\n");
+    }else if(strcmp(packet.status, "recv") == 0){
+      Serial.println("received recv");
+      Serial.println(packet.id);
+      Serial.println(packet.msg);
+      Serial.println(packet.status);
+      lv_textarea_add_text(instance->txt_debug, "received recv");
+    }else if(strcmp(packet.status, "recv") != 0 && strcmp(packet.status, "sent") != 0 ){
+      Serial.println("received something?");
+      lv_textarea_add_text(instance->txt_debug, "received something?");
+      lv_textarea_add_text(instance->txt_debug, "\n");
+      Serial.println(packet.id);
+      Serial.println(packet.msg);
+      Serial.println(packet.status);
     }
-    // we got a packet, set the flag
-    transmissionFlag = false;
+  }
+  strcpy(packet.id, "");
+  strcpy(packet.msg, "");
+  strcpy(packet.status, "");
+  instance->lv_port_sem_take();
+  status = instance->radio->getRadio()->startReceive();
+  instance->lv_port_sem_give();
+  enableInterrupt = true;
+  gotPacket = false;
 }
 
 void TXFlag(){
@@ -287,7 +362,7 @@ void TXFlag(){
 }
 
 TaskHandle_t lora_listen_task = NULL;
-uint8_t count_msg = 0;
+
 
 void Display::lora_transmit(void * data){
   int16_t state = 0;
@@ -386,7 +461,7 @@ static void lora_listen2(void * parameter){
       digitalWrite(RADIO_CS_PIN, HIGH);
       digitalWrite(BOARD_TFT_CS, HIGH);
       count_msg++;
-      if(count_msg > 10){
+      if(count_msg > 2){
         count_msg = 0;
         lv_textarea_set_text(instance->txt_debug, "");
       }
@@ -528,12 +603,12 @@ void Display::ui_event_callback(lv_event_t *e) {
       Serial.println("lora on");
       gotPacket = false;
       transmissionFlag = false;
-      radio->getRadio()->setPacketReceivedAction(setFlag);
+      radio->getRadio()->setPacketReceivedAction(RXFlag);
       //radio->getRadio()->setPacketSentAction(TXFlag);
       radio->getRadio()->startReceive();
-      xTaskCreate(lora_listen2, "lora_listen_task", 10001, NULL, 0, &lora_listen_task);
+      //xTaskCreate(lora_listen2, "lora_listen_task", 10001, NULL, 0, &lora_listen_task);
       lora_state = true;
-      lora_transmit(NULL);
+      //lora_transmit(NULL);
       delay(100);
       //lora_apply_config();
       //t();
