@@ -11,6 +11,7 @@ struct lora_packet{
 struct lora_contact_messages{
     char id[7];
     bool me = false;
+    bool newMessages = false;
     std::vector <lora_packet> messages;
 };
 
@@ -20,7 +21,7 @@ class lora_incomming_messages{
   public:
     lora_incomming_messages();
     ~lora_incomming_messages();
-    bool addMessage(lora_packet packet);
+    bool addMessage(lora_packet packet, bool newMsg = true);
     uint32_t find(char * id);
     std::vector <lora_packet> getMessages(char * id);
 };

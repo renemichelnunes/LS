@@ -308,6 +308,7 @@ void RXFlag(void){
       lv_textarea_add_text(instance->txt_debug, "status: ");
       lv_textarea_add_text(instance->txt_debug, packet.status);
       lv_textarea_add_text(instance->txt_debug, "\n");
+      lim.addMessage(packet);
     }else if(strcmp(packet.status, "recv") == 0){
       Serial.println("received recv");
       Serial.println(packet.id);
@@ -348,16 +349,13 @@ void Display::lora_transmit(void * data){
     digitalWrite(BOARD_SDCARD_CS, HIGH);
     digitalWrite(RADIO_CS_PIN, HIGH);
     digitalWrite(BOARD_TFT_CS, HIGH);
-    //SPI.end();
-    //SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
-    enableInterrupt = false;
     instance->lv_port_sem_take();
     state = instance->radio->getRadio()->startTransmit((uint8_t *)&packet, sizeof(packet));
     instance->lv_port_sem_give();
     if(state != RADIOLIB_ERR_NONE){
       sprintf(buffer,"transmit data error %d\n", state);
       Serial.print(buffer);
-      //lv_textarea_set_text(instance->txt_debug, buffer);
+      lv_textarea_set_text(instance->txt_debug, buffer);
     }else{
       count_msg++;
       if(count_msg > 2){
@@ -367,7 +365,6 @@ void Display::lora_transmit(void * data){
       Serial.println("sent");
       lv_textarea_add_text(instance->txt_debug, "sent\n");
     }
-    enableInterrupt = true;
     gotPacket = false;
   }
 }
@@ -386,8 +383,6 @@ static void transmit(void * parameter){
       digitalWrite(BOARD_SDCARD_CS, HIGH);
       digitalWrite(RADIO_CS_PIN, HIGH);
       digitalWrite(BOARD_TFT_CS, HIGH);
-      //SPI.end();
-      //SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
       enableInterrupt = false;
       instance->lv_port_sem_take();
       state = instance->radio->getRadio()->startTransmit((uint8_t *)&packet, sizeof(lora_packet));
@@ -395,7 +390,7 @@ static void transmit(void * parameter){
       if(state != RADIOLIB_ERR_NONE){
         sprintf(buffer,"transmit data error %d\n", state);
         Serial.print(buffer);
-        //lv_textarea_set_text(instance->txt_debug, buffer);
+        lv_textarea_set_text(instance->txt_debug, buffer);
       }else{
         count_msg++;
         if(count_msg > 2){
@@ -555,8 +550,6 @@ void Display::ui_event_callback(lv_event_t *e) {
     tft->setBrightness(sliderValue);
   } else if (target == ui_SliderSpeaker && event_code == LV_EVENT_VALUE_CHANGED) {
     int sliderValue = lv_slider_get_value(ui_SliderSpeaker);
-    
-
   } else if (target == ui_ImgBtnWiFi && event_code == LV_EVENT_CLICKED) {
     if (lv_obj_get_state(ui_ImgBtnWiFi) & LV_STATE_CHECKED) {
       menu_event_cb(WIFI_ON, NULL);
@@ -578,15 +571,20 @@ void Display::ui_event_callback(lv_event_t *e) {
       transmissionFlag = false;
       radio->getRadio()->setPacketReceivedAction(RXFlag);
       //radio->getRadio()->setPacketSentAction(TXFlag);
+      instance->lv_port_sem_take();
       radio->getRadio()->startReceive();
+      instance->lv_port_sem_give();
       //xTaskCreate(lora_listen2, "lora_listen_task", 10001, NULL, 0, &lora_listen_task);
       lora_state = true;
+      instance->lv_port_sem_take();
       lora_transmit(NULL);
-      delay(100);
+      instance->lv_port_sem_give();
+      delay(500);
+      instance->lv_port_sem_take();
       radio->getRadio()->startReceive();
+      instance->lv_port_sem_give();
       //lora_apply_config();
       //t();
-      
     }
     else{
       radio->getRadio()->standby();
