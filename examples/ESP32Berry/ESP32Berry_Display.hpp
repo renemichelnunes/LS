@@ -14,6 +14,7 @@
 #include "lora_radio.hpp"
 #include <vector>
 #include <iostream>
+#include "lora_messages.hpp"
 
 typedef enum {
   WIFI_OFF,
@@ -79,6 +80,7 @@ public:
   lv_obj_t *ui_NotiLabel;
   FuncPtrInt menu_event_cb;
   TaskHandle_t uiNotiTaskHandler;
+  lora_incomming_messages lim;
   Display(FuncPtrInt callback);
   ~Display();
 

@@ -8,10 +8,10 @@
 #include "ESP32Berry_Display.hpp"
 #include <Preferences.h>
 #include <RadioLib.h>
-#include "lora_messages.hpp"
+
 
 Preferences lora_conf;
-lora_incomming_messages lim;
+
 
 static Display *instance = NULL;
 
@@ -308,7 +308,7 @@ void RXFlag(void){
       lv_textarea_add_text(instance->txt_debug, "status: ");
       lv_textarea_add_text(instance->txt_debug, packet.status);
       lv_textarea_add_text(instance->txt_debug, "\n");
-      lim.addMessage(packet);
+      instance->lim.addMessage(packet);
     }else if(strcmp(packet.status, "recv") == 0){
       Serial.println("received recv");
       Serial.println(packet.id);
@@ -516,25 +516,25 @@ void t(){
   lora_packet p; 
   strcpy(p.id, "aaaaaa");
   strcpy(p.msg, "test1");
-  lim.addMessage(p);
+  instance->lim.addMessage(p);
   strcpy(p.msg, "test2");
-  lim.addMessage(p);
+  instance->lim.addMessage(p);
   strcpy(p.msg, "test2");
-  lim.addMessage(p);
+  instance->lim.addMessage(p);
   strcpy(p.id, "bbbbbb");
   strcpy(p.msg, "t1");
-  lim.addMessage(p);
+  instance->lim.addMessage(p);
   strcpy(p.id, "bbbbbb");
   strcpy(p.msg, "t2");
-  lim.addMessage(p);
+  instance->lim.addMessage(p);
   strcpy(p.id, "bbbbbb");
   strcpy(p.msg, "t3");
-  lim.addMessage(p);
+  instance->lim.addMessage(p);
 
-  for(int i = 0; i < lim.getMessages("aaaaaa").size(); i++)
-    Serial.println(lim.getMessages("aaaaaa")[i].msg);
-  for(int i = 0; i < lim.getMessages("bbbbbb").size(); i++)
-    Serial.println(lim.getMessages("bbbbbb")[i].msg);
+  for(int i = 0; i < instance->lim.getMessages("aaaaaa").size(); i++)
+    Serial.println(instance->lim.getMessages("aaaaaa")[i].msg);
+  for(int i = 0; i < instance->lim.getMessages("bbbbbb").size(); i++)
+    Serial.println(instance->lim.getMessages("bbbbbb")[i].msg);
 }
 
 void Display::ui_event_callback(lv_event_t *e) {
