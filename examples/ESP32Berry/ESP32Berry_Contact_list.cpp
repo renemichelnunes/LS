@@ -7,8 +7,52 @@
 #include <iomanip>
 #include <vector>
 #include "lora_messages.hpp"
+#include "SPIFFS.h"
+
+static AppContactList *instance = NULL;
 
 Preferences prefs;
+
+static void saveContacts(){
+  if(!SPIFFS.begin(true)){
+    Serial.println("failed mounting SPIFFS");
+    return;
+  }
+
+  File file = SPIFFS.open("/contacts", FILE_WRITE);
+  if(!file){
+    Serial.println("contacts file problem");
+    return;
+  }
+
+  Contact c;
+
+  for(uint32_t index = 0; index < instance->contact_list.size(); index++){
+    c = instance->contact_list.getContact(index);
+    file.write((uint8_t*)&c, sizeof(c));
+  }
+  Serial.println("Contacts saved");
+  file.close();
+}
+
+static void loadContacts(){
+  if(!SPIFFS.begin(true)){
+    Serial.println("failed mounting SPIFFS");
+    return;
+  }
+
+  File file = SPIFFS.open("/contacts", FILE_READ);
+  if(!file){
+    Serial.println("contacts file problem");
+    return;
+  }
+  Contact_list cl;
+  while(file.available()){
+    file.read((uint8_t*)&cl, file.size());
+  }
+
+  file.close();
+}
 
 std::string generate_ID(){
   srand(time(NULL));
@@ -21,8 +65,6 @@ std::string generate_ID(){
   }
   return ss;
 }
-
-static AppContactList *instance = NULL;
 
 lv_obj_t * AppContactList::getList(){
   
@@ -266,7 +308,7 @@ void AppContactList::refresh_contact_list(){
       lv_obj_move_foreground(addBtn);
       lv_obj_scroll_to_view(btn, LV_ANIM_ON);
     }
-    
+    saveContacts();
   }catch(exception e){
     Serial.println(e.what());
   }
@@ -595,9 +637,50 @@ static void ddGetLoraFreq(lv_event_t * e){
   }
 }
 
+static void loadPrefs(){
+  if(prefs.begin("lora_settings", true)){
+    String name, id;
+    uint16_t addr, current_limit, spread_factor, coding_rate, bandwidth, tx_power, freq;
+    uint16_t preamble;
+    uint32_t sync_word;
+    bool crc;
+
+    name = prefs.getString("name");
+    id = prefs.getString("id");
+    addr = prefs.getUChar("address");
+    current_limit = prefs.getUShort("current_limit");
+    bandwidth = prefs.getUShort("bandwidth");
+    spread_factor = prefs.getUShort("spread_factor");
+    coding_rate = prefs.getUShort("coding_rate");
+    sync_word = prefs.getULong("sync_word");
+    tx_power = prefs.getUShort("tx_power");
+    preamble = prefs.getUShort("preamble");
+    freq = prefs.getUShort("lora_freq");
+    crc = prefs.getBool("crc");
+    prefs.end();
+
+    instance->_display->radio->settings.setName(name);
+    instance->_display->radio->settings.setId(id);
+    instance->_display->radio->settings.setAddr(addr);
+    instance->_display->radio->settings.setCurrentLimit(current_limit);
+    instance->_display->radio->settings.setBandwidth(bandwidth);
+    instance->_display->radio->settings.setSpreadFactor(spread_factor);
+    instance->_display->radio->settings.setCodeRate(coding_rate);
+    instance->_display->radio->settings.setSyncWord(sync_word);
+    instance->_display->radio->settings.setTXPower(tx_power);
+    instance->_display->radio->settings.setPreamble(preamble);
+    instance->_display->radio->settings.setFreq(freq);
+    instance->_display->radio->settings.setCRC(crc); 
+
+    Serial.println(F("Lora settings loaded"));
+  }else 
+    Serial.println(F("first time settings"));
+}
+
 static void config_radio(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_SHORT_CLICKED){
+    loadPrefs();
     char s[32];
     lv_obj_t * window = lv_obj_create(lv_scr_act());
     lv_obj_set_size(window, 320, 240);
@@ -865,6 +948,7 @@ void AppContactList::draw_ui(){
   lv_obj_add_event_cb(configbtn, config_radio, LV_EVENT_SHORT_CLICKED, NULL);
 
   try{
+    //loadContacts();
     this->refresh_contact_list();  
   }catch (exception &e){
     Serial.println(e.what());

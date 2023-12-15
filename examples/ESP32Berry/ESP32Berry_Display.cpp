@@ -10,7 +10,7 @@
 #include <RadioLib.h>
 
 
-Preferences lora_conf;
+Preferences lora_sett;
 
 
 static Display *instance = NULL;
@@ -20,6 +20,7 @@ bool receiveFlag = true;
 bool enableInterrupt = true;
 
 void loadConfig();
+void viewConfig();
 
 void Display::initDebug(){
     debug_window = lv_obj_create(ui_Main_Screen);
@@ -45,27 +46,77 @@ Display::~Display() {
   delete tft;
 }
 
-void loadConfig(){
-  if(lora_conf.begin("lora_settings", true)){
+void viewConfig(){
+  if(lora_sett.begin("lora_settings", true)){
     String name, id;
     uint16_t addr, current_limit, spread_factor, coding_rate, bandwidth, tx_power, freq;
     uint16_t preamble;
     uint32_t sync_word;
     bool crc;
 
-    name = lora_conf.getString("name");
-    id = lora_conf.getString("id");
-    addr = lora_conf.getUChar("address");
-    current_limit = lora_conf.getUShort("current_limit");
-    bandwidth = lora_conf.getUShort("bandwidth");
-    spread_factor = lora_conf.getUShort("spread_factor");
-    coding_rate = lora_conf.getUShort("coding_rate");
-    sync_word = lora_conf.getULong("sync_word");
-    tx_power = lora_conf.getUShort("tx_power");
-    preamble = lora_conf.getUShort("preamble");
-    freq = lora_conf.getUShort("lora_freq");
-    crc = lora_conf.getBool("crc");
-    lora_conf.end();
+    name = lora_sett.getString("name");
+    id = lora_sett.getString("id");
+    addr = lora_sett.getUChar("address");
+    current_limit = lora_sett.getUShort("current_limit");
+    bandwidth = lora_sett.getUShort("bandwidth");
+    spread_factor = lora_sett.getUShort("spread_factor");
+    coding_rate = lora_sett.getUShort("coding_rate");
+    sync_word = lora_sett.getULong("sync_word");
+    tx_power = lora_sett.getUShort("tx_power");
+    preamble = lora_sett.getUShort("preamble");
+    freq = lora_sett.getUShort("lora_freq");
+    crc = lora_sett.getBool("crc");
+    lora_sett.end();
+
+    Serial.println("-----------------config----------------");
+    Serial.print("name:");
+    Serial.println(name);
+    Serial.print("id:");
+    Serial.println(id);
+    Serial.print("addr:");
+    Serial.println(addr);
+    Serial.print("current limit:");
+    Serial.println(current_limit);
+    Serial.print("bandwidth:");
+    Serial.println(bandwidth);
+    Serial.print("spread factor:");
+    Serial.println(spread_factor);
+    Serial.print("coding rate:");
+    Serial.println(coding_rate);
+    Serial.print("sync word:");
+    Serial.println(sync_word);
+    Serial.print("TX power:");
+    Serial.println(tx_power);
+    Serial.print("preamble:");
+    Serial.println(preamble);
+    Serial.print("freq:");
+    Serial.println(freq);
+    Serial.print("crc:");
+    Serial.println(crc ? "true" : "false");
+  }
+}
+
+void loadConfig(){
+  if(lora_sett.begin("lora_settings", true)){
+    String name, id;
+    uint16_t addr, current_limit, spread_factor, coding_rate, bandwidth, tx_power, freq;
+    uint16_t preamble;
+    uint32_t sync_word;
+    bool crc;
+
+    name = lora_sett.getString("name");
+    id = lora_sett.getString("id");
+    addr = lora_sett.getUChar("address");
+    current_limit = lora_sett.getUShort("current_limit");
+    bandwidth = lora_sett.getUShort("bandwidth");
+    spread_factor = lora_sett.getUShort("spread_factor");
+    coding_rate = lora_sett.getUShort("coding_rate");
+    sync_word = lora_sett.getULong("sync_word");
+    tx_power = lora_sett.getUShort("tx_power");
+    preamble = lora_sett.getUShort("preamble");
+    freq = lora_sett.getUShort("lora_freq");
+    crc = lora_sett.getBool("crc");
+    lora_sett.end();
 
     instance->radio->settings.setName(name);
     instance->radio->settings.setId(id);
@@ -78,7 +129,7 @@ void loadConfig(){
     instance->radio->settings.setTXPower(tx_power);
     instance->radio->settings.setPreamble(preamble);
     instance->radio->settings.setFreq(freq);
-    instance->radio->settings.setCRC(crc);
+    instance->radio->settings.setCRC(crc); 
 
     Serial.println(F("Lora settings loaded"));
   }else 
@@ -585,6 +636,7 @@ void Display::ui_event_callback(lv_event_t *e) {
       instance->lv_port_sem_give();
       //lora_apply_config();
       //t();
+      loadConfig();
     }
     else{
       radio->getRadio()->standby();

@@ -28,6 +28,7 @@ class Contact_list{
         bool find(Contact &c);
         Contact getContact(uint32_t index);
         Contact* getContactByName(String name);
+        vector <Contact> getList();
         uint32_t size();
         Contact_list();
         ~Contact_list();

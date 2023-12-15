@@ -100,3 +100,6 @@ bool Contact_list::find(Contact &c){
         return false;
 }
 
+vector <Contact> Contact_list::getList(){
+    return list;
+}
