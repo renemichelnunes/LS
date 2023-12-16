@@ -29,7 +29,8 @@ static void saveContacts(){
 
   for(uint32_t index = 0; index < instance->contact_list.size(); index++){
     c = instance->contact_list.getContact(index);
-    file.write((uint8_t*)&c, sizeof(c));
+    file.println(c.getName());
+    file.println(c.getID());
   }
   Serial.println("Contacts saved");
   file.close();
