@@ -420,45 +420,6 @@ void Display::lora_transmit(void * data){
   }
 }
 
-static void transmit(void * parameter){
-  int16_t state = 0;
-  char buffer[200];
-  char msg[200] = "00000000000000000000";
-  lora_packet packet;
-  strcpy(packet.id, "aaaaaa");
-  strcpy(packet.msg, "00000000000000000000");
-
-  while(true){ 
-    //gotPacket = false;
-    if(!gotPacket){  
-      digitalWrite(BOARD_SDCARD_CS, HIGH);
-      digitalWrite(RADIO_CS_PIN, HIGH);
-      digitalWrite(BOARD_TFT_CS, HIGH);
-      enableInterrupt = false;
-      instance->lv_port_sem_take();
-      state = instance->radio->getRadio()->startTransmit((uint8_t *)&packet, sizeof(lora_packet));
-      instance->lv_port_sem_give();
-      if(state != RADIOLIB_ERR_NONE){
-        sprintf(buffer,"transmit data error %d\n", state);
-        Serial.print(buffer);
-        lv_textarea_set_text(instance->txt_debug, buffer);
-      }else{
-        count_msg++;
-        if(count_msg > 2){
-          count_msg = 0;
-          lv_textarea_set_text(instance->txt_debug, "");
-        }
-        Serial.println("sent");
-        lv_textarea_add_text(instance->txt_debug, "sent\n");
-      }
-      enableInterrupt = true;
-      gotPacket = false;
-    }
-  
-    vTaskDelay(5000);
-  }
-}
-
 static void lora_listen2(void * parameter){
   int16_t state = 0;
   uint8_t buff[200];

@@ -47,12 +47,24 @@ static void loadContacts(){
     Serial.println("contacts file problem");
     return;
   }
-  Contact_list cl;
+  
+  vector<String> v;
   while(file.available()){
-    file.read((uint8_t*)&cl, file.size());
+    v.push_back(file.readStringUntil('\n'));
   }
 
   file.close();
+
+  for(uint32_t index = 0; index < v.size(); index ++){
+    v[index].remove(v[index].length() - 1);
+  }
+
+  Contact c;
+  for(uint32_t index = 0; index < v.size(); index += 2){
+    c.setName(v[index]);
+    c.setID(v[index + 1]);
+    instance->contact_list.add(c);
+  }
 }
 
 std::string generate_ID(){
@@ -184,7 +196,17 @@ static void chat_window(lv_event_t * e){
     lv_obj_add_event_cb(btnSend, sendMessage, LV_EVENT_SHORT_CLICKED, msg);
 
     // Retrieve messages
-
+    char ch_id[20] = {'\0'};
+    strcpy(ch_id, ch->getID().c_str());
+    vector<lora_packet> caller_msg;
+    caller_msg = instance->_display->lim.getMessages(ch_id);
+    if(caller_msg.size() > 0){
+      Serial.println(caller_msg[0].id);
+      for(int i = 0; i < caller_msg.size(); i++){
+        
+        Serial.println(caller_msg[i].msg);
+      }
+    }
   }
 }
 
@@ -949,7 +971,7 @@ void AppContactList::draw_ui(){
   lv_obj_add_event_cb(configbtn, config_radio, LV_EVENT_SHORT_CLICKED, NULL);
 
   try{
-    //loadContacts();
+    loadContacts();
     this->refresh_contact_list();  
   }catch (exception &e){
     Serial.println(e.what());
