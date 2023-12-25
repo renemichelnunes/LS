@@ -1,16 +1,17 @@
 #pragma once
 #include <vector>
 #include <Arduino.h>
+#include <exception>
 
 struct lora_packet{
     char id[7] = {'\0'};
+    bool me = false;
     char msg[200] = {'\0'};
     char status[7] = {'\0'};
 };
 
 struct lora_contact_messages{
     char id[7];
-    bool me = false;
     bool newMessages = false;
     std::vector <lora_packet> messages;
 };

@@ -12,23 +12,32 @@ lora_incomming_messages::~lora_incomming_messages()
 
 }
 
+int inc = 0;
 bool lora_incomming_messages::addMessage(lora_packet packet, bool newMsg)
-{
-    uint32_t index = find(packet.id);
-    if(index == -1){//New contact
-        Serial.println("new contact messages");
-        lora_contact_messages a;
-        strcpy(a.id, packet.id);
-        a.newMessages = newMsg;
-        a.messages.push_back(packet);
-        Serial.println(a.id);
-        this->contacts_messages.push_back(a);
-    }else{//exsting contact
-        Serial.println("existing contact messages");
-        this->contacts_messages[index].messages.push_back(packet);
-        this->contacts_messages[index].newMessages = newMsg;
+{   
+    try{
+        uint32_t index = find(packet.id);
+        if(index == -1){//New contact
+            Serial.println("new contact messages");
+            lora_contact_messages a;
+            strcpy(a.id, packet.id);
+            a.newMessages = newMsg;
+            a.messages.push_back(packet);
+            Serial.println(a.id);
+            this->contacts_messages.push_back(a);
+        }else{//exsting contact
+            Serial.println("existing contact messages");
+            this->contacts_messages[index].messages.push_back(packet);
+            this->contacts_messages[index].newMessages = newMsg;
+        }
     }
-    return false;
+    catch (std::exception e){
+        return false;
+    }
+    inc++;
+    Serial.print("inc ");
+    Serial.println(inc);
+    return true;
 }
 
 uint32_t lora_incomming_messages::find(char *id)

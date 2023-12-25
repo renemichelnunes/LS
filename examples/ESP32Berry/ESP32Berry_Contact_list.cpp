@@ -113,12 +113,17 @@ static void sendMessage(lv_event_t * e){
     Serial.print(F("Message: "));
     Serial.println(message);
     if(!message.isEmpty()){  
-      lora_packet packet;
+      lora_packet packet, dummy, dummy2;
       strcpy(packet.id, msg->c->getID().c_str());
       strcpy(packet.msg, message.c_str());
       strcpy(packet.status, "sent");
       instance->_display->lv_port_sem_take();
+      instance->_display->radio->getRadio()->standby();
+      instance->_display->radio->getRadio()->readData((uint8_t*)&dummy, sizeof(dummy));
       err_code = instance->_display->radio->getRadio()->startTransmit((uint8_t*)&packet, sizeof(packet));
+
+      //instance->_display->radio->getRadio()->startTransmit((uint8_t*)&dummy, sizeof(dummy));
+      instance->_display->radio->getRadio()->startReceive();
       instance->_display->lv_port_sem_give();
       if(err_code != RADIOLIB_ERR_NONE){
         lv_list_add_text(msg->list, "fail to send");  
@@ -129,7 +134,26 @@ static void sendMessage(lv_event_t * e){
         lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
         lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
         lv_textarea_set_text(txtReply, "");
+        // Add answer to the contact messages
+        packet.me = true;
+        instance->_display->lim.addMessage(packet);
+        Serial.println("respose added to the list of messages");
       }
+    }
+  }
+}
+
+static void load_messages(char * id){
+  vector<lora_packet> caller_msg;
+  caller_msg = instance->_display->lim.getMessages(id);
+  if(caller_msg.size() > 0){
+    Serial.print(caller_msg.size());
+    Serial.println(" messages");
+    Serial.println(caller_msg[0].id);
+    for(int i = 0; i < caller_msg.size(); i++){
+      if(caller_msg[i].me)
+        Serial.print("me: ");
+      Serial.println(caller_msg[i].msg);
     }
   }
 }
@@ -196,17 +220,7 @@ static void chat_window(lv_event_t * e){
     lv_obj_add_event_cb(btnSend, sendMessage, LV_EVENT_SHORT_CLICKED, msg);
 
     // Retrieve messages
-    char ch_id[20] = {'\0'};
-    strcpy(ch_id, ch->getID().c_str());
-    vector<lora_packet> caller_msg;
-    caller_msg = instance->_display->lim.getMessages(ch_id);
-    if(caller_msg.size() > 0){
-      Serial.println(caller_msg[0].id);
-      for(int i = 0; i < caller_msg.size(); i++){
-        
-        Serial.println(caller_msg[i].msg);
-      }
-    }
+    load_messages((char *)ch->getID().c_str());
   }
 }
 
