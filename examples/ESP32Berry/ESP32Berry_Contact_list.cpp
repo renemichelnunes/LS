@@ -10,6 +10,7 @@
 #include "SPIFFS.h"
 
 static AppContactList *instance = NULL;
+TaskHandle_t * check_new_msg_task = NULL;
 
 Preferences prefs;
 
@@ -89,6 +90,8 @@ static void add_btn_event_cb(lv_event_t * e);
 static void close_chat_window(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
   if(code == LV_EVENT_CLICKED){
+    if(check_new_msg_task != NULL)
+      vTaskDelete(check_new_msg_task);
     lv_obj_t * window = (lv_obj_t *)lv_event_get_user_data(e);
     lv_obj_del(window);
   }
@@ -121,8 +124,6 @@ static void sendMessage(lv_event_t * e){
       instance->_display->radio->getRadio()->standby();
       instance->_display->radio->getRadio()->readData((uint8_t*)&dummy, sizeof(dummy));
       err_code = instance->_display->radio->getRadio()->startTransmit((uint8_t*)&packet, sizeof(packet));
-
-      //instance->_display->radio->getRadio()->startTransmit((uint8_t*)&dummy, sizeof(dummy));
       instance->_display->radio->getRadio()->startReceive();
       instance->_display->lv_port_sem_give();
       if(err_code != RADIOLIB_ERR_NONE){
@@ -143,18 +144,59 @@ static void sendMessage(lv_event_t * e){
   }
 }
 
+uint32_t msg_count = 0;
 static void load_messages(char * id){
   vector<lora_packet> caller_msg;
   caller_msg = instance->_display->lim.getMessages(id);
+  msg_count = caller_msg.size();
   if(caller_msg.size() > 0){
     Serial.print(caller_msg.size());
     Serial.println(" messages");
     Serial.println(caller_msg[0].id);
     for(int i = 0; i < caller_msg.size(); i++){
-      if(caller_msg[i].me)
+      if(caller_msg[i].me){
         Serial.print("me: ");
+        lv_list_add_text(msg->list, "Me");
+      }else{
+        lv_list_add_text(msg->list, msg->c->getName().c_str());
+      }
       Serial.println(caller_msg[i].msg);
+      lv_obj_t * btnList = lv_list_add_btn(msg->list, NULL, caller_msg[i].msg);
+      lv_obj_t* label = lv_obj_get_child(btnList, 0);
+      lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+      lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
     }
+  }
+}
+
+static void check_new_msg(void * param){
+  vector<lora_packet> caller_msg;
+  uint32_t actual_count;
+
+  Serial.print("param ");
+  Serial.println((char*)param);
+
+  while(true){
+    caller_msg = instance->_display->lim.getMessages((char *)param);
+    actual_count = caller_msg.size();
+    if(actual_count > msg_count){
+      Serial.println("new messages");
+      for(uint32_t i = msg_count; i < actual_count; i++){
+        if(caller_msg[i].me){
+          Serial.print("me: ");
+          lv_list_add_text(msg->list, "Me");
+        }else{
+          lv_list_add_text(msg->list, msg->c->getName().c_str());
+        }
+        Serial.println(caller_msg[i].msg);
+        lv_obj_t * btnList = lv_list_add_btn(msg->list, NULL, caller_msg[i].msg);
+        lv_obj_t* label = lv_obj_get_child(btnList, 0);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+        lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
+      }
+      msg_count = actual_count;
+    }
+    vTaskDelay(50);
   }
 }
 
@@ -221,6 +263,7 @@ static void chat_window(lv_event_t * e){
 
     // Retrieve messages
     load_messages((char *)ch->getID().c_str());
+    xTaskCreate(check_new_msg, "check_new_msg", 10000, (void*)"aaaa", 1, check_new_msg_task);
   }
 }
 
