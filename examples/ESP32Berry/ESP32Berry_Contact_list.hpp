@@ -13,6 +13,8 @@ private:
   lv_obj_t * configbtn;
   int display_width;
   void draw_ui();
+  SemaphoreHandle_t bin_sem;
+  TaskHandle_t lvgl_task_handle;
 
 public:
   AppContactList(Display *display, System *system, Network *network, const char *title);
@@ -23,4 +25,6 @@ public:
   void tg_event_handler(lv_event_t *e);
   lv_obj_t * getList();
   void close_app();
+  void lv_port_sem_take(void);
+  void lv_port_sem_give(void);
 };

@@ -14,6 +14,20 @@ TaskHandle_t * check_new_msg_task = NULL;
 
 Preferences prefs;
 
+void AppContactList::lv_port_sem_take(void) {
+  TaskHandle_t task = xTaskGetCurrentTaskHandle();
+  if (lvgl_task_handle != task) {
+    xSemaphoreTake(bin_sem, portMAX_DELAY);
+  }
+}
+
+void AppContactList::lv_port_sem_give(void) {
+  TaskHandle_t task = xTaskGetCurrentTaskHandle();
+  if (lvgl_task_handle != task) {
+    xSemaphoreGive(bin_sem);
+  }
+}
+
 static void saveContacts(){
   if(!SPIFFS.begin(true)){
     Serial.println("failed mounting SPIFFS");
@@ -89,9 +103,11 @@ static void add_btn_event_cb(lv_event_t * e);
 
 static void close_chat_window(lv_event_t * e){
   lv_event_code_t code = lv_event_get_code(e);
-  if(code == LV_EVENT_CLICKED){
-    if(check_new_msg_task != NULL)
+  if(code == LV_EVENT_SHORT_CLICKED){
+    if(check_new_msg_task != NULL){
       vTaskDelete(check_new_msg_task);
+      check_new_msg_task = NULL;
+    }
     lv_obj_t * window = (lv_obj_t *)lv_event_get_user_data(e);
     lv_obj_del(window);
   }
@@ -129,11 +145,11 @@ static void sendMessage(lv_event_t * e){
       if(err_code != RADIOLIB_ERR_NONE){
         lv_list_add_text(msg->list, "fail to send");  
       }else{
-        lv_list_add_text(msg->list, "Me");
-        lv_obj_t * btnList = lv_list_add_btn(msg->list, NULL, message.c_str());
-        lv_obj_t* label = lv_obj_get_child(btnList, 0);
-        lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-        lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
+        //lv_list_add_text(msg->list, "Me");
+        //lv_obj_t * btnList = lv_list_add_btn(msg->list, NULL, message.c_str());
+        //lv_obj_t* label = lv_obj_get_child(btnList, 0);
+        //lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+        //lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
         lv_textarea_set_text(txtReply, "");
         // Add answer to the contact messages
         packet.me = true;
@@ -176,7 +192,7 @@ static void check_new_msg(void * param){
   Serial.print("param ");
   Serial.println((char*)param);
 
-  while(true){
+  for(; ;){
     caller_msg = instance->_display->lim.getMessages((char *)param);
     actual_count = caller_msg.size();
     if(actual_count > msg_count){
@@ -190,13 +206,13 @@ static void check_new_msg(void * param){
         }
         Serial.println(caller_msg[i].msg);
         lv_obj_t * btnList = lv_list_add_btn(msg->list, NULL, caller_msg[i].msg);
-        lv_obj_t* label = lv_obj_get_child(btnList, 0);
+        lv_obj_t * label = lv_obj_get_child(btnList, 0);
         lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
         lv_obj_scroll_to_view(btnList, LV_ANIM_OFF);
       }
       msg_count = actual_count;
     }
-    vTaskDelay(50);
+    vTaskDelay(100);
   }
 }
 
@@ -232,7 +248,7 @@ static void chat_window(lv_event_t * e){
     lv_obj_t * lblClose = lv_label_create(btnClose);
     lv_label_set_text(lblClose, "back");
     lv_obj_align(lblClose, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(btnClose, close_chat_window, LV_EVENT_CLICKED, window);
+    lv_obj_add_event_cb(btnClose, close_chat_window, LV_EVENT_SHORT_CLICKED, window);
 
     /*List of replies*/
     lv_obj_t * listReply = lv_list_create(window);
@@ -263,7 +279,7 @@ static void chat_window(lv_event_t * e){
 
     // Retrieve messages
     load_messages((char *)ch->getID().c_str());
-    xTaskCreate(check_new_msg, "check_new_msg", 10000, (void*)"aaaa", 1, check_new_msg_task);
+    xTaskCreate(check_new_msg, "check_new_msg", 12000, (void*)"aaaa", 2, check_new_msg_task);
   }
 }
 
@@ -362,36 +378,30 @@ static void edit_contact(lv_event_t* e){
 }
 
 
-Contact c;
 void AppContactList::refresh_contact_list(){
-  try{
-    lv_obj_clean(list);
+  lv_obj_clean(instance->list);
+  // The floating button
+  
+  lv_obj_t* addBtn = lv_btn_create(instance->list);
+  lv_obj_set_size(addBtn, 50, 50);
+  lv_obj_add_flag(addBtn, LV_OBJ_FLAG_FLOATING);
+  lv_obj_align(addBtn, LV_ALIGN_BOTTOM_RIGHT, 0, -lv_obj_get_style_pad_right(instance->list, LV_PART_MAIN));
+  lv_obj_add_event_cb(addBtn, add_btn_event_cb, LV_EVENT_ALL, instance->list);
+  lv_obj_set_style_radius(addBtn, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_bg_img_src(addBtn, LV_SYMBOL_PLUS, 0);
+  lv_obj_set_style_text_font(addBtn, lv_theme_get_font_large(addBtn), 0);
 
-    // The floating button
-    lv_obj_t* addBtn = lv_btn_create(list);
-    lv_obj_set_size(addBtn, 50, 50);
-    lv_obj_add_flag(addBtn, LV_OBJ_FLAG_FLOATING);
-    lv_obj_align(addBtn, LV_ALIGN_BOTTOM_RIGHT, 0, -lv_obj_get_style_pad_right(list, LV_PART_MAIN));
-    lv_obj_add_event_cb(addBtn, add_btn_event_cb, LV_EVENT_ALL, list);
-    lv_obj_set_style_radius(addBtn, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_img_src(addBtn, LV_SYMBOL_PLUS, 0);
-    lv_obj_set_style_text_font(addBtn, lv_theme_get_font_large(addBtn), 0);
-
-    /*Adding events to each contact*/
-    for(uint32_t i = 0; i < contact_list.size(); i++){
-      c = contact_list.getContact(i);
-      lv_obj_t* btn = lv_list_add_btn(this->list, LV_SYMBOL_CALL, c.getName().c_str());
-      /*Edit contact info*/
-      lv_obj_add_event_cb(btn, edit_contact, LV_EVENT_LONG_PRESSED, btn);
-      /*Open chat window*/
-      lv_obj_add_event_cb(btn, chat_window, LV_EVENT_SHORT_CLICKED, btn);
-      lv_obj_move_foreground(addBtn);
-      lv_obj_scroll_to_view(btn, LV_ANIM_ON);
-    }
-    saveContacts();
-  }catch(exception e){
-    Serial.println(e.what());
+  /*Adding events to each contact*/
+  for(uint32_t i = 0; i < contact_list.size(); i++){
+    lv_obj_t* btn = lv_list_add_btn(this->list, LV_SYMBOL_CALL, contact_list.getContact(i).getName().c_str());
+    /*Edit contact info*/
+    lv_obj_add_event_cb(btn, edit_contact, LV_EVENT_LONG_PRESSED, btn);
+    /*Open chat window*/
+    lv_obj_add_event_cb(btn, chat_window, LV_EVENT_SHORT_CLICKED, btn);
+    lv_obj_move_foreground(addBtn);
+    lv_obj_scroll_to_view(btn, LV_ANIM_ON);
   }
+  saveContacts();
 }
 
 
@@ -400,12 +410,19 @@ AppContactList::AppContactList(Display* display, System* system, Network* networ
 const char* title) : AppBase(display, system, network, title){
   instance = this;
   display_width = display->get_display_width();
-  contact_list = Contact_list();
+  //contact_list = Contact_list();
   this->draw_ui();
   if(instance->_display->isLoRaOn())
     Serial.println(F("LoRa radio ready"));
   else
     Serial.println(F("LoRa radio not ready"));
+  try{
+    loadContacts();
+    this->refresh_contact_list();  
+  
+  }catch (exception &e){
+    Serial.println(e.what());
+  }
 }
 
 static void add(lv_event_t* e){
@@ -1008,7 +1025,7 @@ void AppContactList::draw_ui(){
   lv_obj_align(list, LV_ALIGN_LEFT_MID, -15, 0);
   lv_obj_set_style_border_opa(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_border_width(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-  lv_list_add_btn(list, LV_SYMBOL_WARNING, "Broadcast");
+  //lv_list_add_btn(list, LV_SYMBOL_WARNING, "Broadcast");
   // The floating button
   lv_obj_t* addBtn = lv_btn_create(list);
   lv_obj_set_size(addBtn, 30, 30);
@@ -1027,12 +1044,7 @@ void AppContactList::draw_ui(){
   lv_obj_set_style_bg_img_src(configbtn, LV_SYMBOL_BARS, 0);
   lv_obj_add_event_cb(configbtn, config_radio, LV_EVENT_SHORT_CLICKED, NULL);
 
-  try{
-    loadContacts();
-    this->refresh_contact_list();  
-  }catch (exception &e){
-    Serial.println(e.what());
-  }
+  
 
 }
 

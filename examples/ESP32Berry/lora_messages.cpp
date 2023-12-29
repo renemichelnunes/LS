@@ -58,7 +58,7 @@ std::vector<lora_packet> lora_incomming_messages::getMessages(char *id)
         this->contacts_messages[index].newMessages = false;
         return this->contacts_messages[index].messages;
     }
-    Serial.println("getMessages empty");
+    //Serial.println("getMessages empty");
     return std::vector<lora_packet>();
 }
 
