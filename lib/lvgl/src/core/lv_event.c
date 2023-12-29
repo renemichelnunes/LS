@@ -151,7 +151,8 @@ uint32_t lv_event_register_id(void)
 void _lv_event_mark_deleted(lv_obj_t * obj)
 {
     lv_event_t * e = event_head;
-
+    if(obj == NULL)
+        return;
     while(e) {
         if(e->current_target == obj || e->target == obj) e->deleted = 1;
         e = e->prev;

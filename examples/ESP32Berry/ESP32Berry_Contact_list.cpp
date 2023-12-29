@@ -10,7 +10,7 @@
 #include "SPIFFS.h"
 
 static AppContactList *instance = NULL;
-TaskHandle_t * check_new_msg_task = NULL;
+TaskHandle_t check_new_msg_task = NULL;
 
 Preferences prefs;
 
@@ -194,6 +194,7 @@ static void check_new_msg(void * param){
 
   for(; ;){
     caller_msg = instance->_display->lim.getMessages((char *)param);
+    
     actual_count = caller_msg.size();
     if(actual_count > msg_count){
       Serial.println("new messages");
@@ -279,7 +280,7 @@ static void chat_window(lv_event_t * e){
 
     // Retrieve messages
     load_messages((char *)ch->getID().c_str());
-    xTaskCreate(check_new_msg, "check_new_msg", 12000, (void*)"aaaa", 2, check_new_msg_task);
+    xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 12000, (void*)"aaaa", 2, &check_new_msg_task, 1);
   }
 }
 
