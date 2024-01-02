@@ -322,7 +322,7 @@ uint8_t count_msg = 0;
 bool gotPacket = false;
 
 void RXFlag(void){
-  int status;
+  int status = 0;
   char buffer[200] = {'\0'};
   lora_packet packet; 
   
@@ -482,9 +482,10 @@ void Display::ui_event_callback(lv_event_t *e) {
       Serial.println("lora on");
       gotPacket = false;
       transmissionFlag = false;
-      radio->getRadio()->setPacketReceivedAction(RXFlag);
+      
       //radio->getRadio()->setPacketSentAction(TXFlag);
       instance->lv_port_sem_take();
+      radio->getRadio()->setPacketReceivedAction(RXFlag);
       radio->getRadio()->startReceive();
       instance->lv_port_sem_give();
       //xTaskCreate(lora_listen2, "lora_listen_task", 10001, NULL, 0, &lora_listen_task);

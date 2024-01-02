@@ -13,10 +13,11 @@ private:
   lv_obj_t * configbtn;
   int display_width;
   void draw_ui();
-  SemaphoreHandle_t bin_sem;
+  
   TaskHandle_t lvgl_task_handle;
 
 public:
+  SemaphoreHandle_t bin_sem;
   AppContactList(Display *display, System *system, Network *network, const char *title);
   ~AppContactList();
   Contact_list contact_list;

@@ -136,6 +136,11 @@ static void sendMessage(lv_event_t * e){
       strcpy(packet.id, msg->c->getID().c_str());
       strcpy(packet.msg, message.c_str());
       strcpy(packet.status, "sent");
+
+      digitalWrite(BOARD_SDCARD_CS, HIGH);
+      digitalWrite(RADIO_CS_PIN, HIGH);
+      digitalWrite(BOARD_TFT_CS, HIGH);
+
       instance->_display->lv_port_sem_take();
       instance->_display->radio->getRadio()->standby();
       instance->_display->radio->getRadio()->readData((uint8_t*)&dummy, sizeof(dummy));

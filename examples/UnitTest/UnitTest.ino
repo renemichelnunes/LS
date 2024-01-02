@@ -52,7 +52,12 @@ LV_IMG_DECLARE(image3);
 LV_IMG_DECLARE(image4);
 LV_IMG_DECLARE(mouse_cursor_icon); /*Declare the image file.*/
 
-
+struct lora_packet{
+    char id[7] = "aaaa";
+    bool me = false;
+    char msg[200] = "testando";
+    char status[7] = "sent";
+}my_packet;
 
 TouchLib *touch = NULL;
 
@@ -330,6 +335,8 @@ void addMessage(const char *str)
     }
 }
 
+
+
 void loopRadio()
 {
     if (!hasRadio) {
@@ -352,7 +359,7 @@ void loopRadio()
 
         if (sender) {
             // Send data every 200 ms
-            if (millis() - runningMillis > 1000) {
+            if (millis() - runningMillis > 2000) {
                 // check if the previous transmission finished
                 if (transmissionFlag) {
                     // disable the interrupt service routine while
@@ -372,13 +379,13 @@ void loopRadio()
                         Serial.println(transmissionState);
                     }
 
-                    snprintf(buf, 256, "[ %u ]TX %u finished\n", millis() / 1000, sendCount);
+                    snprintf(buf, 256, "[ %u ]TX %u finished\n", millis() / 2000, sendCount);
                     lv_textarea_add_text(radio_ta, buf);
 
                     Serial.println(buf);
 
                     // you can also transmit byte array up to 256 bytes long
-                    transmissionState = radio.startTransmit(String(sendCount++).c_str());
+                    transmissionState = radio.startTransmit((uint8_t*)&my_packet, sizeof(my_packet));
 
                     // we're ready to send more packets,
                     // enable interrupt service routine
