@@ -1051,7 +1051,7 @@ void AppContactList::draw_ui(){
   lv_obj_add_event_cb(configbtn, config_radio, LV_EVENT_SHORT_CLICKED, NULL);
 
   
-
+  
 }
 
 void AppContactList::tg_event_handler(lv_event_t* e){

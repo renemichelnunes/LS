@@ -26,10 +26,11 @@ TFT_eSPI tft;
 SemaphoreHandle_t xSemaphore = NULL;
 bool touchDected = false;
 bool kbDected = false;
-bool hasRadio = false;
+bool hasRadio = false; 
+volatile bool gotPacket = false;
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
-
+TaskHandle_t thproc_recv_pkt = NULL;
 
 static void disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )
 {
@@ -215,7 +216,39 @@ bool checkKb()
     return Wire.read() != -1;
 }
 
+void processReceivedPacket(void * param){
+    lora_packet p;
+    while(true){
+        if(gotPacket){
+            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                radio.standby();
+                Serial.println("packet received");
+                uint32_t size = radio.getPacketLength();
+                Serial.print("size ");
+                Serial.println(size);
+                if(size > 0){
+                    radio.readData((uint8_t *)&p, size);
+                    Serial.print("id ");
+                    Serial.println(p.id);
+                    Serial.print("msg ");
+                    Serial.println(p.msg);
+                    Serial.print("status ");
+                    Serial.println(p.status);
+                    Serial.print("me ");
+                    Serial.println(p.me ? "true": "false");
+                }
+                gotPacket = false;
+                radio.startReceive();
+                xSemaphoreGive(xSemaphore);
+            }
+        }
+        vTaskDelay(5 / portTICK_PERIOD_MS);
+    }
+}
 
+void listen(){
+    gotPacket = true;
+}
 
 void setupRadio(lv_event_t * e)
 {
@@ -291,11 +324,15 @@ void setupRadio(lv_event_t * e)
         //return false;
     }
 
+    xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 10000, NULL, 1, &thproc_recv_pkt, 1);
+    radio.setPacketReceivedAction(listen);
+    radio.startReceive();
     //return true;
 
 }
 
 void test(lv_event_t * e){
+    lora_packet dummy;
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
             int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet));
@@ -309,17 +346,92 @@ void test(lv_event_t * e){
     }
 }
 
+void hide_contacts_frm(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(contacts_form != NULL){
+            lv_obj_add_flag(contacts_form, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void show_contacts_form(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+    
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(contacts_form != NULL){
+            lv_obj_clear_flag(contacts_form, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
 void ui(){
+    // Home screen**************************************************************
     init_screen = lv_obj_create(lv_scr_act());
     lv_obj_set_size(init_screen, LV_HOR_RES, LV_VER_RES);
-
+    
+    // Contacts button
     btn_contacts = lv_btn_create(init_screen);
-    lv_obj_set_size(btn_contacts, 100, 30);
+    lv_obj_set_size(btn_contacts, 100, 25);
     lv_obj_set_align(btn_contacts, LV_ALIGN_BOTTOM_LEFT);
     //lv_obj_set_pos(btn_contacts, 10, -10);
     lbl_btn_contacts = lv_label_create(btn_contacts);
     lv_label_set_text(lbl_btn_contacts, "Contacts");
-    lv_obj_add_event_cb(btn_contacts, test, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_obj_align(lbl_btn_contacts, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(btn_contacts, show_contacts_form, LV_EVENT_SHORT_CLICKED, NULL);
+    
+    // Test button
+    btn_test = lv_btn_create(init_screen);
+    lv_obj_set_size(btn_test, 60, 25);
+    lv_obj_set_align(btn_test, LV_ALIGN_BOTTOM_RIGHT);
+    //lv_obj_set_pos(btn_contacts, 10, -10);
+    lbl_btn_test = lv_label_create(btn_test);
+    lv_label_set_text(lbl_btn_test, "Test");
+    lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
+
+    // Contacts form**************************************************************
+    contacts_form = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(contacts_form, LV_HOR_RES, LV_VER_RES);
+
+    lv_obj_t * list = lv_list_create(contacts_form);
+    lv_obj_set_size(list, LV_HOR_RES - 20, 210);
+    lv_obj_align(list, LV_ALIGN_LEFT_MID, -15, 0);
+    lv_obj_set_style_border_opa(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_list_add_btn(list, LV_SYMBOL_WARNING, "Broadcast");
+
+    // Add contact button
+    lv_obj_t * btn_frm_contatcs_add = lv_btn_create(contacts_form);
+    lv_obj_set_size(btn_frm_contatcs_add, 60, 25);
+    lv_obj_set_align(btn_frm_contatcs_add, LV_ALIGN_BOTTOM_LEFT);
+    //lv_obj_set_pos(btn_contacts, 10, -10);
+    lv_obj_t * lbl_btn_frm_contacts_add = lv_label_create(btn_frm_contatcs_add);
+    lv_label_set_text(lbl_btn_frm_contacts_add, "Add");
+    lv_obj_align(lbl_btn_frm_contacts_add, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(btn_frm_contatcs_add, hide_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
+
+    // Close button
+    btn_frm_contatcs_close = lv_btn_create(contacts_form);
+    lv_obj_set_size(btn_frm_contatcs_close, 60, 25);
+    lv_obj_set_align(btn_frm_contatcs_close, LV_ALIGN_BOTTOM_RIGHT);
+    //lv_obj_set_pos(btn_contacts, 10, -10);
+    lbl_btn_frm_contacts_close = lv_label_create(btn_frm_contatcs_close);
+    lv_label_set_text(lbl_btn_frm_contacts_close, "Close");
+    lv_obj_align(lbl_btn_frm_contacts_close, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(btn_frm_contatcs_close, hide_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
+
+    
+
+    // Hide contacts form
+    lv_obj_add_flag(contacts_form, LV_OBJ_FLAG_HIDDEN);
+
+    // Add contacts form**************************************************************
+
+    // Edit contacts form**************************************************************
+
+    // Chat form**************************************************************
 }
 
 void setup(){
