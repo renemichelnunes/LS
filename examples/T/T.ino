@@ -6,7 +6,7 @@
 #include <ui.hpp>
 
 
-struct lora_packet{
+struct lora_packet2{
     char id[7] = "aaaa";
     bool me = false;
     char msg[200] = "testando";
@@ -217,7 +217,7 @@ bool checkKb()
 }
 
 void processReceivedPacket(void * param){
-    lora_packet p;
+    lora_packet2 p;
     while(true){
         if(gotPacket){
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -332,10 +332,10 @@ void setupRadio(lv_event_t * e)
 }
 
 void test(lv_event_t * e){
-    lora_packet dummy;
+    lora_packet2 dummy;
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
-            int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet));
+            int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet2));
             
             if(state != RADIOLIB_ERR_NONE){
                 Serial.print("transmission failed ");
@@ -343,7 +343,7 @@ void test(lv_event_t * e){
             }else
                 Serial.println("transmitted");
             // clear the cache
-            radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet));
+            radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet2));
         }
         xSemaphoreGive(xSemaphore);
     }
@@ -398,30 +398,41 @@ void ui(){
     contacts_form = lv_obj_create(lv_scr_act());
     lv_obj_set_size(contacts_form, LV_HOR_RES, LV_VER_RES);
 
+    // Contact list
     lv_obj_t * list = lv_list_create(contacts_form);
-    lv_obj_set_size(list, LV_HOR_RES - 20, 210);
-    lv_obj_align(list, LV_ALIGN_LEFT_MID, -15, 0);
+    lv_obj_set_size(list, LV_HOR_RES - 20, 180);
+    lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 25);
     lv_obj_set_style_border_opa(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_list_add_btn(list, LV_SYMBOL_WARNING, "Broadcast");
+    for(int i = 0; i < 10; i++)
+        lv_list_add_btn(list, LV_SYMBOL_CALL, "Broadcast");
 
     // Add contact button
     lv_obj_t * btn_frm_contatcs_add = lv_btn_create(contacts_form);
-    lv_obj_set_size(btn_frm_contatcs_add, 60, 25);
-    lv_obj_set_align(btn_frm_contatcs_add, LV_ALIGN_BOTTOM_LEFT);
+    lv_obj_set_size(btn_frm_contatcs_add, 50, 20);
+    lv_obj_set_align(btn_frm_contatcs_add, LV_ALIGN_BOTTOM_RIGHT);
     //lv_obj_set_pos(btn_contacts, 10, -10);
     lv_obj_t * lbl_btn_frm_contacts_add = lv_label_create(btn_frm_contatcs_add);
     lv_label_set_text(lbl_btn_frm_contacts_add, "Add");
     lv_obj_align(lbl_btn_frm_contacts_add, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_frm_contatcs_add, hide_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
 
+    // Title button
+    lv_obj_t * btn_frm_contatcs_title = lv_btn_create(contacts_form);
+    lv_obj_set_size(btn_frm_contatcs_title, 200, 20);
+    lv_obj_set_align(btn_frm_contatcs_title, LV_ALIGN_TOP_LEFT);
+    //lv_obj_set_pos(btn_contacts, 10, -10);
+    lv_obj_t * lbl_btn_frm_contacts_title = lv_label_create(btn_frm_contatcs_title);
+    lv_label_set_text(lbl_btn_frm_contacts_title, "Contacts");
+    lv_obj_align(lbl_btn_frm_contacts_title, LV_ALIGN_LEFT_MID, 0, 0);
+
     // Close button
     btn_frm_contatcs_close = lv_btn_create(contacts_form);
-    lv_obj_set_size(btn_frm_contatcs_close, 60, 25);
-    lv_obj_set_align(btn_frm_contatcs_close, LV_ALIGN_BOTTOM_RIGHT);
+    lv_obj_set_size(btn_frm_contatcs_close, 50, 20);
+    lv_obj_set_align(btn_frm_contatcs_close, LV_ALIGN_TOP_RIGHT);
     //lv_obj_set_pos(btn_contacts, 10, -10);
     lbl_btn_frm_contacts_close = lv_label_create(btn_frm_contatcs_close);
-    lv_label_set_text(lbl_btn_frm_contacts_close, "Close");
+    lv_label_set_text(lbl_btn_frm_contacts_close, "Back");
     lv_obj_align(lbl_btn_frm_contacts_close, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_frm_contatcs_close, hide_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
 
