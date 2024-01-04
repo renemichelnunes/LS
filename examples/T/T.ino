@@ -336,12 +336,14 @@ void test(lv_event_t * e){
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
             int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet));
+            
             if(state != RADIOLIB_ERR_NONE){
                 Serial.print("transmission failed ");
                 Serial.println(state);
             }else
                 Serial.println("transmitted");
-            int state = radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet));
+            // clear the cache
+            radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet));
         }
         xSemaphoreGive(xSemaphore);
     }
