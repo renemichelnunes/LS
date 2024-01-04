@@ -341,6 +341,7 @@ void test(lv_event_t * e){
                 Serial.println(state);
             }else
                 Serial.println("transmitted");
+            int state = radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet));
         }
         xSemaphoreGive(xSemaphore);
     }
