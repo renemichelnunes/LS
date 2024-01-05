@@ -26,3 +26,23 @@ lv_obj_t * btn_frm_add_contatcs_close;
 lv_obj_t * lbl_btn_frm_add_contacts_close;
 lv_obj_t * frm_add_contacts_btn_add;
 lv_obj_t * frm_add_contacts_btn_add_lbl;
+/*edit contact form*/
+lv_obj_t * frm_edit_contacts;
+lv_obj_t * frm_edit_btn_title;
+lv_obj_t * frm_edit_btn_title_lbl;
+lv_obj_t * frm_edit_text_ID;
+lv_obj_t * frm_edit_text_name;
+lv_obj_t * frm_edit_btn_ok;
+lv_obj_t * frm_edit_btn_ok_lbl;
+lv_obj_t * frm_edit_btn_back;
+lv_obj_t * frm_edit_btn_back_lbl;
+/*chat form*/
+lv_obj_t * frm_chat;
+lv_obj_t * frm_chat_btn_title;
+lv_obj_t * frm_chat_btn_title_lbl;
+lv_obj_t * frm_chat_list;
+lv_obj_t * frm_chat_text_ans;
+lv_obj_t * frm_chat_btn_send;
+lv_obj_t * frm_chat_btn_send_lbl;
+lv_obj_t * frm_chat_btn_back;
+lv_obj_t * frm_chat_btn_back_lbl;

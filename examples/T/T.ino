@@ -389,6 +389,26 @@ void show_add_contacts_frm(lv_event_t * e){
     }
 }
 
+void hide_edit_contacts(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_edit_contacts != NULL){
+            lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void show_edit_contacts(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_edit_contacts != NULL){
+            lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
 void add_contact(lv_event_t * e){
 
 }
@@ -515,7 +535,43 @@ void ui(){
     lv_obj_add_flag(frm_add_contact, LV_OBJ_FLAG_HIDDEN);
 
     // Edit contacts form**************************************************************
+    frm_edit_contacts = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(frm_edit_contacts, LV_HOR_RES, LV_VER_RES);
+    lv_obj_clear_flag(frm_edit_contacts, LV_OBJ_FLAG_SCROLLABLE);
 
+    //title
+    frm_edit_btn_title = lv_btn_create(frm_edit_contacts);
+    lv_obj_set_size(frm_edit_btn_title, 200, 20);
+    lv_obj_set_align(frm_edit_btn_title, LV_ALIGN_TOP_LEFT);
+
+    frm_edit_btn_title_lbl = lv_label_create(frm_edit_btn_title);
+    lv_label_set_text(frm_edit_btn_title_lbl, "Edit contact");
+    lv_obj_align(frm_edit_btn_title_lbl, LV_ALIGN_LEFT_MID, 0, 0);
+
+    // back button
+    frm_edit_btn_back = lv_btn_create(frm_edit_contacts);
+    lv_obj_set_size(frm_edit_btn_back, 50, 20);
+    lv_obj_align(frm_edit_btn_back, LV_ALIGN_TOP_RIGHT, 0, 0);
+
+    frm_edit_btn_back_lbl = lv_label_create(frm_edit_btn_back);
+    lv_label_set_text(frm_edit_btn_back_lbl, "Back");
+    lv_obj_align(frm_edit_btn_back_lbl, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_add_event_cb(frm_edit_btn_back, hide_edit_contacts, LV_EVENT_SHORT_CLICKED, NULL);
+
+    // ID text input
+    frm_edit_text_ID = lv_textarea_create(frm_edit_contacts);
+    lv_obj_set_size(frm_edit_text_ID, 150, 30);
+    lv_obj_align(frm_edit_text_ID, LV_ALIGN_TOP_MID, 0, 25);
+    lv_textarea_set_placeholder_text(frm_edit_text_ID, "ID");
+
+    // Name text input
+    frm_edit_text_name = lv_textarea_create(frm_edit_contacts);
+    lv_obj_set_size(frm_edit_text_name, 240, 30);
+    lv_obj_align(frm_edit_text_name, LV_ALIGN_TOP_MID, 0, 60);
+    lv_textarea_set_placeholder_text(frm_edit_text_name, "Name");
+
+    lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
     // Chat form**************************************************************
 }
 
