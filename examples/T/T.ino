@@ -572,7 +572,11 @@ void ui(){
     lv_textarea_set_placeholder_text(frm_edit_text_name, "Name");
 
     lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+
     // Chat form**************************************************************
+
+    // Settings form**************************************************************
+    
 }
 
 void setup(){
