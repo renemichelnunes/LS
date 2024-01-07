@@ -409,14 +409,40 @@ void show_edit_contacts(lv_event_t * e){
     }
 }
 
+void hide_chat(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_chat != NULL){
+            lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void show_chat(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_chat != NULL){
+            lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
 void add_contact(lv_event_t * e){
 
 }
 
 void ui(){
+    //style
+    lv_disp_t *dispp = lv_disp_get_default();
+    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(0xE95622), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
+    lv_disp_set_theme(dispp, theme);
+
     // Home screen**************************************************************
     init_screen = lv_obj_create(lv_scr_act());
     lv_obj_set_size(init_screen, LV_HOR_RES, LV_VER_RES);
+    lv_obj_clear_flag(init_screen, LV_OBJ_FLAG_SCROLLABLE);
     
     // Contacts button
     btn_contacts = lv_btn_create(init_screen);
@@ -574,6 +600,51 @@ void ui(){
     lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
 
     // Chat form**************************************************************
+    frm_chat = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(frm_chat, LV_HOR_RES, LV_VER_RES);
+    lv_obj_clear_flag(frm_chat, LV_OBJ_FLAG_SCROLLABLE);
+
+    //title
+    frm_chat_btn_title = lv_btn_create(frm_chat);
+    lv_obj_set_size(frm_chat_btn_title, 200, 20);
+    lv_obj_align(frm_chat_btn_title, LV_ALIGN_OUT_TOP_LEFT, -15, -15);
+
+    frm_chat_btn_title_lbl = lv_label_create(frm_chat_btn_title);
+    lv_label_set_text(frm_chat_btn_title_lbl, "chat with ");
+    lv_obj_set_align(frm_chat_btn_title_lbl, LV_ALIGN_LEFT_MID);
+
+    //back button
+    frm_chat_btn_back = lv_btn_create(frm_chat);
+    lv_obj_set_size(frm_chat_btn_back, 50, 20);
+    lv_obj_align(frm_chat_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
+
+    frm_chat_btn_back_lbl = lv_label_create(frm_chat_btn_back);
+    lv_label_set_text(frm_chat_btn_back_lbl, "Back");
+    lv_obj_set_align(frm_chat_btn_back_lbl, LV_ALIGN_CENTER);
+
+    lv_obj_add_event_cb(frm_chat_btn_back, hide_chat, LV_EVENT_SHORT_CLICKED, NULL);
+
+    //list
+    frm_chat_list = lv_list_create(frm_chat);
+    lv_obj_set_size(frm_chat_list, 320, 170);
+    lv_obj_align(frm_chat_list, LV_ALIGN_TOP_MID, 0, 5);
+
+    //answer text input
+    frm_chat_text_ans = lv_textarea_create(frm_chat);
+    lv_obj_set_size(frm_chat_text_ans, 260, 50);
+    lv_obj_align(frm_chat_text_ans, LV_ALIGN_BOTTOM_LEFT, -15, 15);
+    lv_textarea_set_placeholder_text(frm_chat_text_ans, "Answer");
+
+    //send button
+    frm_chat_btn_send = lv_btn_create(frm_chat);
+    lv_obj_set_size(frm_chat_btn_send, 50, 20);
+    lv_obj_align(frm_chat_btn_send, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
+
+    frm_chat_btn_send_lbl = lv_label_create(frm_chat_btn_send);
+    lv_label_set_text(frm_chat_btn_send_lbl, "Send");
+    lv_obj_set_align(frm_chat_btn_send_lbl, LV_ALIGN_CENTER);
+
+    //lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
 
     // Settings form**************************************************************
     
