@@ -4,7 +4,8 @@
 #include <TFT_eSPI.h>
 #include <RadioLib.h>
 #include <ui.hpp>
-
+#include <Contacts.hpp>
+#include "SPIFFS.h"
 
 struct lora_packet2{
     char id[7] = "aaaa";
@@ -31,6 +32,90 @@ volatile bool gotPacket = false;
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
 TaskHandle_t thproc_recv_pkt = NULL;
+
+Contact_list contacts_list = Contact_list();
+
+static void loadContacts(){
+  if(!SPIFFS.begin(true)){
+    Serial.println("failed mounting SPIFFS");
+    return;
+  }
+
+  fs::File file = SPIFFS.open("/contacts", FILE_READ);
+  if(!file){
+    Serial.println("contacts file problem");
+    return;
+  }
+  
+  vector<String> v;
+  while(file.available()){
+    v.push_back(file.readStringUntil('\n'));
+  }
+
+  file.close();
+
+  for(uint32_t index = 0; index < v.size(); index ++){
+    v[index].remove(v[index].length() - 1);
+  }
+
+  Contact c;
+  for(uint32_t index = 0; index < v.size(); index += 2){
+    c.setName(v[index]);
+    c.setID(v[index + 1]);
+    Serial.println(c.getID());
+    Serial.println(c.getName());
+    contacts_list.add(c);
+  }
+  Serial.print(contacts_list.size());
+  Serial.println(" contacts found");
+}
+
+static void saveContacts(){
+  if(!SPIFFS.begin(true)){
+    Serial.println("failed mounting SPIFFS");
+    return;
+  }
+
+  fs::File file = SPIFFS.open("/contacts", FILE_WRITE);
+  if(!file){
+    Serial.println("contacts file problem");
+    return;
+  }
+
+  Contact c;
+
+  for(uint32_t index = 0; index < contacts_list.size(); index++){
+    c = contacts_list.getContact(index);
+    file.println(c.getName());
+    file.println(c.getID());
+  }
+  Serial.print(contacts_list.size());
+  Serial.println(" contacts saved");
+  file.close();
+}
+
+static void refresh_contact_list(){
+    lv_obj_clean(frm_contacts_list);
+    lv_obj_t * btn;
+    for(uint32_t i = 0; i < contacts_list.size(); i++){
+        btn = lv_list_add_btn(frm_contacts_list, LV_SYMBOL_CALL, contacts_list.getContact(i).getName().c_str());
+        lv_obj_add_event_cb(btn, show_edit_contacts, LV_EVENT_LONG_PRESSED, btn);
+        lv_obj_add_event_cb(btn, show_chat, LV_EVENT_SHORT_CLICKED, btn);
+    }
+    saveContacts();
+}
+
+std::string generate_ID(){
+  srand(time(NULL));
+  static const char alphanum[] = "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  std::string ss;
+
+  for (int i = 0; i < 6; ++i) {
+    ss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+  }
+  return ss;
+}
 
 static void disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )
 {
@@ -353,8 +438,8 @@ void hide_contacts_frm(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
-        if(contacts_form != NULL){
-            lv_obj_add_flag(contacts_form, LV_OBJ_FLAG_HIDDEN);
+        if(frm_contacts != NULL){
+            lv_obj_add_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
@@ -363,8 +448,8 @@ void show_contacts_form(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     
     if(code == LV_EVENT_SHORT_CLICKED){
-        if(contacts_form != NULL){
-            lv_obj_clear_flag(contacts_form, LV_OBJ_FLAG_HIDDEN);
+        if(frm_contacts != NULL){
+            lv_obj_clear_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
@@ -394,6 +479,7 @@ void hide_edit_contacts(lv_event_t * e){
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_edit_contacts != NULL){
+
             lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
         }
     }
@@ -402,9 +488,9 @@ void hide_edit_contacts(lv_event_t * e){
 void show_edit_contacts(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
-    if(code == LV_EVENT_SHORT_CLICKED){
+    if(code == LV_EVENT_LONG_PRESSED){
         if(frm_edit_contacts != NULL){
-            lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
@@ -421,16 +507,37 @@ void hide_chat(lv_event_t * e){
 
 void show_chat(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
+    lv_obj_t * lbl = lv_obj_get_child(btn, 1);
 
+    char title[31] = "Chat with ";
+    strcat(title, lv_label_get_text(lbl));
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_chat != NULL){
-            lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
+            lv_label_set_text(frm_chat_btn_title_lbl, title);
         }
     }
 }
 
 void add_contact(lv_event_t * e){
-
+    const char * name, * id;
+    
+    id = lv_textarea_get_text(frm_add_contact_textarea_id);
+    name = lv_textarea_get_text(frm_add_contact_textarea_name);
+    if(name != "" && id != ""){
+        Contact c = Contact(name, id);
+        if(!contacts_list.find(c)){
+            if(contacts_list.add(c)){
+                Serial.println("Contact added");
+                refresh_contact_list();
+                lv_obj_add_flag(frm_add_contact, LV_OBJ_FLAG_HIDDEN);
+            }
+            else      
+                Serial.println("failed to add contact");
+        }else
+            Serial.println("Conatct already exists");
+    }
 }
 
 void ui(){
@@ -443,6 +550,7 @@ void ui(){
     init_screen = lv_obj_create(lv_scr_act());
     lv_obj_set_size(init_screen, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(init_screen, LV_OBJ_FLAG_SCROLLABLE);
+    //lv_obj_set_style_bg_color(init_screen, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     
     // Contacts button
     btn_contacts = lv_btn_create(init_screen);
@@ -465,50 +573,50 @@ void ui(){
     lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
 
     // Contacts form**************************************************************
-    contacts_form = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(contacts_form, LV_HOR_RES, LV_VER_RES);
-    lv_obj_clear_flag(contacts_form, LV_OBJ_FLAG_SCROLLABLE);
-
-    // Contact list
-    list = lv_list_create(contacts_form);
-    lv_obj_set_size(list, LV_HOR_RES - 20, 180);
-    lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 25);
-    lv_obj_set_style_border_opa(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    for(int i = 0; i < 10; i++)
-        lv_list_add_btn(list, LV_SYMBOL_CALL, "Broadcast");
-
-    // Add contact button
-    btn_frm_contatcs_add = lv_btn_create(contacts_form);
-    lv_obj_set_size(btn_frm_contatcs_add, 50, 20);
-    lv_obj_set_align(btn_frm_contatcs_add, LV_ALIGN_BOTTOM_RIGHT);
-    //lv_obj_set_pos(btn_contacts, 10, -10);
-    lbl_btn_frm_contacts_add = lv_label_create(btn_frm_contatcs_add);
-    lv_label_set_text(lbl_btn_frm_contacts_add, "Add");
-    lv_obj_align(lbl_btn_frm_contacts_add, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(btn_frm_contatcs_add, show_add_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
+    frm_contacts = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(frm_contacts, LV_HOR_RES, LV_VER_RES);
+    lv_obj_clear_flag(frm_contacts, LV_OBJ_FLAG_SCROLLABLE);
 
     // Title button
-    btn_frm_contatcs_title = lv_btn_create(contacts_form);
-    lv_obj_set_size(btn_frm_contatcs_title, 200, 20);
-    lv_obj_set_align(btn_frm_contatcs_title, LV_ALIGN_TOP_LEFT);
-    //lv_obj_set_pos(btn_contacts, 10, -10);
-    lbl_btn_frm_contacts_title = lv_label_create(btn_frm_contatcs_title);
-    lv_label_set_text(lbl_btn_frm_contacts_title, "Contacts");
-    lv_obj_align(lbl_btn_frm_contacts_title, LV_ALIGN_LEFT_MID, 0, 0);
+    frm_contatcs_btn_title = lv_btn_create(frm_contacts);
+    lv_obj_set_size(frm_contatcs_btn_title, 200, 20);
+    lv_obj_align(frm_contatcs_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
+    
+    frm_contatcs_btn_title_lbl = lv_label_create(frm_contatcs_btn_title);
+    lv_label_set_text(frm_contatcs_btn_title_lbl, "Contacts");
+    lv_obj_set_align(frm_contatcs_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
     // Close button
-    btn_frm_contatcs_close = lv_btn_create(contacts_form);
-    lv_obj_set_size(btn_frm_contatcs_close, 50, 20);
-    lv_obj_set_align(btn_frm_contatcs_close, LV_ALIGN_TOP_RIGHT);
+    frm_contacts_btn_back = lv_btn_create(frm_contacts);
+    lv_obj_set_size(frm_contacts_btn_back, 50, 20);
+    lv_obj_align(frm_contacts_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
     //lv_obj_set_pos(btn_contacts, 10, -10);
-    lbl_btn_frm_contacts_close = lv_label_create(btn_frm_contatcs_close);
-    lv_label_set_text(lbl_btn_frm_contacts_close, "Back");
-    lv_obj_align(lbl_btn_frm_contacts_close, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(btn_frm_contatcs_close, hide_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
+    frm_contacts_btn_back_lbl = lv_label_create(frm_contacts_btn_back);
+    lv_label_set_text(frm_contacts_btn_back_lbl, "Back");
+    lv_obj_set_align(frm_contacts_btn_back_lbl, LV_ALIGN_CENTER);
+    lv_obj_add_event_cb(frm_contacts_btn_back, hide_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
+
+    // Contact list
+    frm_contacts_list = lv_list_create(frm_contacts);
+    lv_obj_set_size(frm_contacts_list, LV_HOR_RES, 220);
+    lv_obj_align(frm_contacts_list, LV_ALIGN_TOP_MID, 0, 5);
+    lv_obj_set_style_border_opa(frm_contacts_list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(frm_contacts_list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    refresh_contact_list();
+
+    // Add contact button
+    frm_contacts_btn_add = lv_btn_create(frm_contacts);
+    lv_obj_set_size(frm_contacts_btn_add, 50, 20);
+    lv_obj_align(frm_contacts_btn_add, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
+    
+    frm_contacts_btn_add_lbl = lv_label_create(frm_contacts_btn_add);
+    lv_label_set_text(frm_contacts_btn_add_lbl, "Add");
+    lv_obj_set_align(frm_contacts_btn_add_lbl, LV_ALIGN_CENTER);
+    lv_obj_add_event_cb(frm_contacts_btn_add, show_add_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
 
     // Hide contacts form
-    lv_obj_add_flag(contacts_form, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
 
     // Add contacts form**************************************************************
     frm_add_contact = lv_obj_create(lv_scr_act());
@@ -518,40 +626,40 @@ void ui(){
     // Title
     frm_add_contacts_btn_title = lv_btn_create(frm_add_contact);
     lv_obj_set_size(frm_add_contacts_btn_title, 200, 20);
-    lv_obj_set_align(frm_add_contacts_btn_title, LV_ALIGN_TOP_LEFT);
+    lv_obj_align(frm_add_contacts_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
 
     frm_add_contacts_btn_title_lbl = lv_label_create(frm_add_contacts_btn_title);
     lv_label_set_text(frm_add_contacts_btn_title_lbl, "Add contact");
-    lv_obj_align(frm_add_contacts_btn_title_lbl, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_set_align(frm_add_contacts_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
     // id text input
     frm_add_contact_textarea_id = lv_textarea_create(frm_add_contact);
     lv_obj_set_size(frm_add_contact_textarea_id, 150, 30);
-    lv_obj_align(frm_add_contact_textarea_id, LV_ALIGN_TOP_MID, 0, 25);
+    lv_obj_align(frm_add_contact_textarea_id, LV_ALIGN_TOP_LEFT, 0, 25);
     lv_textarea_set_placeholder_text(frm_add_contact_textarea_id, "ID");
 
     // name text input
     frm_add_contact_textarea_name = lv_textarea_create(frm_add_contact);
     lv_obj_set_size(frm_add_contact_textarea_name, 240, 30);
-    lv_obj_align(frm_add_contact_textarea_name, LV_ALIGN_TOP_MID, 0, 60);
+    lv_obj_align(frm_add_contact_textarea_name, LV_ALIGN_TOP_LEFT, 0, 60);
     lv_textarea_set_placeholder_text(frm_add_contact_textarea_name, "Name");
 
     // add button
     frm_add_contacts_btn_add = lv_btn_create(frm_add_contact);
     lv_obj_set_size(frm_add_contacts_btn_add, 50, 20);
-    lv_obj_align(frm_add_contacts_btn_add, LV_ALIGN_TOP_MID, 0, 100);
+    lv_obj_align(frm_add_contacts_btn_add, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
 
     frm_add_contacts_btn_add_lbl = lv_label_create(frm_add_contacts_btn_add);
     lv_label_set_text(frm_add_contacts_btn_add_lbl, "Add");
-    lv_obj_align(frm_add_contacts_btn_add_lbl, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_align(frm_add_contacts_btn_add_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_event_cb(frm_add_contacts_btn_add, add_contact, LV_EVENT_SHORT_CLICKED, NULL);
 
     // Close button
     btn_frm_add_contatcs_close = lv_btn_create(frm_add_contact);
     lv_obj_set_size(btn_frm_add_contatcs_close, 50, 20);
-    lv_obj_set_align(btn_frm_add_contatcs_close, LV_ALIGN_TOP_RIGHT);
-    //lv_obj_set_pos(btn_contacts, 10, -10);
+    lv_obj_align(btn_frm_add_contatcs_close, LV_ALIGN_TOP_RIGHT, 15, -15);
+    
     lbl_btn_frm_add_contacts_close = lv_label_create(btn_frm_add_contatcs_close);
     lv_label_set_text(lbl_btn_frm_add_contacts_close, "Back");
     lv_obj_align(lbl_btn_frm_add_contacts_close, LV_ALIGN_CENTER, 0, 0);
@@ -568,33 +676,33 @@ void ui(){
     //title
     frm_edit_btn_title = lv_btn_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_btn_title, 200, 20);
-    lv_obj_set_align(frm_edit_btn_title, LV_ALIGN_TOP_LEFT);
+    lv_obj_align(frm_edit_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
 
     frm_edit_btn_title_lbl = lv_label_create(frm_edit_btn_title);
     lv_label_set_text(frm_edit_btn_title_lbl, "Edit contact");
-    lv_obj_align(frm_edit_btn_title_lbl, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_set_align(frm_edit_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
     // back button
     frm_edit_btn_back = lv_btn_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_btn_back, 50, 20);
-    lv_obj_align(frm_edit_btn_back, LV_ALIGN_TOP_RIGHT, 0, 0);
+    lv_obj_align(frm_edit_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
 
     frm_edit_btn_back_lbl = lv_label_create(frm_edit_btn_back);
     lv_label_set_text(frm_edit_btn_back_lbl, "Back");
-    lv_obj_align(frm_edit_btn_back_lbl, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_align(frm_edit_btn_back_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_event_cb(frm_edit_btn_back, hide_edit_contacts, LV_EVENT_SHORT_CLICKED, NULL);
 
     // ID text input
     frm_edit_text_ID = lv_textarea_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_text_ID, 150, 30);
-    lv_obj_align(frm_edit_text_ID, LV_ALIGN_TOP_MID, 0, 25);
+    lv_obj_align(frm_edit_text_ID, LV_ALIGN_TOP_LEFT, 0, 25);
     lv_textarea_set_placeholder_text(frm_edit_text_ID, "ID");
 
     // Name text input
     frm_edit_text_name = lv_textarea_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_text_name, 240, 30);
-    lv_obj_align(frm_edit_text_name, LV_ALIGN_TOP_MID, 0, 60);
+    lv_obj_align(frm_edit_text_name, LV_ALIGN_TOP_LEFT, 0, 60);
     lv_textarea_set_placeholder_text(frm_edit_text_name, "Name");
 
     lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
@@ -637,14 +745,14 @@ void ui(){
 
     //send button
     frm_chat_btn_send = lv_btn_create(frm_chat);
-    lv_obj_set_size(frm_chat_btn_send, 50, 20);
+    lv_obj_set_size(frm_chat_btn_send, 50, 50);
     lv_obj_align(frm_chat_btn_send, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
 
     frm_chat_btn_send_lbl = lv_label_create(frm_chat_btn_send);
     lv_label_set_text(frm_chat_btn_send_lbl, "Send");
     lv_obj_set_align(frm_chat_btn_send_lbl, LV_ALIGN_CENTER);
 
-    //lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
 
     // Settings form**************************************************************
     
@@ -654,6 +762,10 @@ void setup(){
     bool ret = false;
     Serial.begin(115200);
     delay(2000);
+
+    //Load contacts
+    loadContacts();
+
     pinMode(BOARD_POWERON, OUTPUT);
     digitalWrite(BOARD_POWERON, HIGH);
 
@@ -714,6 +826,7 @@ void setup(){
     ui();
     // set brightness
     analogWrite(BOARD_BL_PIN, 100);
+
 }
 
 void loop(){
