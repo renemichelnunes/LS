@@ -6,6 +6,7 @@
 #include <ui.hpp>
 #include <Contacts.hpp>
 #include "SPIFFS.h"
+#include "lora_messages.hpp"
 
 struct lora_packet2{
     char id[7] = "aaaa";
@@ -31,9 +32,11 @@ bool hasRadio = false;
 volatile bool gotPacket = false;
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
-TaskHandle_t thproc_recv_pkt = NULL;
+TaskHandle_t thproc_recv_pkt = NULL, 
+             check_new_msg_task = NULL;
 
 Contact_list contacts_list = Contact_list();
+lora_incomming_messages messages_list = lora_incomming_messages();
 
 static void loadContacts(){
   if(!SPIFFS.begin(true)){
@@ -526,7 +529,12 @@ void hide_chat(lv_event_t * e){
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_chat != NULL){
+            if(check_new_msg_task != NULL){
+                vTaskDelete(check_new_msg_task);
+                check_new_msg_task = NULL;
+            }
             lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
+            actual_contact = NULL;
         }
     }
 }
@@ -535,14 +543,83 @@ void show_chat(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
     lv_obj_t * lbl = lv_obj_get_child(btn, 1);
+    const char * name = lv_label_get_text(lbl);
+    actual_contact = contacts_list.getContactByName(name);
 
     char title[31] = "Chat with ";
-    strcat(title, lv_label_get_text(lbl));
+    strcat(title, name);
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_chat != NULL){
             lv_obj_clear_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
             lv_label_set_text(frm_chat_btn_title_lbl, title);
+            if(check_new_msg_task == NULL){
+                xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 10000, NULL, 1, &check_new_msg_task, 1);
+            }
         }
+    }
+}
+
+void send_message(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+    lora_packet dummy;
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        lora_packet pkt;
+        strcpy(pkt.id, actual_contact->getID().c_str());
+        strcpy(pkt.status, "send");
+        strcpy(pkt.msg, lv_textarea_get_text(frm_chat_text_ans));
+        
+        if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+            if(hasRadio){
+                if(strcmp(lv_textarea_get_text(frm_chat_text_ans), "") != 0){
+                    int state = radio.startTransmit((uint8_t *)&pkt, sizeof(lora_packet));
+                
+                    if(state != RADIOLIB_ERR_NONE){
+                        Serial.print("transmission failed ");
+                        Serial.println(state);
+                    }else
+                        Serial.println("transmitted");
+                    // clear the cache
+                    radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet));
+                    // add the message to the list of messages
+                    pkt.me = true;
+                    Serial.println(pkt.id);
+                    messages_list.addMessage(pkt);
+                    lv_textarea_set_text(frm_chat_text_ans, "");
+                }
+            }
+            xSemaphoreGive(xSemaphore);
+        }
+    }
+}
+
+uint32_t msg_count = 0;
+void check_new_msg(void * param){
+    vector<lora_packet> caller_msg;
+    uint32_t actual_count = 0;
+    lv_obj_t * btn = NULL, * lbl = NULL;
+    
+    while(true){
+        caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
+        actual_count = caller_msg.size();
+        if(actual_count > msg_count){
+            Serial.println("new messages");
+            for(uint32_t i = msg_count; i < actual_count; i++){
+                if(caller_msg[i].me){
+                    Serial.print("me: ");
+                    lv_list_add_text(frm_chat_list, "Me");
+                }else{
+                    lv_list_add_text(frm_chat_list, actual_contact->getName().c_str());
+                }
+                Serial.println(caller_msg[i].msg);
+                btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
+                lbl = lv_obj_get_child(btn, 0);
+                lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
+                lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
+            }
+            msg_count = actual_count;
+        }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
@@ -581,10 +658,13 @@ void del_contact(lv_event_t * e){
                 if(contacts_list.del(*c)){
                     refresh_contact_list();
                     lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+                    Serial.println("Contact deleted");
                 }
-            }
+            }else
+                Serial.println("Contact not found");
         }
-    }
+    }else
+        Serial.println("Name is empty");
 }
 
 void ui(){
@@ -804,6 +884,7 @@ void ui(){
     frm_chat_btn_send = lv_btn_create(frm_chat);
     lv_obj_set_size(frm_chat_btn_send, 50, 50);
     lv_obj_align(frm_chat_btn_send, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
+    lv_obj_add_event_cb(frm_chat_btn_send, send_message, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_chat_btn_send_lbl = lv_label_create(frm_chat_btn_send);
     lv_label_set_text(frm_chat_btn_send_lbl, "Send");

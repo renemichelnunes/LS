@@ -23,6 +23,6 @@ class lora_incomming_messages{
     lora_incomming_messages();
     ~lora_incomming_messages();
     bool addMessage(lora_packet packet, bool newMsg = true);
-    uint32_t find(char * id);
-    std::vector <lora_packet> getMessages(char * id);
+    uint32_t find(const char * id);
+    std::vector <lora_packet> getMessages(const char * id);
 };

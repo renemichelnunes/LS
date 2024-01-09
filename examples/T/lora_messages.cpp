@@ -40,7 +40,7 @@ bool lora_incomming_messages::addMessage(lora_packet packet, bool newMsg)
     return true;
 }
 
-uint32_t lora_incomming_messages::find(char *id)
+uint32_t lora_incomming_messages::find(const char *id)
 {
     if(this->contacts_messages.size() == 0)
         return -1;
@@ -51,7 +51,7 @@ uint32_t lora_incomming_messages::find(char *id)
     return -1;
 }
 
-std::vector<lora_packet> lora_incomming_messages::getMessages(char *id)
+std::vector<lora_packet> lora_incomming_messages::getMessages(const char *id)
 {
     uint32_t index = find(id);
     if(index != -1){
