@@ -40,6 +40,7 @@ lv_obj_t * frm_edit_btn_del;
 lv_obj_t * frm_edit_btn_del_lbl;
 /*chat form*/
 lv_obj_t * frm_chat;
+lv_group_t * frm_chat_group;
 lv_obj_t * frm_chat_btn_title;
 lv_obj_t * frm_chat_btn_title_lbl;
 lv_obj_t * frm_chat_list;

@@ -556,6 +556,7 @@ void show_chat(lv_event_t * e){
         if(frm_chat != NULL){
             lv_obj_clear_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
             lv_label_set_text(frm_chat_btn_title_lbl, title);
+            lv_group_focus_obj(frm_chat_text_ans);
             if(check_new_msg_task == NULL){
                 xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 10000, NULL, 1, &check_new_msg_task, 1);
                 Serial.println("check_new_msg_task running");
@@ -896,6 +897,16 @@ void ui(){
     frm_chat_btn_send_lbl = lv_label_create(frm_chat_btn_send);
     lv_label_set_text(frm_chat_btn_send_lbl, "Send");
     lv_obj_set_align(frm_chat_btn_send_lbl, LV_ALIGN_CENTER);
+
+    //group the objects, the answer area will be almost on focus every time we send a msg
+    frm_chat_group = lv_group_create();
+    lv_group_add_obj(frm_chat_group, frm_chat_btn_back);
+    lv_group_add_obj(frm_chat_group, frm_chat_btn_send);
+    lv_group_add_obj(frm_chat_group, frm_chat_btn_back_lbl);
+    lv_group_add_obj(frm_chat_group, frm_chat_btn_send_lbl);
+    lv_group_add_obj(frm_chat_group, frm_chat_btn_title);
+    lv_group_add_obj(frm_chat_group, frm_chat_btn_title_lbl);
+    lv_group_add_obj(frm_chat_group, frm_chat_list);
 
     lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
 
