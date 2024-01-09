@@ -474,23 +474,49 @@ void show_add_contacts_frm(lv_event_t * e){
     }
 }
 
+Contact * actual_contact = NULL;
 void hide_edit_contacts(lv_event_t * e){
+    Contact c;
+    const char * name, * id;
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_edit_contacts != NULL){
-
-            lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+            name = lv_textarea_get_text(frm_edit_text_name);
+            id = lv_textarea_get_text(frm_edit_text_ID);
+            c.setName(lv_textarea_get_text(frm_edit_text_name));
+            if(strcmp(name, "") != 0 && strcmp(id, "") != 0){
+                actual_contact->setID(id);
+                Serial.println("ID updated");
+                if(strcmp(name, actual_contact->getName().c_str()) != 0)
+                    if(!contacts_list.find(c))
+                        actual_contact->setName(name);
+                    else{
+                        Serial.println("Name already exists");
+                    }
+                actual_contact = NULL;
+                lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+                Serial.println("Contact updated");
+                refresh_contact_list();
+            }else
+                Serial.println("Name or ID empty");
         }
     }
 }
 
 void show_edit_contacts(lv_event_t * e){
+    const char * name;
     lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * btn = (lv_obj_t * )lv_event_get_user_data(e);
+    lv_obj_t * lbl = lv_obj_get_child(btn, 1);
 
     if(code == LV_EVENT_LONG_PRESSED){
         if(frm_edit_contacts != NULL){
+            name = lv_label_get_text(lbl);
+            actual_contact = contacts_list.getContactByName(name);
             lv_obj_clear_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+            lv_textarea_set_text(frm_edit_text_name, actual_contact->getName().c_str());
+            lv_textarea_set_text(frm_edit_text_ID, actual_contact->getID().c_str());
         }
     }
 }
@@ -522,21 +548,42 @@ void show_chat(lv_event_t * e){
 
 void add_contact(lv_event_t * e){
     const char * name, * id;
+    lv_event_code_t code = lv_event_get_code(e);
     
-    id = lv_textarea_get_text(frm_add_contact_textarea_id);
-    name = lv_textarea_get_text(frm_add_contact_textarea_name);
-    if(name != "" && id != ""){
-        Contact c = Contact(name, id);
-        if(!contacts_list.find(c)){
-            if(contacts_list.add(c)){
-                Serial.println("Contact added");
-                refresh_contact_list();
-                lv_obj_add_flag(frm_add_contact, LV_OBJ_FLAG_HIDDEN);
+    if(code == LV_EVENT_SHORT_CLICKED){
+        id = lv_textarea_get_text(frm_add_contact_textarea_id);
+        name = lv_textarea_get_text(frm_add_contact_textarea_name);
+        if(name != "" && id != ""){
+            Contact c = Contact(name, id);
+            if(!contacts_list.find(c)){
+                if(contacts_list.add(c)){
+                    Serial.println("Contact added");
+                    refresh_contact_list();
+                    lv_obj_add_flag(frm_add_contact, LV_OBJ_FLAG_HIDDEN);
+                }
+                else      
+                    Serial.println("failed to add contact");
+            }else
+                Serial.println("Conatct already exists");
+        }
+    }
+}
+
+void del_contact(lv_event_t * e){
+    const char * name;
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        name = lv_textarea_get_text(frm_edit_text_name);
+        if(name != ""){
+            Contact * c = contacts_list.getContactByName(name);
+            if(c != NULL){
+                if(contacts_list.del(*c)){
+                    refresh_contact_list();
+                    lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+                }
             }
-            else      
-                Serial.println("failed to add contact");
-        }else
-            Serial.println("Conatct already exists");
+        }
     }
 }
 
@@ -692,6 +739,16 @@ void ui(){
     lv_obj_set_align(frm_edit_btn_back_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_event_cb(frm_edit_btn_back, hide_edit_contacts, LV_EVENT_SHORT_CLICKED, NULL);
+
+    //Del button
+    frm_edit_btn_del = lv_btn_create(frm_edit_contacts);
+    lv_obj_set_size(frm_edit_btn_del, 50, 20);
+    lv_obj_align(frm_edit_btn_del, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
+    lv_obj_add_event_cb(frm_edit_btn_del, del_contact, LV_EVENT_SHORT_CLICKED, NULL);
+
+    frm_edit_btn_del_lbl = lv_label_create(frm_edit_btn_del);
+    lv_label_set_text(frm_edit_btn_del_lbl, "Del");
+    lv_obj_set_align(frm_edit_btn_del_lbl, LV_ALIGN_CENTER);
 
     // ID text input
     frm_edit_text_ID = lv_textarea_create(frm_edit_contacts);

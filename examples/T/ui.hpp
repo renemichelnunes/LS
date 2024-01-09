@@ -36,6 +36,8 @@ lv_obj_t * frm_edit_btn_ok;
 lv_obj_t * frm_edit_btn_ok_lbl;
 lv_obj_t * frm_edit_btn_back;
 lv_obj_t * frm_edit_btn_back_lbl;
+lv_obj_t * frm_edit_btn_del;
+lv_obj_t * frm_edit_btn_del_lbl;
 /*chat form*/
 lv_obj_t * frm_chat;
 lv_obj_t * frm_chat_btn_title;
