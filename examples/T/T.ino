@@ -524,6 +524,7 @@ void show_edit_contacts(lv_event_t * e){
     }
 }
 
+uint32_t msg_count = 0;
 void hide_chat(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -532,7 +533,10 @@ void hide_chat(lv_event_t * e){
             if(check_new_msg_task != NULL){
                 vTaskDelete(check_new_msg_task);
                 check_new_msg_task = NULL;
+                Serial.println("check_new_msg_task finished");
             }
+            lv_obj_clean(frm_chat_list);
+            msg_count = 0;
             lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
             actual_contact = NULL;
         }
@@ -554,6 +558,9 @@ void show_chat(lv_event_t * e){
             lv_label_set_text(frm_chat_btn_title_lbl, title);
             if(check_new_msg_task == NULL){
                 xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 10000, NULL, 1, &check_new_msg_task, 1);
+                Serial.println("check_new_msg_task running");
+                Serial.print("actual contact is ");
+                Serial.println(actual_contact->getName());
             }
         }
     }
@@ -593,7 +600,6 @@ void send_message(lv_event_t * e){
     }
 }
 
-uint32_t msg_count = 0;
 void check_new_msg(void * param){
     vector<lora_packet> caller_msg;
     uint32_t actual_count = 0;
@@ -878,6 +884,7 @@ void ui(){
     frm_chat_text_ans = lv_textarea_create(frm_chat);
     lv_obj_set_size(frm_chat_text_ans, 260, 50);
     lv_obj_align(frm_chat_text_ans, LV_ALIGN_BOTTOM_LEFT, -15, 15);
+    lv_textarea_set_max_length(frm_chat_text_ans, 199);
     lv_textarea_set_placeholder_text(frm_chat_text_ans, "Answer");
 
     //send button
