@@ -2,11 +2,13 @@
 #include <lvgl.h>
 
 /*home screen*/
-lv_obj_t * init_screen;
-lv_obj_t * btn_contacts;
-lv_obj_t * lbl_btn_contacts;
+lv_obj_t * frm_home;
+lv_obj_t * frm_home_btn_contacts;
+lv_obj_t * frm_home_btn_contacts_lbl;
 lv_obj_t * btn_test;
 lv_obj_t * lbl_btn_test;
+lv_obj_t * frm_home_btn_settings;
+lv_obj_t * frm_home_btn_settings_lbl;
 /*contacts form*/
 lv_obj_t * frm_contacts;
 lv_obj_t * frm_contacts_btn_back;
@@ -49,3 +51,14 @@ lv_obj_t * frm_chat_btn_send;
 lv_obj_t * frm_chat_btn_send_lbl;
 lv_obj_t * frm_chat_btn_back;
 lv_obj_t * frm_chat_btn_back_lbl;
+/*settings form*/
+lv_obj_t * frm_settings;
+lv_obj_t * frm_settings_btn_title;
+lv_obj_t * frm_settings_btn_title_lbl;
+lv_obj_t * frm_settings_btn_back;
+lv_obj_t * frm_settings_btn_back_lbl;
+lv_obj_t * frm_settings_name;
+lv_obj_t * frm_settings_id;
+lv_obj_t * frm_settings_btn_generate;
+lv_obj_t * frm_settings_btn_generate_lbl;
+lv_obj_t * frm_settings_selector_dx;

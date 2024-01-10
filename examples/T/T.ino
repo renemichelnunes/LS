@@ -457,6 +457,26 @@ void show_contacts_form(lv_event_t * e){
     }
 }
 
+void hide_settings(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_settings != NULL){
+            lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void show_settings(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_settings != NULL){
+            lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
 void hide_add_contacts_frm(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -674,31 +694,45 @@ void del_contact(lv_event_t * e){
         Serial.println("Name is empty");
 }
 
+void generateID(lv_event_t * e){
+    lv_textarea_set_text(frm_settings_id, generate_ID().c_str());
+}
+
 void ui(){
-    //style
+    //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
     lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(0xE95622), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
     lv_disp_set_theme(dispp, theme);
 
     // Home screen**************************************************************
-    init_screen = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(init_screen, LV_HOR_RES, LV_VER_RES);
-    lv_obj_clear_flag(init_screen, LV_OBJ_FLAG_SCROLLABLE);
+    frm_home = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(frm_home, LV_HOR_RES, LV_VER_RES);
+    lv_obj_clear_flag(frm_home, LV_OBJ_FLAG_SCROLLABLE);
     //lv_obj_set_style_bg_color(init_screen, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     
     // Contacts button
-    btn_contacts = lv_btn_create(init_screen);
-    lv_obj_set_size(btn_contacts, 100, 25);
-    lv_obj_set_align(btn_contacts, LV_ALIGN_BOTTOM_LEFT);
+    frm_home_btn_contacts = lv_btn_create(frm_home);
+    lv_obj_set_size(frm_home_btn_contacts, 70, 20);
+    lv_obj_set_align(frm_home_btn_contacts, LV_ALIGN_BOTTOM_LEFT);
     //lv_obj_set_pos(btn_contacts, 10, -10);
-    lbl_btn_contacts = lv_label_create(btn_contacts);
-    lv_label_set_text(lbl_btn_contacts, "Contacts");
-    lv_obj_align(lbl_btn_contacts, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(btn_contacts, show_contacts_form, LV_EVENT_SHORT_CLICKED, NULL);
+    frm_home_btn_contacts_lbl = lv_label_create(frm_home_btn_contacts);
+    lv_label_set_text(frm_home_btn_contacts_lbl, "Contacts");
+    lv_obj_align(frm_home_btn_contacts_lbl, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(frm_home_btn_contacts, show_contacts_form, LV_EVENT_SHORT_CLICKED, NULL);
     
+    // Settings button
+    frm_home_btn_settings = lv_btn_create(frm_home);
+    lv_obj_set_size(frm_home_btn_settings, 70, 20);
+    lv_obj_align(frm_home_btn_settings, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_add_event_cb(frm_home_btn_settings, show_settings, LV_EVENT_SHORT_CLICKED, NULL);
+
+    frm_home_btn_settings_lbl = lv_label_create(frm_home_btn_settings);
+    lv_label_set_text(frm_home_btn_settings_lbl, "Settings");
+    lv_obj_set_align(frm_home_btn_settings_lbl, LV_ALIGN_CENTER);
+
     // Test button
-    btn_test = lv_btn_create(init_screen);
-    lv_obj_set_size(btn_test, 60, 25);
+    btn_test = lv_btn_create(frm_home);
+    lv_obj_set_size(btn_test, 50, 20);
     lv_obj_set_align(btn_test, LV_ALIGN_BOTTOM_RIGHT);
     //lv_obj_set_pos(btn_contacts, 10, -10);
     lbl_btn_test = lv_label_create(btn_test);
@@ -911,7 +945,53 @@ void ui(){
     lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
 
     // Settings form**************************************************************
-    
+    frm_settings = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(frm_settings, LV_HOR_RES, LV_VER_RES);
+    lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Title
+    frm_settings_btn_title = lv_btn_create(frm_settings);
+    lv_obj_set_size(frm_settings_btn_title, 200, 20);
+    lv_obj_align(frm_settings_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
+
+    frm_settings_btn_title_lbl = lv_label_create(frm_settings_btn_title);
+    lv_label_set_text(frm_settings_btn_title_lbl, "Settings");
+    lv_obj_set_align(frm_settings_btn_title_lbl, LV_ALIGN_LEFT_MID);
+
+    // back button
+    frm_settings_btn_back = lv_btn_create(frm_settings);
+    lv_obj_set_size(frm_settings_btn_back, 50, 20);
+    lv_obj_align(frm_settings_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
+    lv_obj_add_event_cb(frm_settings_btn_back, hide_settings, LV_EVENT_SHORT_CLICKED, NULL);
+
+    frm_settings_btn_back_lbl = lv_label_create(frm_settings_btn_back);
+    lv_label_set_text(frm_settings_btn_back_lbl, "Back");
+    lv_obj_set_align(frm_settings_btn_back_lbl, LV_ALIGN_CENTER);
+
+    // Name
+    frm_settings_name = lv_textarea_create(frm_settings);
+    lv_obj_set_size(frm_settings_name, 300, 30);
+    lv_textarea_set_placeholder_text(frm_settings_name, "Name");
+    lv_obj_align(frm_settings_name, LV_ALIGN_OUT_TOP_LEFT, 0, 10);
+
+    // ID
+    frm_settings_id = lv_textarea_create(frm_settings);
+    lv_obj_set_size(frm_settings_id, 90, 30);
+    lv_textarea_set_placeholder_text(frm_settings_id, "ID");
+    lv_obj_align(frm_settings_id, LV_ALIGN_TOP_LEFT, 0, 40);
+
+    //Generate button
+    frm_settings_btn_generate = lv_btn_create(frm_settings);
+    lv_obj_set_size(frm_settings_btn_generate, 80, 20);
+    lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 100, 45);
+    lv_textarea_set_max_length(frm_settings_id, 6);
+    lv_obj_add_event_cb(frm_settings_btn_generate, generateID, LV_EVENT_SHORT_CLICKED, NULL);
+
+    frm_settings_btn_generate_lbl = lv_label_create(frm_settings_btn_generate);
+    lv_label_set_text(frm_settings_btn_generate_lbl, "Generate");
+    lv_obj_set_align(frm_settings_btn_generate_lbl, LV_ALIGN_CENTER);
+
+    //lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
 }
 
 void setup(){
