@@ -656,7 +656,7 @@ void send_message(lv_event_t * e){
 
     if(code == LV_EVENT_SHORT_CLICKED){
         lora_packet pkt;
-        strcpy(pkt.id, actual_contact->getID().c_str());
+        strcpy(pkt.id, user_id);
         strcpy(pkt.status, "send");
         strcpy(pkt.msg, lv_textarea_get_text(frm_chat_text_ans));
         
