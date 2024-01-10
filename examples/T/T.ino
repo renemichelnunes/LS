@@ -360,7 +360,7 @@ bool checkKb()
 }
 
 void processReceivedPacket(void * param){
-    lora_packet2 p;
+    lora_packet p;
     while(true){
         if(gotPacket){
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -379,6 +379,10 @@ void processReceivedPacket(void * param){
                     Serial.println(p.status);
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
+                    if(contacts_list.getContactByID(p.id) != NULL)
+                        messages_list.addMessage(p);
+                    else
+                        Serial.println("Packet ignored");
                 }
                 gotPacket = false;
                 radio.startReceive();
@@ -529,8 +533,8 @@ void show_settings(lv_event_t * e){
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_settings != NULL){
             loadSettings();
-            lv_textarea_set_text(frm_settings_name, contact_name);
-            lv_textarea_set_text(frm_settings_id, contact_id);
+            lv_textarea_set_text(frm_settings_name, user_name);
+            lv_textarea_set_text(frm_settings_id, user_id);
             lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
         }
     }

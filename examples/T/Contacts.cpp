@@ -80,6 +80,16 @@ Contact * Contact_list::getContactByName(String name){
     return NULL;
 }
 
+Contact *Contact_list::getContactByID(String id)
+{
+    if(list.size() > 0){
+        for(uint32_t i = 0; i < list.size(); i++)
+            if(strcmp(list[i].getID().c_str(), id.c_str()) == 0)
+                return &this->list[i];
+    }
+    return NULL;
+}
+
 bool Contact_list::del(Contact c){
     std::vector<Contact>::iterator it = std::find(this->list.begin(), this->list.end(), c);
     if(it != this->list.end()){
