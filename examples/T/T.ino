@@ -38,6 +38,61 @@ TaskHandle_t thproc_recv_pkt = NULL,
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
 
+char user_name[50] = "";
+char user_id[7] = "";
+
+static void loadSettings(){
+    if(!SPIFFS.begin(true)){
+        Serial.println("failed mounting SPIFFS");
+        return;
+    }
+
+    fs::File file = SPIFFS.open("/settings", FILE_READ);
+    if(!file){
+        Serial.println("couldn't open settings file");
+        return;
+    }
+    try{
+        vector<String> v;
+        while(file.available()){
+            v.push_back(file.readStringUntil('\n'));
+        }
+
+        file.close();
+
+        if(v.size() == 0)
+            return;
+        for(uint32_t index = 0; index < v.size(); index++){
+            v[index].remove(v[index].length() - 1);
+        }
+        
+        strcpy(user_name, v[0].c_str());
+        strcpy(user_id, v[1].c_str());
+
+        Serial.println("Settings loaded");
+    }catch (exception &ex){
+        Serial.println(ex.what());
+    }
+}
+
+static void saveSettings(){
+    if(!SPIFFS.begin(true)){
+        Serial.println("failed mounting SPIFFS");
+        return;
+    }
+
+    fs::File file = SPIFFS.open("/settings", FILE_WRITE);
+    if(!file){
+        Serial.println("couldn't open settings file");
+        return;
+    }
+
+    file.println(lv_textarea_get_text(frm_settings_name));
+    file.println(lv_textarea_get_text(frm_settings_id));
+    Serial.println("settings saved");
+    file.close();
+}
+
 static void loadContacts(){
   if(!SPIFFS.begin(true)){
     Serial.println("failed mounting SPIFFS");
@@ -462,6 +517,7 @@ void hide_settings(lv_event_t * e){
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_settings != NULL){
+            saveSettings();
             lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
         }
     }
@@ -472,6 +528,9 @@ void show_settings(lv_event_t * e){
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_settings != NULL){
+            loadSettings();
+            lv_textarea_set_text(frm_settings_name, contact_name);
+            lv_textarea_set_text(frm_settings_id, contact_id);
             lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
         }
     }
@@ -696,6 +755,14 @@ void del_contact(lv_event_t * e){
 
 void generateID(lv_event_t * e){
     lv_textarea_set_text(frm_settings_id, generate_ID().c_str());
+}
+
+void DX(lv_event_t * e){
+    if(lv_obj_has_state(frm_settings_switch_dx, LV_STATE_CHECKED)){
+        Serial.println("DX mode on");
+    }else{
+        Serial.println("DX mode off");
+    }
 }
 
 void ui(){
@@ -970,12 +1037,14 @@ void ui(){
 
     // Name
     frm_settings_name = lv_textarea_create(frm_settings);
+    lv_textarea_set_one_line(frm_settings_name, true);
     lv_obj_set_size(frm_settings_name, 300, 30);
     lv_textarea_set_placeholder_text(frm_settings_name, "Name");
     lv_obj_align(frm_settings_name, LV_ALIGN_OUT_TOP_LEFT, 0, 10);
 
     // ID
     frm_settings_id = lv_textarea_create(frm_settings);
+    lv_textarea_set_one_line(frm_settings_id, true);
     lv_obj_set_size(frm_settings_id, 90, 30);
     lv_textarea_set_placeholder_text(frm_settings_id, "ID");
     lv_obj_align(frm_settings_id, LV_ALIGN_TOP_LEFT, 0, 40);
@@ -991,7 +1060,17 @@ void ui(){
     lv_label_set_text(frm_settings_btn_generate_lbl, "Generate");
     lv_obj_set_align(frm_settings_btn_generate_lbl, LV_ALIGN_CENTER);
 
-    //lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
+    // dx switch
+    frm_settings_switch_dx = lv_switch_create(frm_settings);
+    lv_obj_align(frm_settings_switch_dx, LV_ALIGN_OUT_TOP_LEFT, 30, 75);
+    lv_obj_add_event_cb(frm_settings_switch_dx, DX, LV_EVENT_VALUE_CHANGED, NULL);
+
+    frm_settings_switch_dx_lbl = lv_label_create(frm_settings);
+    lv_label_set_text(frm_settings_switch_dx_lbl, "DX");
+    lv_obj_align(frm_settings_switch_dx_lbl, LV_ALIGN_TOP_LEFT, 0, 80);
+
+
+    lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
 }
 
 void setup(){
@@ -1060,6 +1139,9 @@ void setup(){
     setupLvgl();
 
     ui();
+
+    //Load settings
+    loadSettings();
     // set brightness
     analogWrite(BOARD_BL_PIN, 100);
 

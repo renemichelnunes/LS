@@ -61,4 +61,5 @@ lv_obj_t * frm_settings_name;
 lv_obj_t * frm_settings_id;
 lv_obj_t * frm_settings_btn_generate;
 lv_obj_t * frm_settings_btn_generate_lbl;
-lv_obj_t * frm_settings_selector_dx;
+lv_obj_t * frm_settings_switch_dx;
+lv_obj_t * frm_settings_switch_dx_lbl;
