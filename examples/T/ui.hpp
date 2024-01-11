@@ -11,6 +11,9 @@ lv_obj_t * btn_test;
 lv_obj_t * lbl_btn_test;
 lv_obj_t * frm_home_btn_settings;
 lv_obj_t * frm_home_btn_settings_lbl;
+lv_obj_t * frm_home_contacts_img;
+lv_obj_t * frm_home_time_lbl;
+lv_obj_t * frm_home_date_lbl;
 /*contacts form*/
 lv_obj_t * frm_contacts;
 lv_obj_t * frm_contacts_btn_back;

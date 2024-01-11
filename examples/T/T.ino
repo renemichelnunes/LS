@@ -7,9 +7,12 @@
 #include <Contacts.hpp>
 #include "SPIFFS.h"
 #include "lora_messages.hpp"
-#include "ubuntu.c"
+#include <time.h>
 
 LV_FONT_DECLARE(ubuntu);
+LV_IMG_DECLARE(img_background);
+LV_IMG_DECLARE(icon_lora2);
+LV_IMG_DECLARE(icon_mail);
 
 struct lora_packet2{
     char id[7] = "aaaa";
@@ -37,7 +40,8 @@ lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
 TaskHandle_t thproc_recv_pkt = NULL, 
              check_new_msg_task = NULL,
-             not_task = NULL;
+             not_task = NULL,
+             date_time_task = NULL;
 
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
@@ -809,6 +813,20 @@ void DX(lv_event_t * e){
     }
 }
 
+void update_time(void *timeStruct) {
+    while(true){
+        char hourMin[10];
+        strftime(hourMin, 10, "%H:%M %p", (struct tm *)timeStruct);
+        lv_label_set_text(frm_home_time_lbl, hourMin);
+
+        char date[12];
+        strftime(date, 12, "%a, %b %d", (struct tm *)timeStruct);
+        lv_label_set_text(frm_home_date_lbl, date);
+        vTaskDelay(60000 / portTICK_RATE_MS);
+    }
+    vTaskDelete(date_time_task);
+}
+
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
@@ -821,24 +839,45 @@ void ui(){
     lv_obj_clear_flag(frm_home, LV_OBJ_FLAG_SCROLLABLE);
     //lv_obj_set_style_bg_color(init_screen, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     
+    //background image
+    lv_obj_set_style_bg_img_src(frm_home, &img_background, LV_PART_MAIN | LV_STATE_DEFAULT);
+
     // title bar
-    frm_home_title = lv_btn_create(lv_scr_act());
+    frm_home_title = lv_btn_create(frm_home);
     lv_obj_set_size(frm_home_title, 310, 20);
-    lv_obj_align(frm_home_title, LV_ALIGN_TOP_MID, 0, 5);
+    lv_obj_align(frm_home_title, LV_ALIGN_TOP_MID, 0, -10);
 
     frm_home_title_lbl = lv_label_create(frm_home_title);
     lv_obj_set_align(frm_home_title_lbl, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_CALL);
+    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_CALL " " LV_SYMBOL_BATTERY_FULL);
+
+    //date label
+    frm_home_date_lbl = lv_label_create(frm_home);
+    lv_obj_set_style_text_color(frm_home_date_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(frm_home_date_lbl, "no date");
+    lv_obj_align(frm_home_date_lbl, LV_ALIGN_TOP_MID, 0, 20);
+
+    //time label
+    frm_home_time_lbl = lv_label_create(frm_home);
+    lv_obj_set_style_text_color(frm_home_time_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(frm_home_time_lbl, "00:00");
+    lv_obj_align(frm_home_time_lbl, LV_ALIGN_TOP_MID, 0, 40);
 
     // Contacts button
     frm_home_btn_contacts = lv_btn_create(frm_home);
-    lv_obj_set_size(frm_home_btn_contacts, 20, 20);
+    lv_obj_set_size(frm_home_btn_contacts, 50, 35);
     lv_obj_set_align(frm_home_btn_contacts, LV_ALIGN_BOTTOM_LEFT);
-    //lv_obj_set_pos(btn_contacts, 10, -10);
+    lv_obj_add_event_cb(frm_home_btn_contacts, show_contacts_form, LV_EVENT_SHORT_CLICKED, NULL);
+    /*
     frm_home_btn_contacts_lbl = lv_label_create(frm_home_btn_contacts);
     lv_label_set_text(frm_home_btn_contacts_lbl, LV_SYMBOL_CALL);
     lv_obj_align(frm_home_btn_contacts_lbl, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(frm_home_btn_contacts, show_contacts_form, LV_EVENT_SHORT_CLICKED, NULL);
+    
+    */
+    //lora icon
+    frm_home_contacts_img = lv_img_create(frm_home_btn_contacts);
+    lv_img_set_src(frm_home_contacts_img, &icon_lora2);
+    lv_obj_set_align(frm_home_contacts_img, LV_ALIGN_CENTER);
     
     // Settings button
     frm_home_btn_settings = lv_btn_create(frm_home);
@@ -1206,6 +1245,9 @@ void setup(){
     loadSettings();
     // set brightness
     analogWrite(BOARD_BL_PIN, 100);
+
+    //date time task
+    //xTaskCreatePinnedToCore(update_time, "update_time", 11000, NULL, 2, &date_time_task, 1);
 }
 
 void loop(){
