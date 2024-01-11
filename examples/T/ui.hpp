@@ -3,6 +3,8 @@
 
 /*home screen*/
 lv_obj_t * frm_home;
+lv_obj_t * frm_home_title;
+lv_obj_t * frm_home_title_lbl;
 lv_obj_t * frm_home_btn_contacts;
 lv_obj_t * frm_home_btn_contacts_lbl;
 lv_obj_t * btn_test;
