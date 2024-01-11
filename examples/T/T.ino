@@ -36,7 +36,8 @@ volatile bool gotPacket = false;
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
 TaskHandle_t thproc_recv_pkt = NULL, 
-             check_new_msg_task = NULL;
+             check_new_msg_task = NULL,
+             not_task = NULL;
 
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
@@ -791,6 +792,18 @@ void DX(lv_event_t * e){
     }
 }
 
+void notify(void * param){
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_t * label = lv_label_create(frm_not);
+    lv_label_set_text(label, (char *)param);
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    lv_obj_clean(frm_not);
+    lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+    if(not_task != NULL)
+        vTaskDelete(not_task);
+}
+
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
@@ -805,22 +818,22 @@ void ui(){
     
     // Contacts button
     frm_home_btn_contacts = lv_btn_create(frm_home);
-    lv_obj_set_size(frm_home_btn_contacts, 70, 20);
+    lv_obj_set_size(frm_home_btn_contacts, 20, 20);
     lv_obj_set_align(frm_home_btn_contacts, LV_ALIGN_BOTTOM_LEFT);
     //lv_obj_set_pos(btn_contacts, 10, -10);
     frm_home_btn_contacts_lbl = lv_label_create(frm_home_btn_contacts);
-    lv_label_set_text(frm_home_btn_contacts_lbl, "Contacts");
+    lv_label_set_text(frm_home_btn_contacts_lbl, LV_SYMBOL_CALL);
     lv_obj_align(frm_home_btn_contacts_lbl, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(frm_home_btn_contacts, show_contacts_form, LV_EVENT_SHORT_CLICKED, NULL);
     
     // Settings button
     frm_home_btn_settings = lv_btn_create(frm_home);
-    lv_obj_set_size(frm_home_btn_settings, 70, 20);
+    lv_obj_set_size(frm_home_btn_settings, 20, 20);
     lv_obj_align(frm_home_btn_settings, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_add_event_cb(frm_home_btn_settings, show_settings, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_home_btn_settings_lbl = lv_label_create(frm_home_btn_settings);
-    lv_label_set_text(frm_home_btn_settings_lbl, "Settings");
+    lv_label_set_text(frm_home_btn_settings_lbl, LV_SYMBOL_SETTINGS);
     lv_obj_set_align(frm_home_btn_settings_lbl, LV_ALIGN_CENTER);
 
     // Test button
@@ -1095,8 +1108,14 @@ void ui(){
     lv_label_set_text(frm_settings_switch_dx_lbl, "DX");
     lv_obj_align(frm_settings_switch_dx_lbl, LV_ALIGN_TOP_LEFT, 0, 80);
 
-
     lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
+
+    // notification form
+    frm_not = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(frm_not, 300, 50);
+    lv_obj_align(frm_not, LV_ALIGN_TOP_MID, 0, 0);
+
+    lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
 }
 
 void setup(){
@@ -1170,7 +1189,7 @@ void setup(){
     loadSettings();
     // set brightness
     analogWrite(BOARD_BL_PIN, 100);
-
+    xTaskCreatePinnedToCore(notify, "notify", 11000, (void *)(LV_SYMBOL_BELL " you have new messages"), 2, &not_task, 1);
 }
 
 void loop(){

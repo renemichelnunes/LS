@@ -63,3 +63,5 @@ lv_obj_t * frm_settings_btn_generate;
 lv_obj_t * frm_settings_btn_generate_lbl;
 lv_obj_t * frm_settings_switch_dx;
 lv_obj_t * frm_settings_switch_dx_lbl;
+/*notification form*/
+lv_obj_t * frm_not;
