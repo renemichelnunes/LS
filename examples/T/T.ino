@@ -116,6 +116,7 @@ static void loadContacts(){
     v[index].remove(v[index].length() - 1);
   }
 
+    Serial.println("Loading contacts...");
   Contact c;
   for(uint32_t index = 0; index < v.size(); index += 2){
     c.setName(v[index]);
@@ -364,7 +365,7 @@ void processReceivedPacket(void * param){
     while(true){
         if(gotPacket){
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                radio.standby();
+                //radio.standby();
                 Serial.println("packet received");
                 uint32_t size = radio.getPacketLength();
                 Serial.print("size ");
@@ -379,8 +380,15 @@ void processReceivedPacket(void * param){
                     Serial.println(p.status);
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
-                    if(contacts_list.getContactByID(p.id) != NULL)
+                    if(contacts_list.getContactByID(p.id) != NULL){
                         messages_list.addMessage(p);
+                        if(strcmp(p.msg, "recv") != 0){
+                            strcpy(p.id, user_id);
+                            strcpy(p.msg, "recv");
+                            Serial.println("sending recv");
+                            Serial.println(radio.transmit((uint8_t*)&p, sizeof(lora_packet)));
+                        }
+                    }
                     else
                         Serial.println("Packet ignored");
                 }
@@ -618,7 +626,10 @@ void hide_chat(lv_event_t * e){
                 check_new_msg_task = NULL;
                 Serial.println("check_new_msg_task finished");
             }
-            lv_obj_clean(frm_chat_list);
+            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                lv_obj_clean(frm_chat_list);
+            }
+            xSemaphoreGive(xSemaphore);
             msg_count = 0;
             lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
             actual_contact = NULL;
@@ -668,15 +679,18 @@ void send_message(lv_event_t * e){
                     if(state != RADIOLIB_ERR_NONE){
                         Serial.print("transmission failed ");
                         Serial.println(state);
-                    }else
+                    }else{
                         Serial.println("transmitted");
-                    // clear the cache
-                    radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet));
-                    // add the message to the list of messages
-                    pkt.me = true;
-                    Serial.println(pkt.id);
-                    messages_list.addMessage(pkt);
-                    lv_textarea_set_text(frm_chat_text_ans, "");
+                        // clear the cache
+                        //radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet));
+                        // add the message to the list of messages
+                        pkt.me = true;
+                        strcpy(pkt.id, actual_contact->getID().c_str());
+                        Serial.println("Adding answer to ");
+                        Serial.println(pkt.id);
+                        messages_list.addMessage(pkt);
+                        lv_textarea_set_text(frm_chat_text_ans, "");
+                    }
                 }
             }
             xSemaphoreGive(xSemaphore);
@@ -699,12 +713,17 @@ void check_new_msg(void * param){
                     Serial.print("me: ");
                     lv_list_add_text(frm_chat_list, "Me");
                 }else{
-                    lv_list_add_text(frm_chat_list, actual_contact->getName().c_str());
+                    if(strcmp(caller_msg[i].msg, "recv") == 0)
+                        btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
+                    else
+                        lv_list_add_text(frm_chat_list, actual_contact->getName().c_str());
                 }
                 Serial.println(caller_msg[i].msg);
-                btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
+                if(strcmp(caller_msg[i].msg, "recv") != 0)
+                    btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
                 lbl = lv_obj_get_child(btn, 0);
-                lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
+                if(strcmp(caller_msg[i].msg, "recv") != 0)
+                    lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
                 lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
             }
             msg_count = actual_count;
@@ -731,7 +750,7 @@ void add_contact(lv_event_t * e){
                 else      
                     Serial.println("failed to add contact");
             }else
-                Serial.println("Conatct already exists");
+                Serial.println("Contact already exists");
         }
     }
 }
