@@ -7,6 +7,9 @@
 #include <Contacts.hpp>
 #include "SPIFFS.h"
 #include "lora_messages.hpp"
+#include "ubuntu.c"
+
+LV_FONT_DECLARE(ubuntu);
 
 struct lora_packet2{
     char id[7] = "aaaa";
