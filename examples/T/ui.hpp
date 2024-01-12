@@ -14,6 +14,7 @@ lv_obj_t * frm_home_btn_settings_lbl;
 lv_obj_t * frm_home_contacts_img;
 lv_obj_t * frm_home_time_lbl;
 lv_obj_t * frm_home_date_lbl;
+lv_obj_t * frm_home_bat_lbl;
 /*contacts form*/
 lv_obj_t * frm_contacts;
 lv_obj_t * frm_contacts_btn_back;
@@ -68,5 +69,12 @@ lv_obj_t * frm_settings_btn_generate;
 lv_obj_t * frm_settings_btn_generate_lbl;
 lv_obj_t * frm_settings_switch_dx;
 lv_obj_t * frm_settings_switch_dx_lbl;
+lv_obj_t * frm_settings_day;
+lv_obj_t * frm_settings_month;
+lv_obj_t * frm_settings_year;
+lv_obj_t * frm_settings_hour;
+lv_obj_t * frm_settings_minute;
+lv_obj_t * frm_settings_date_lbl;
+lv_obj_t * frm_settings_time_lbl;
 /*notification form*/
 lv_obj_t * frm_not;

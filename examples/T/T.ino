@@ -8,6 +8,7 @@
 #include "SPIFFS.h"
 #include "lora_messages.hpp"
 #include <time.h>
+#include "WiFi.h"
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
@@ -25,6 +26,7 @@ struct lora_packet2{
 
 #define TOUCH_MODULES_GT911
 #include "TouchLib.h"
+#include <lwip/apps/sntp.h>
 
 #define RADIO_FREQ 915.0
 SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
@@ -36,6 +38,7 @@ SemaphoreHandle_t xSemaphore = NULL;
 bool touchDected = false;
 bool kbDected = false;
 bool hasRadio = false; 
+bool wifi_connected = false;
 volatile bool gotPacket = false;
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
@@ -49,6 +52,8 @@ lora_incomming_messages messages_list = lora_incomming_messages();
 
 char user_name[50] = "";
 char user_id[7] = "";
+
+struct tm timeinfo;
 
 static void loadSettings(){
     if(!SPIFFS.begin(true)){
@@ -557,6 +562,7 @@ void hide_settings(lv_event_t * e){
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_settings != NULL){
             saveSettings();
+            setDateTime();
             lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
         }
     }
@@ -817,17 +823,69 @@ void DX(lv_event_t * e){
 }
 
 void update_time(void *timeStruct) {
+    char hourMin[6];
+    char date[12];
     while(true){
-        char hourMin[10];
-        strftime(hourMin, 10, "%H:%M %p", (struct tm *)timeStruct);
-        lv_label_set_text(frm_home_time_lbl, hourMin);
+        if(getLocalTime((struct tm*)timeStruct)){
+            
+            strftime(hourMin, 6, "%H:%M %p", (struct tm *)timeStruct);
+            lv_label_set_text(frm_home_time_lbl, hourMin);
 
-        char date[12];
-        strftime(date, 12, "%a, %b %d", (struct tm *)timeStruct);
-        lv_label_set_text(frm_home_date_lbl, date);
+            strftime(date, 12, "%a, %b %d", (struct tm *)timeStruct);
+            lv_label_set_text(frm_home_date_lbl, date);
+        }
         vTaskDelay(60000 / portTICK_RATE_MS);
     }
     vTaskDelete(date_time_task);
+}
+
+char * add_battery_icon(int percentage) {
+  if (percentage >= 90) {
+    return (LV_SYMBOL_BATTERY_FULL);
+  } else if (percentage >= 65 && percentage < 90) {
+    return (LV_SYMBOL_BATTERY_3);
+  } else if (percentage >= 40 && percentage < 65) {
+    return (LV_SYMBOL_BATTERY_2);
+  } else if (percentage >= 15 && percentage < 40) {
+    return (LV_SYMBOL_BATTERY_1);
+  } else {
+    return (LV_SYMBOL_BATTERY_EMPTY);
+  }
+}
+
+void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst){
+    struct tm tm;
+
+    tm.tm_year = yr - 1900;   // Set date
+    tm.tm_mon = month-1;
+    tm.tm_mday = mday;
+    tm.tm_hour = hr;      // Set time
+    tm.tm_min = minute;
+    tm.tm_sec = sec;
+    tm.tm_isdst = isDst;  // 1 or 0
+    time_t t = mktime(&tm);
+    Serial.printf("Setting time: %s", asctime(&tm));
+    struct timeval now = { .tv_sec = t };
+    settimeofday(&now, NULL);
+}
+
+void setDateTime(){
+    char day[3] = {'\0'}, month[3] = {'\0'}, year[5] = {'\0'}, hour[3] = {'\0'}, minute[3] = {'\0'};
+
+    strcpy(day, lv_textarea_get_text(frm_settings_day));
+    strcpy(month, lv_textarea_get_text(frm_settings_month));
+    strcpy(year, lv_textarea_get_text(frm_settings_year));
+    strcpy(hour, lv_textarea_get_text(frm_settings_hour));
+    strcpy(minute, lv_textarea_get_text(frm_settings_minute));
+
+    if(strcmp(day, "") != 0 && strcmp(month, "") != 0 && strcmp(year, "") != 0 && strcmp(hour, "") != 0 && strcmp(minute, "") != 0){
+        try{
+            setDate(atoi(year), atoi(month), atoi(day), atoi(hour), atoi(minute), 0, 0);
+        }
+        catch(exception &ex){
+            Serial.println(ex.what());
+        }
+    }
 }
 
 void ui(){
@@ -853,12 +911,18 @@ void ui(){
     frm_home_title_lbl = lv_label_create(frm_home);
     lv_obj_set_style_text_color(frm_home_title_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_align(frm_home_title_lbl, LV_ALIGN_TOP_LEFT, -5, -10);
-    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_CALL " " LV_SYMBOL_BATTERY_FULL);
+    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_CALL);
+
+    // battery icon
+    frm_home_bat_lbl = lv_label_create(frm_home);
+    lv_label_set_text(frm_home_bat_lbl, LV_SYMBOL_BATTERY_FULL);
+    lv_obj_set_style_text_color(frm_home_bat_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(frm_home_bat_lbl, LV_ALIGN_TOP_RIGHT, 5, -10);
 
     //date label
     frm_home_date_lbl = lv_label_create(frm_home);
     lv_obj_set_style_text_color(frm_home_date_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_label_set_text(frm_home_date_lbl, "no date");
+    lv_label_set_text(frm_home_date_lbl, "-");
     lv_obj_align(frm_home_date_lbl, LV_ALIGN_TOP_MID, 0, 20);
 
     //time label
@@ -901,7 +965,7 @@ void ui(){
     
     lbl_btn_test = lv_label_create(btn_test);
     lv_obj_set_style_text_font(lbl_btn_test, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_label_set_text(lbl_btn_test, "Peça");
+    lv_label_set_text(lbl_btn_test, "Test");
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -1112,7 +1176,7 @@ void ui(){
     // Settings form**************************************************************
     frm_settings = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_settings, LV_HOR_RES, LV_VER_RES);
-    lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_SCROLLABLE);
+    //lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_SCROLLABLE);
 
     // Title
     frm_settings_btn_title = lv_btn_create(frm_settings);
@@ -1167,16 +1231,110 @@ void ui(){
     lv_label_set_text(frm_settings_switch_dx_lbl, "DX");
     lv_obj_align(frm_settings_switch_dx_lbl, LV_ALIGN_TOP_LEFT, 0, 80);
 
-    lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
+    //date label
+    frm_settings_date_lbl = lv_label_create(frm_settings);
+    lv_label_set_text(frm_settings_date_lbl, "Date");
+    lv_obj_align(frm_settings_date_lbl, LV_ALIGN_TOP_LEFT, 0, 120);
 
-    // notification form
+    //day
+    frm_settings_day = lv_textarea_create(frm_settings);
+    lv_obj_set_size(frm_settings_day, 60, 30);
+    lv_obj_align(frm_settings_day, LV_ALIGN_TOP_LEFT, 40, 115);
+    lv_textarea_set_accepted_chars(frm_settings_day, "1234567890");
+    lv_textarea_set_max_length(frm_settings_day, 2);
+    lv_textarea_set_placeholder_text(frm_settings_day, "dd");
+
+    //month
+    frm_settings_month = lv_textarea_create(frm_settings);
+    lv_obj_set_size(frm_settings_month, 60, 30);
+    lv_obj_align(frm_settings_month, LV_ALIGN_TOP_LEFT, 100, 115);
+    lv_textarea_set_accepted_chars(frm_settings_month, "1234567890");
+    lv_textarea_set_max_length(frm_settings_month, 2);
+    lv_textarea_set_placeholder_text(frm_settings_month, "mm");
+
+    //year
+    frm_settings_year = lv_textarea_create(frm_settings);
+    lv_obj_set_size(frm_settings_year, 60, 30);
+    lv_obj_align(frm_settings_year, LV_ALIGN_TOP_LEFT, 160, 115);
+    lv_textarea_set_accepted_chars(frm_settings_year, "1234567890");
+    lv_textarea_set_max_length(frm_settings_year, 4);
+    lv_textarea_set_placeholder_text(frm_settings_year, "yyyy");
+
+    //time label
+    frm_settings_time_lbl = lv_label_create(frm_settings);
+    lv_label_set_text(frm_settings_time_lbl, "Time");
+    lv_obj_align(frm_settings_time_lbl, LV_ALIGN_TOP_LEFT, 0, 155);
+
+    //hour
+    frm_settings_hour = lv_textarea_create(frm_settings);
+    lv_obj_set_size(frm_settings_hour, 60, 30);
+    lv_obj_align(frm_settings_hour, LV_ALIGN_TOP_LEFT, 40, 150);
+    lv_textarea_set_accepted_chars(frm_settings_hour, "1234567890");
+    lv_textarea_set_max_length(frm_settings_hour, 2);
+    lv_textarea_set_placeholder_text(frm_settings_hour, "hh");
+
+    //minute
+    frm_settings_minute = lv_textarea_create(frm_settings);
+    lv_obj_set_size(frm_settings_minute, 60, 30);
+    lv_obj_align(frm_settings_minute, LV_ALIGN_TOP_LEFT, 100, 150);
+    lv_textarea_set_accepted_chars(frm_settings_minute, "1234567890");
+    lv_textarea_set_max_length(frm_settings_minute, 2);
+    lv_textarea_set_placeholder_text(frm_settings_minute, "mm");
+
+    lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
+    
+    // notification form************************************************************
     frm_not = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_not, 300, 50);
     lv_obj_align(frm_not, LV_ALIGN_TOP_MID, 0, 0);
 
-    //title
-
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+}
+
+void datetime(){
+    const char * ssid = "K-OVO";
+    const char * password = "123456789";
+    const char * timezone = "<-03>3";
+    char hm[6] = {'\0'};
+    char date[12] = {'\0'};
+
+    WiFi.begin(ssid, password);
+    
+    Serial.print("connecting");
+    while(WiFi.status() != WL_CONNECTED){
+        Serial.print(".");
+        delay(500);
+    }
+    if(WiFi.status() == WL_CONNECTED){
+        Serial.println("Connected");
+        Serial.print("RSSI ");
+        Serial.println(WiFi.RSSI());
+        Serial.println(WiFi.localIP());
+
+        esp_netif_init();
+        if(sntp_enabled())
+            sntp_stop();
+        sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        sntp_setservername(0, "pool.ntp.org");
+        sntp_init();
+        setenv("TZ", timezone, 1);
+        tzset();
+        if(!getLocalTime(&timeinfo)){
+            Serial.println("Failed to obtain time info");
+            return;
+        }
+        Serial.println("Got time from NTP");
+        
+        
+        Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S zone %Z %z ");
+        strftime(hm, 6, "%H:%M %p", &timeinfo);
+        strftime(date, 12, "%a, %b %d", &timeinfo);
+        lv_label_set_text(frm_home_time_lbl, hm);
+        lv_label_set_text(frm_home_date_lbl, date);
+        if(WiFi.disconnect())
+            Serial.println("WiFi diconnected");
+    }else
+        Serial.println("Failed to connect");
 }
 
 void setup(){
@@ -1251,8 +1409,11 @@ void setup(){
     // set brightness
     analogWrite(BOARD_BL_PIN, 100);
     
+    if(wifi_connected)
+        datetime();
     //date time task
-    //xTaskCreatePinnedToCore(update_time, "update_time", 11000, NULL, 2, &date_time_task, 1);
+    xTaskCreatePinnedToCore(update_time, "update_time", 11000, (struct tm*)&timeinfo, 2, &date_time_task, 1);
+
 }
 
 void loop(){
