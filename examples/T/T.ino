@@ -9,6 +9,7 @@
 #include "lora_messages.hpp"
 #include <time.h>
 
+LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
 LV_IMG_DECLARE(img_background);
 LV_IMG_DECLARE(icon_lora2);
@@ -192,6 +193,7 @@ void notify(void * param){
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     lv_obj_clean(frm_not);
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+    Serial.println("notified");
     if(not_task != NULL)
         vTaskDelete(not_task);
 }
@@ -407,6 +409,7 @@ void processReceivedPacket(void * param){
                     if(contacts_list.getContactByID(p.id) != NULL){
                         messages_list.addMessage(p);
                         if(strcmp(p.msg, "recv") != 0){
+                            show_notification(LV_SYMBOL_BELL " you have a new message");
                             strcpy(p.id, user_id);
                             strcpy(p.msg, "recv");
                             Serial.println("sending recv");
@@ -732,7 +735,7 @@ void check_new_msg(void * param){
         actual_count = caller_msg.size();
         if(actual_count > msg_count){
             Serial.println("new messages");
-            show_notification(LV_SYMBOL_BELL " you have new messages");
+            //show_notification(LV_SYMBOL_BELL " you have a new message");
             for(uint32_t i = msg_count; i < actual_count; i++){
                 if(caller_msg[i].me){
                     Serial.print("me: ");
@@ -843,12 +846,13 @@ void ui(){
     lv_obj_set_style_bg_img_src(frm_home, &img_background, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // title bar
-    frm_home_title = lv_btn_create(frm_home);
+    /*frm_home_title = lv_btn_create(frm_home);
     lv_obj_set_size(frm_home_title, 310, 20);
-    lv_obj_align(frm_home_title, LV_ALIGN_TOP_MID, 0, -10);
+    lv_obj_align(frm_home_title, LV_ALIGN_TOP_MID, 0, -10);*/
 
-    frm_home_title_lbl = lv_label_create(frm_home_title);
-    lv_obj_set_align(frm_home_title_lbl, LV_ALIGN_LEFT_MID);
+    frm_home_title_lbl = lv_label_create(frm_home);
+    lv_obj_set_style_text_color(frm_home_title_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(frm_home_title_lbl, LV_ALIGN_TOP_LEFT, -5, -10);
     lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_CALL " " LV_SYMBOL_BATTERY_FULL);
 
     //date label
@@ -859,6 +863,7 @@ void ui(){
 
     //time label
     frm_home_time_lbl = lv_label_create(frm_home);
+    lv_obj_set_style_text_font(frm_home_time_lbl, &clocknum, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(frm_home_time_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(frm_home_time_lbl, "00:00");
     lv_obj_align(frm_home_time_lbl, LV_ALIGN_TOP_MID, 0, 40);
@@ -895,8 +900,8 @@ void ui(){
     lv_obj_set_align(btn_test, LV_ALIGN_BOTTOM_RIGHT);
     
     lbl_btn_test = lv_label_create(btn_test);
-    //lv_obj_set_style_text_font(lbl_btn_test, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_label_set_text(lbl_btn_test, "Test");
+    lv_obj_set_style_text_font(lbl_btn_test, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(lbl_btn_test, "Peça");
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -1245,7 +1250,7 @@ void setup(){
     loadSettings();
     // set brightness
     analogWrite(BOARD_BL_PIN, 100);
-
+    
     //date time task
     //xTaskCreatePinnedToCore(update_time, "update_time", 11000, NULL, 2, &date_time_task, 1);
 }
