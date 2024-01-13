@@ -12,7 +12,7 @@
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
-LV_IMG_DECLARE(img_background);
+LV_IMG_DECLARE(bg);
 LV_IMG_DECLARE(icon_lora2);
 LV_IMG_DECLARE(icon_mail);
 
@@ -892,17 +892,19 @@ void setDateTime(){
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
-    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(0xE95622), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
+    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(0x5c81aa), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
     lv_disp_set_theme(dispp, theme);
 
     // Home screen**************************************************************
     frm_home = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_home, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_home, LV_OBJ_FLAG_SCROLLABLE);
-    //lv_obj_set_style_bg_color(init_screen, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    
+    lv_obj_set_style_border_color(frm_home, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(frm_home, 0, 0 ) ;
+    lv_obj_set_style_border_width(frm_home, 0, 0);
+
     //background image
-    lv_obj_set_style_bg_img_src(frm_home, &img_background, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(frm_home, &bg, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // title bar
     /*frm_home_title = lv_btn_create(frm_home);
