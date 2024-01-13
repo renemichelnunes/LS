@@ -563,7 +563,6 @@ void hide_settings(lv_event_t * e){
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_settings != NULL){
             saveSettings();
-            setDateTime();
             lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
         }
     }
@@ -571,10 +570,22 @@ void hide_settings(lv_event_t * e){
 
 void show_settings(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
+    char year[5], month[3], day[3], hour[3], minute[3];
+
+    itoa(timeinfo.tm_year + 1900, year, 10);
+    itoa(timeinfo.tm_mon + 1, month, 10);
+    itoa(timeinfo.tm_mday, day, 10);
+    itoa(timeinfo.tm_hour, hour, 10);
+    itoa(timeinfo.tm_min, minute, 10);
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_settings != NULL){
             loadSettings();
+            lv_textarea_set_text(frm_settings_year, year);
+            lv_textarea_set_text(frm_settings_month, month);
+            lv_textarea_set_text(frm_settings_day, day);
+            lv_textarea_set_text(frm_settings_hour, hour);
+            lv_textarea_set_text(frm_settings_minute, minute);
             lv_textarea_set_text(frm_settings_name, user_name);
             lv_textarea_set_text(frm_settings_id, user_id);
             lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
@@ -855,17 +866,15 @@ char * add_battery_icon(int percentage) {
 }
 
 void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst){
-    struct tm tm;
-
-    tm.tm_year = yr - 1900;   // Set date
-    tm.tm_mon = month-1;
-    tm.tm_mday = mday;
-    tm.tm_hour = hr;      // Set time
-    tm.tm_min = minute;
-    tm.tm_sec = sec;
-    tm.tm_isdst = isDst;  // 1 or 0
-    time_t t = mktime(&tm);
-    Serial.printf("Setting time: %s", asctime(&tm));
+    timeinfo.tm_year = yr - 1900;   // Set date
+    timeinfo.tm_mon = month-1;
+    timeinfo.tm_mday = mday;
+    timeinfo.tm_hour = hr;      // Set time
+    timeinfo.tm_min = minute;
+    timeinfo.tm_sec = sec;
+    timeinfo.tm_isdst = isDst;  // 1 or 0
+    time_t t = mktime(&timeinfo);
+    Serial.printf("Setting time: %s", asctime(&timeinfo));
     struct timeval now = { .tv_sec = t };
     settimeofday(&now, NULL);
 }
@@ -887,6 +896,18 @@ void setDateTime(){
             Serial.println(ex.what());
         }
     }
+}
+
+void applyDate(lv_event_t * e){
+    char hourMin[6];
+    char date[12];
+
+    setDateTime();
+    strftime(hourMin, 6, "%H:%M %p", (struct tm *)&timeinfo);
+    lv_label_set_text(frm_home_time_lbl, hourMin);
+
+    strftime(date, 12, "%a, %b %d", (struct tm *)&timeinfo);
+    lv_label_set_text(frm_home_date_lbl, date);
 }
 
 void ui(){
@@ -1217,7 +1238,7 @@ void ui(){
     //Generate button
     frm_settings_btn_generate = lv_btn_create(frm_settings);
     lv_obj_set_size(frm_settings_btn_generate, 80, 20);
-    lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 100, 45);
+    lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 10*0, 45);
     lv_textarea_set_max_length(frm_settings_id, 6);
     lv_obj_add_event_cb(frm_settings_btn_generate, generateID, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -1283,6 +1304,17 @@ void ui(){
     lv_textarea_set_accepted_chars(frm_settings_minute, "1234567890");
     lv_textarea_set_max_length(frm_settings_minute, 2);
     lv_textarea_set_placeholder_text(frm_settings_minute, "mm");
+
+    // setDate button
+    frm_settings_btn_setDate = lv_btn_create(frm_settings);
+    lv_obj_set_size(frm_settings_btn_setDate, 50, 20);
+    lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_MID, 0, 190);
+    lv_obj_add_event_cb(frm_settings_btn_setDate, applyDate, LV_EVENT_SHORT_CLICKED, NULL);
+
+    //setDate label
+    frm_settings_btn_setDate_lbl = lv_label_create(frm_settings_btn_setDate);
+    lv_label_set_text(frm_settings_btn_setDate_lbl, "Set");
+    lv_obj_set_align(frm_settings_btn_setDate_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
     
@@ -1417,6 +1449,8 @@ void setup(){
     //date time task
     xTaskCreatePinnedToCore(update_time, "update_time", 11000, (struct tm*)&timeinfo, 2, &date_time_task, 1);
 
+    // Initial date
+    setDate(2024, 1, 13, 0, 0, 0, 0);
 }
 
 void loop(){

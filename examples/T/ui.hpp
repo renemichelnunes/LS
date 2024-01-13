@@ -76,5 +76,7 @@ lv_obj_t * frm_settings_hour;
 lv_obj_t * frm_settings_minute;
 lv_obj_t * frm_settings_date_lbl;
 lv_obj_t * frm_settings_time_lbl;
+lv_obj_t * frm_settings_btn_setDate;
+lv_obj_t * frm_settings_btn_setDate_lbl;
 /*notification form*/
 lv_obj_t * frm_not;
