@@ -8,7 +8,9 @@
 #include "SPIFFS.h"
 #include "lora_messages.hpp"
 #include <time.h>
+#include "esp_wpa2.h"
 #include "WiFi.h"
+
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
@@ -195,8 +197,9 @@ void notify(void * param){
     lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
     lv_obj_t * label = lv_label_create(frm_not);
     lv_label_set_text(label, (char *)param);
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     lv_obj_clean(frm_not);
+    lv_obj_add_state(frm_home, LV_STATE_FOCUSED);
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
     Serial.println("notified");
     if(not_task != NULL)
@@ -205,7 +208,7 @@ void notify(void * param){
 
 void show_notification(char * msg){
     
-    xTaskCreatePinnedToCore(notify, "notify", 11000, (void *)msg, 2, &not_task, 1);
+    xTaskCreatePinnedToCore(notify, "notify", 11000, (void *)msg, 1, &not_task, 1);
 }
 
 static void disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )
@@ -399,6 +402,7 @@ void processReceivedPacket(void * param){
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 //radio.standby();
                 Serial.println("packet received");
+                show_notification("packet received");
                 uint32_t size = radio.getPacketLength();
                 Serial.print("size ");
                 Serial.println(size);
@@ -521,6 +525,7 @@ void setupRadio(lv_event_t * e)
 
 void test(lv_event_t * e){
     lora_packet2 dummy;
+    
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
             int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet2));
@@ -528,8 +533,9 @@ void test(lv_event_t * e){
             if(state != RADIOLIB_ERR_NONE){
                 Serial.print("transmission failed ");
                 Serial.println(state);
-            }else
+            }else{
                 Serial.println("transmitted");
+            }
             // clear the cache
             radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet2));
         }
@@ -1316,6 +1322,11 @@ void ui(){
     lv_label_set_text(frm_settings_btn_setDate_lbl, "Set");
     lv_obj_set_align(frm_settings_btn_setDate_lbl, LV_ALIGN_CENTER);
 
+    //color wheel
+    frm_settings_color = lv_colorwheel_create(frm_settings, true);
+    lv_obj_set_size(frm_settings_color , 100, 100);
+    lv_obj_align(frm_settings_color, LV_ALIGN_TOP_MID, 0, 220);
+
     lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
     
     // notification form************************************************************
@@ -1451,6 +1462,23 @@ void setup(){
 
     // Initial date
     setDate(2024, 1, 13, 0, 0, 0, 0);
+    /*
+    WiFi.mode(WIFI_STA);
+    esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)"rene_michel", strlen("rene_michel"));
+    esp_wifi_sta_wpa2_ent_set_username((uint8_t*)"rene_michel", strlen("rene_michel"));
+    esp_wifi_sta_wpa2_ent_set_password((uint8_t*)"arcanjomiguel", strlen("arcanjomiguel"));
+    
+    esp_wifi_sta_wpa2_ent_enable();
+    WiFi.begin("Tiradentes-WiFi", "arcanjo_miguel");
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());*/
 }
 
 void loop(){
