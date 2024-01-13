@@ -79,5 +79,8 @@ lv_obj_t * frm_settings_time_lbl;
 lv_obj_t * frm_settings_btn_setDate;
 lv_obj_t * frm_settings_btn_setDate_lbl;
 lv_obj_t * frm_settings_color;
+lv_obj_t * frm_settings_btn_color_lbl;
+lv_obj_t * frm_settings_btn_applycolor;
+lv_obj_t * frm_settings_btn_applycolor_lbl;
 /*notification form*/
 lv_obj_t * frm_not;

@@ -577,16 +577,16 @@ void hide_settings(lv_event_t * e){
 void show_settings(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     char year[5], month[3], day[3], hour[3], minute[3];
-
-    itoa(timeinfo.tm_year + 1900, year, 10);
-    itoa(timeinfo.tm_mon + 1, month, 10);
-    itoa(timeinfo.tm_mday, day, 10);
-    itoa(timeinfo.tm_hour, hour, 10);
-    itoa(timeinfo.tm_min, minute, 10);
+    lv_theme_t * theme = NULL;
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_settings != NULL){
             loadSettings();
+            itoa(timeinfo.tm_year + 1900, year, 10);
+            itoa(timeinfo.tm_mon + 1, month, 10);
+            itoa(timeinfo.tm_mday, day, 10);
+            itoa(timeinfo.tm_hour, hour, 10);
+            itoa(timeinfo.tm_min, minute, 10);
             lv_textarea_set_text(frm_settings_year, year);
             lv_textarea_set_text(frm_settings_month, month);
             lv_textarea_set_text(frm_settings_day, day);
@@ -594,6 +594,14 @@ void show_settings(lv_event_t * e){
             lv_textarea_set_text(frm_settings_minute, minute);
             lv_textarea_set_text(frm_settings_name, user_name);
             lv_textarea_set_text(frm_settings_id, user_id);
+
+            theme = lv_disp_get_theme(lv_disp_get_default());
+            Serial.println(theme->color_primary.ch.red);
+            Serial.println(theme->color_primary.ch.green_h);
+            Serial.println(theme->color_primary.ch.green_l);
+            Serial.println(theme->color_primary.ch.blue);
+            
+
             lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
         }
     }
@@ -1244,7 +1252,7 @@ void ui(){
     //Generate button
     frm_settings_btn_generate = lv_btn_create(frm_settings);
     lv_obj_set_size(frm_settings_btn_generate, 80, 20);
-    lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 10*0, 45);
+    lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 100, 45);
     lv_textarea_set_max_length(frm_settings_id, 6);
     lv_obj_add_event_cb(frm_settings_btn_generate, generateID, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -1314,7 +1322,7 @@ void ui(){
     // setDate button
     frm_settings_btn_setDate = lv_btn_create(frm_settings);
     lv_obj_set_size(frm_settings_btn_setDate, 50, 20);
-    lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_MID, 0, 190);
+    lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_LEFT, 170, 155);
     lv_obj_add_event_cb(frm_settings_btn_setDate, applyDate, LV_EVENT_SHORT_CLICKED, NULL);
 
     //setDate label
@@ -1322,10 +1330,26 @@ void ui(){
     lv_label_set_text(frm_settings_btn_setDate_lbl, "Set");
     lv_obj_set_align(frm_settings_btn_setDate_lbl, LV_ALIGN_CENTER);
 
-    //color wheel
-    frm_settings_color = lv_colorwheel_create(frm_settings, true);
-    lv_obj_set_size(frm_settings_color , 100, 100);
-    lv_obj_align(frm_settings_color, LV_ALIGN_TOP_MID, 0, 220);
+    // color label
+    frm_settings_btn_color_lbl = lv_label_create(frm_settings);
+    lv_label_set_text(frm_settings_btn_color_lbl, "UI color");
+    lv_obj_align(frm_settings_btn_color_lbl, LV_ALIGN_TOP_LEFT, 0, 190);
+    
+    //color 
+    frm_settings_color = lv_textarea_create(frm_settings);
+    lv_obj_set_size(frm_settings_color , 100, 30);
+    lv_obj_align(frm_settings_color, LV_ALIGN_TOP_LEFT, 60, 185);
+
+    //apply color button
+    frm_settings_btn_applycolor = lv_btn_create(frm_settings);
+    lv_obj_set_size(frm_settings_btn_applycolor, 50, 20);
+    lv_obj_align(frm_settings_btn_applycolor, LV_ALIGN_TOP_LEFT, 170, 190);
+    //lv_obj_add_event_cb(frm_settings_btn_applycolor, apply_color, LV_EVENT_SHORT_CLICKED, NULL);
+
+    // apply color label
+    frm_settings_btn_applycolor_lbl = lv_label_create(frm_settings_btn_applycolor);
+    lv_label_set_text(frm_settings_btn_applycolor_lbl, "Apply");
+    lv_obj_set_align(frm_settings_btn_applycolor_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
     
