@@ -204,6 +204,7 @@ void notify(void * param){
 }
 
 void show_notification(char * msg){
+    
     xTaskCreatePinnedToCore(notify, "notify", 11000, (void *)msg, 2, &not_task, 1);
 }
 
@@ -414,7 +415,7 @@ void processReceivedPacket(void * param){
                     if(contacts_list.getContactByID(p.id) != NULL){
                         messages_list.addMessage(p);
                         if(strcmp(p.msg, "recv") != 0){
-                            show_notification(LV_SYMBOL_BELL " you have a new message");
+                            //show_notification(LV_SYMBOL_BELL " you have a new message");
                             strcpy(p.id, user_id);
                             strcpy(p.msg, "recv");
                             Serial.println("sending recv");
