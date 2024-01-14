@@ -57,7 +57,10 @@ char user_id[7] = "";
 
 struct tm timeinfo;
 
+uint32_t ui_primary_color = 0x5c81aa;
+
 static void loadSettings(){
+    char color[7];
     if(!SPIFFS.begin(true)){
         Serial.println("failed mounting SPIFFS");
         return;
@@ -81,9 +84,13 @@ static void loadSettings(){
         for(uint32_t index = 0; index < v.size(); index++){
             v[index].remove(v[index].length() - 1);
         }
-        
-        strcpy(user_name, v[0].c_str());
-        strcpy(user_id, v[1].c_str());
+        if(v.size() > 2){
+            strcpy(user_name, v[0].c_str());
+            strcpy(user_id, v[1].c_str());
+            v[2].toUpperCase();
+            ui_primary_color = strtoul(v[2].c_str(), NULL, 16);
+        }
+
 
         Serial.println("Settings loaded");
     }catch (exception &ex){
@@ -105,6 +112,7 @@ static void saveSettings(){
 
     file.println(lv_textarea_get_text(frm_settings_name));
     file.println(lv_textarea_get_text(frm_settings_id));
+    file.println(lv_textarea_get_text(frm_settings_color));
     Serial.println("settings saved");
     file.close();
 }
@@ -576,8 +584,7 @@ void hide_settings(lv_event_t * e){
 
 void show_settings(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
-    char year[5], month[3], day[3], hour[3], minute[3];
-    lv_theme_t * theme = NULL;
+    char year[5], month[3], day[3], hour[3], minute[3], color[7];
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_settings != NULL){
@@ -594,13 +601,8 @@ void show_settings(lv_event_t * e){
             lv_textarea_set_text(frm_settings_minute, minute);
             lv_textarea_set_text(frm_settings_name, user_name);
             lv_textarea_set_text(frm_settings_id, user_id);
-
-            theme = lv_disp_get_theme(lv_disp_get_default());
-            Serial.println(theme->color_primary.ch.red);
-            Serial.println(theme->color_primary.ch.green_h);
-            Serial.println(theme->color_primary.ch.green_l);
-            Serial.println(theme->color_primary.ch.blue);
-            
+            sprintf(color, "%lX", ui_primary_color);
+            lv_textarea_set_text(frm_settings_color, color);
 
             lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
         }
@@ -924,10 +926,20 @@ void applyDate(lv_event_t * e){
     lv_label_set_text(frm_home_date_lbl, date);
 }
 
+void apply_color(lv_event_t * e){
+    char color[7];
+
+    strcpy(color, lv_textarea_get_text(frm_settings_color));
+    ui_primary_color = strtoul(color, NULL, 16);
+    lv_disp_t *dispp = lv_disp_get_default();
+    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
+    lv_disp_set_theme(dispp, theme);
+}
+
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
-    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(0x5c81aa), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
+    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
     lv_disp_set_theme(dispp, theme);
 
     // Home screen**************************************************************
@@ -1339,12 +1351,14 @@ void ui(){
     frm_settings_color = lv_textarea_create(frm_settings);
     lv_obj_set_size(frm_settings_color , 100, 30);
     lv_obj_align(frm_settings_color, LV_ALIGN_TOP_LEFT, 60, 185);
+    lv_textarea_set_max_length(frm_settings_color, 6);
+    lv_textarea_set_accepted_chars(frm_settings_color, "abcdefABCDEF1234567890");
 
     //apply color button
     frm_settings_btn_applycolor = lv_btn_create(frm_settings);
     lv_obj_set_size(frm_settings_btn_applycolor, 50, 20);
     lv_obj_align(frm_settings_btn_applycolor, LV_ALIGN_TOP_LEFT, 170, 190);
-    //lv_obj_add_event_cb(frm_settings_btn_applycolor, apply_color, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_obj_add_event_cb(frm_settings_btn_applycolor, apply_color, LV_EVENT_SHORT_CLICKED, NULL);
 
     // apply color label
     frm_settings_btn_applycolor_lbl = lv_label_create(frm_settings_btn_applycolor);
