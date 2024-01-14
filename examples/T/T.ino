@@ -476,19 +476,19 @@ void setupRadio(lv_event_t * e)
     }
 
     // set bandwidth to 250 kHz
-    if (radio.setBandwidth(250.0) == RADIOLIB_ERR_INVALID_BANDWIDTH) {
+    if (radio.setBandwidth(125.0) == RADIOLIB_ERR_INVALID_BANDWIDTH) {
         Serial.println(F("Selected bandwidth is invalid for this module!"));
         //return false;
     }
 
     // set spreading factor to 10
-    if (radio.setSpreadingFactor(10) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
+    if (radio.setSpreadingFactor(12) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
         Serial.println(F("Selected spreading factor is invalid for this module!"));
         //return false;
     }
 
     // set coding rate to 6
-    if (radio.setCodingRate(6) == RADIOLIB_ERR_INVALID_CODING_RATE) {
+    if (radio.setCodingRate(8) == RADIOLIB_ERR_INVALID_CODING_RATE) {
         Serial.println(F("Selected coding rate is invalid for this module!"));
         //return false;
     }
@@ -513,7 +513,7 @@ void setupRadio(lv_event_t * e)
     }
 
     // set LoRa preamble length to 15 symbols (accepted range is 0 - 65535)
-    if (radio.setPreambleLength(15) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+    if (radio.setPreambleLength(8) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
         //return false;
     }
@@ -1503,13 +1503,14 @@ void setup(){
     // Initial date
     setDate(2024, 1, 13, 0, 0, 0, 0);
     /*
+    // wpa2-enterprise peap
     WiFi.mode(WIFI_STA);
-    esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)"rene_michel", strlen("rene_michel"));
-    esp_wifi_sta_wpa2_ent_set_username((uint8_t*)"rene_michel", strlen("rene_michel"));
-    esp_wifi_sta_wpa2_ent_set_password((uint8_t*)"arcanjomiguel", strlen("arcanjomiguel"));
+    esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)"login", strlen("password"));
+    esp_wifi_sta_wpa2_ent_set_username((uint8_t*)"login", strlen("login"));
+    esp_wifi_sta_wpa2_ent_set_password((uint8_t*)"password", strlen("password"));
     
     esp_wifi_sta_wpa2_ent_enable();
-    WiFi.begin("Tiradentes-WiFi", "arcanjo_miguel");
+    WiFi.begin("SSID", "password");
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
