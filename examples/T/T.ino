@@ -44,10 +44,10 @@ bool wifi_connected = false;
 volatile bool gotPacket = false;
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
-TaskHandle_t thproc_recv_pkt = NULL, 
-             check_new_msg_task = NULL,
-             not_task = NULL,
-             date_time_task = NULL;
+TaskHandle_t task_recv_pkt = NULL, 
+             task_check_new_msg = NULL,
+             task_not = NULL,
+             task_date_time = NULL;
 
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
@@ -89,6 +89,9 @@ static void loadSettings(){
             strcpy(user_id, v[1].c_str());
             v[2].toUpperCase();
             ui_primary_color = strtoul(v[2].c_str(), NULL, 16);
+            lv_disp_t *dispp = lv_disp_get_default();
+            lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
+            lv_disp_set_theme(dispp, theme);
         }
 
 
@@ -200,23 +203,28 @@ std::string generate_ID(){
   return ss;
 }
 
-void notify(void * param){
+static void notify(void * param){
     //vTaskDelay(2000 / portTICK_PERIOD_MS);
     lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+    lv_task_handler();
     lv_obj_t * label = lv_label_create(frm_not);
+    lv_task_handler();
     lv_label_set_text(label, (char *)param);
+    lv_task_handler();
+    lv_label_set_text(frm_home_title_lbl, (char*)param);
+    lv_task_handler();
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     lv_obj_clean(frm_not);
-    lv_obj_add_state(frm_home, LV_STATE_FOCUSED);
+    lv_task_handler();
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+    lv_task_handler();
+    vTaskDelete(task_not);
+    lv_task_handler();
     Serial.println("notified");
-    if(not_task != NULL)
-        vTaskDelete(not_task);
 }
 
 void show_notification(char * msg){
-    
-    xTaskCreatePinnedToCore(notify, "notify", 11000, (void *)msg, 1, &not_task, 1);
+    xTaskCreatePinnedToCore(notify, "notify", 11000, (void *)msg, 1, &task_not, 1);
 }
 
 static void disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )
@@ -408,9 +416,9 @@ void processReceivedPacket(void * param){
     while(true){
         if(gotPacket){
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                //radio.standby();
+                radio.standby();
                 Serial.println("packet received");
-                show_notification("packet received");
+
                 uint32_t size = radio.getPacketLength();
                 Serial.print("size ");
                 Serial.println(size);
@@ -427,7 +435,9 @@ void processReceivedPacket(void * param){
                     if(contacts_list.getContactByID(p.id) != NULL){
                         messages_list.addMessage(p);
                         if(strcmp(p.msg, "recv") != 0){
-                            //show_notification(LV_SYMBOL_BELL " you have a new message");
+                            lv_task_handler();
+                            show_notification(LV_SYMBOL_ENVELOPE " you have a new message");
+                            lv_task_handler();
                             strcpy(p.id, user_id);
                             strcpy(p.msg, "recv");
                             Serial.println("sending recv");
@@ -476,19 +486,19 @@ void setupRadio(lv_event_t * e)
     }
 
     // set bandwidth to 250 kHz
-    if (radio.setBandwidth(125.0) == RADIOLIB_ERR_INVALID_BANDWIDTH) {
+    if (radio.setBandwidth(250.0) == RADIOLIB_ERR_INVALID_BANDWIDTH) {
         Serial.println(F("Selected bandwidth is invalid for this module!"));
         //return false;
     }
 
     // set spreading factor to 10
-    if (radio.setSpreadingFactor(12) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
+    if (radio.setSpreadingFactor(10) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
         Serial.println(F("Selected spreading factor is invalid for this module!"));
         //return false;
     }
 
     // set coding rate to 6
-    if (radio.setCodingRate(8) == RADIOLIB_ERR_INVALID_CODING_RATE) {
+    if (radio.setCodingRate(6) == RADIOLIB_ERR_INVALID_CODING_RATE) {
         Serial.println(F("Selected coding rate is invalid for this module!"));
         //return false;
     }
@@ -513,7 +523,7 @@ void setupRadio(lv_event_t * e)
     }
 
     // set LoRa preamble length to 15 symbols (accepted range is 0 - 65535)
-    if (radio.setPreambleLength(8) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+    if (radio.setPreambleLength(15) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
         //return false;
     }
@@ -524,7 +534,7 @@ void setupRadio(lv_event_t * e)
         //return false;
     }
 
-    xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 10000, NULL, 1, &thproc_recv_pkt, 1);
+    xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 10000, NULL, 1, &task_recv_pkt, 1);
     radio.setPacketReceivedAction(listen);
     radio.startReceive();
     //return true;
@@ -543,6 +553,7 @@ void test(lv_event_t * e){
                 Serial.println(state);
             }else{
                 Serial.println("transmitted");
+                show_notification("transmitted");
             }
             // clear the cache
             radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet2));
@@ -682,15 +693,15 @@ void hide_chat(lv_event_t * e){
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_chat != NULL){
-            if(check_new_msg_task != NULL){
-                vTaskDelete(check_new_msg_task);
-                check_new_msg_task = NULL;
-                Serial.println("check_new_msg_task finished");
+            if(task_check_new_msg != NULL){
+                vTaskDelete(task_check_new_msg);
+                task_check_new_msg = NULL;
+                Serial.println("task_check_new_msg finished");
             }
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 lv_obj_clean(frm_chat_list);
+                xSemaphoreGive(xSemaphore);
             }
-            xSemaphoreGive(xSemaphore);
             msg_count = 0;
             lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
             actual_contact = NULL;
@@ -712,9 +723,9 @@ void show_chat(lv_event_t * e){
             lv_obj_clear_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
             lv_label_set_text(frm_chat_btn_title_lbl, title);
             lv_group_focus_obj(frm_chat_text_ans);
-            if(check_new_msg_task == NULL){
-                xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 10000, NULL, 1, &check_new_msg_task, 1);
-                Serial.println("check_new_msg_task running");
+            if(task_check_new_msg == NULL){
+                xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 11000, NULL, 1, &task_check_new_msg, 1);
+                Serial.println("task_check_new_msg running");
                 Serial.print("actual contact is ");
                 Serial.println(actual_contact->getName());
             }
@@ -742,8 +753,6 @@ void send_message(lv_event_t * e){
                         Serial.println(state);
                     }else{
                         Serial.println("transmitted");
-                        // clear the cache
-                        //radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet));
                         // add the message to the list of messages
                         pkt.me = true;
                         strcpy(pkt.id, actual_contact->getID().c_str());
@@ -864,7 +873,7 @@ void update_time(void *timeStruct) {
         }
         vTaskDelay(60000 / portTICK_RATE_MS);
     }
-    vTaskDelete(date_time_task);
+    vTaskDelete(task_date_time);
 }
 
 char * add_battery_icon(int percentage) {
@@ -1020,6 +1029,20 @@ void ui(){
     lv_label_set_text(lbl_btn_test, "Test");
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
+
+    // group
+    /*
+    lv_group_t * frm_home_group = lv_group_create();
+    lv_group_add_obj(frm_home_group, frm_home_bat_lbl);
+    lv_group_add_obj(frm_home_group, frm_home_btn_contacts);
+    lv_group_add_obj(frm_home_group, frm_home_btn_contacts_lbl);
+    lv_group_add_obj(frm_home_group, frm_home_btn_settings);
+    lv_group_add_obj(frm_home_group, frm_home_btn_settings_lbl);
+    lv_group_add_obj(frm_home_group, frm_home_contacts_img);
+    lv_group_add_obj(frm_home_group, frm_home_date_lbl);
+    lv_group_add_obj(frm_home_group, frm_home_time_lbl);
+    lv_group_add_obj(frm_home_group, frm_home_title);
+    lv_group_add_obj(frm_home_group, frm_home_title_lbl);*/
 
     // Contacts form**************************************************************
     frm_contacts = lv_obj_create(lv_scr_act());
@@ -1498,7 +1521,7 @@ void setup(){
     if(wifi_connected)
         datetime();
     //date time task
-    xTaskCreatePinnedToCore(update_time, "update_time", 11000, (struct tm*)&timeinfo, 2, &date_time_task, 1);
+    xTaskCreatePinnedToCore(update_time, "update_time", 11000, (struct tm*)&timeinfo, 2, &task_date_time, 1);
 
     // Initial date
     setDate(2024, 1, 13, 0, 0, 0, 0);
