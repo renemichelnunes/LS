@@ -927,9 +927,11 @@ void applyDate(lv_event_t * e){
 }
 
 void apply_color(lv_event_t * e){
-    char color[7];
+    char color[7] = "";
 
     strcpy(color, lv_textarea_get_text(frm_settings_color));
+    if(strcmp(color, "") == 0)
+        return;
     ui_primary_color = strtoul(color, NULL, 16);
     lv_disp_t *dispp = lv_disp_get_default();
     lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
