@@ -500,7 +500,7 @@ void setupRadio(lv_event_t * e)
         //return false;
     }
 
-    hasRadio = true;
+    
 
     // set carrier frequency to 868.0 MHz
     if (radio.setFrequency(RADIO_FREQ) == RADIOLIB_ERR_INVALID_FREQUENCY) {
@@ -559,7 +559,8 @@ void setupRadio(lv_event_t * e)
 
     xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 10000, NULL, 1, &task_recv_pkt, 1);
     radio.setPacketReceivedAction(listen);
-    radio.startReceive();
+    if(radio.startReceive() == RADIOLIB_ERR_NONE)
+        hasRadio = true;
     //return true;
 
 }
@@ -765,6 +766,7 @@ void send_message(lv_event_t * e){
         lora_packet pkt;
         strcpy(pkt.id, user_id);
         strcpy(pkt.status, "send");
+        strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
         strcpy(pkt.msg, lv_textarea_get_text(frm_chat_text_ans));
         
         if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -1013,7 +1015,8 @@ void ui(){
     frm_home_title_lbl = lv_label_create(frm_home);
     lv_obj_set_style_text_color(frm_home_title_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_align(frm_home_title_lbl, LV_ALIGN_TOP_LEFT, -5, -10);
-    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_CALL);
+    lv_obj_set_size(frm_home_title_lbl, 200, 30);
+    lv_label_set_long_mode(frm_home_title_lbl, LV_LABEL_LONG_SCROLL);
 
     // battery icon
     frm_home_bat_lbl = lv_label_create(frm_home);
@@ -1070,20 +1073,6 @@ void ui(){
     lv_label_set_text(lbl_btn_test, "Test");
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
-
-    // group
-    /*
-    lv_group_t * frm_home_group = lv_group_create();
-    lv_group_add_obj(frm_home_group, frm_home_bat_lbl);
-    lv_group_add_obj(frm_home_group, frm_home_btn_contacts);
-    lv_group_add_obj(frm_home_group, frm_home_btn_contacts_lbl);
-    lv_group_add_obj(frm_home_group, frm_home_btn_settings);
-    lv_group_add_obj(frm_home_group, frm_home_btn_settings_lbl);
-    lv_group_add_obj(frm_home_group, frm_home_contacts_img);
-    lv_group_add_obj(frm_home_group, frm_home_date_lbl);
-    lv_group_add_obj(frm_home_group, frm_home_time_lbl);
-    lv_group_add_obj(frm_home_group, frm_home_title);
-    lv_group_add_obj(frm_home_group, frm_home_title_lbl);*/
 
     // Contacts form**************************************************************
     frm_contacts = lv_obj_create(lv_scr_act());
@@ -1570,7 +1559,10 @@ void setup(){
 
     // Notification task
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
-
+    if(hasRadio)
+        lv_label_set_text(frm_home_title_lbl, "LoRa radio ready");
+    else
+        lv_label_set_text(frm_home_title_lbl, "LoRa radio failed");
     /*
     // wpa2-enterprise peap
     WiFi.mode(WIFI_STA);
