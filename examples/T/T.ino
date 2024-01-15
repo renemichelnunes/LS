@@ -418,6 +418,9 @@ bool checkKb()
 void processReceivedPacket(void * param){
     lora_packet p;
     lora_packet_status c;
+    Contact * contact = NULL;
+    char message[300] = {'\0'}, pmsg [200] = {'\0'};
+
     while(true){
         if(gotPacket){
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -437,12 +440,27 @@ void processReceivedPacket(void * param){
                     Serial.println(p.status);
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
-                    if(contacts_list.getContactByID(p.id) != NULL){
+                    contact = contacts_list.getContactByID(p.id);
+                    if(contact != NULL){
                         strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                         messages_list.addMessage(p);
                         if(strcmp(p.status, "recv") != 0){
                             lv_task_handler();
-                            notification_list.add(LV_SYMBOL_ENVELOPE " you have a new message");
+                            strcpy(message, LV_SYMBOL_ENVELOPE);
+                            strcat(message, " ");
+                            strcat(message, contact->getName().c_str());
+                            strcat(message, ": ");
+                            if(sizeof(p.msg) > 199){
+                                memcpy(pmsg, p.msg, 199);
+                                strcat(message, pmsg);
+                            }
+                            else
+                                strcat(message, p.msg);
+                            message[30] = '.';
+                            message[31] = '.';
+                            message[32] = '.';
+                            message[33] = '\0';
+                            notification_list.add(message);
                             lv_task_handler();
                             strcpy(c.id, user_id);
                             Serial.println("sending recv");
@@ -774,6 +792,15 @@ void send_message(lv_event_t * e){
     }
 }
 
+void copy_text(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * lbl = (lv_obj_t *)lv_event_get_user_data(e);
+    if(code == LV_EVENT_LONG_PRESSED){
+        lv_textarea_add_text(frm_chat_text_ans, lv_label_get_text(lbl));
+        lv_task_handler();
+    }
+}
+
 void check_new_msg(void * param){
     vector<lora_packet> caller_msg;
     uint32_t actual_count = 0;
@@ -802,8 +829,10 @@ void check_new_msg(void * param){
                     }
                 }
                 Serial.println(caller_msg[i].msg);
-                if(strcmp(caller_msg[i].status, "recv") != 0)
+                if(strcmp(caller_msg[i].status, "recv") != 0){
                     btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
+                    lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
+                }
                 lbl = lv_obj_get_child(btn, 0);
                 if(strcmp(caller_msg[i].status, "recv") != 0)
                     lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);

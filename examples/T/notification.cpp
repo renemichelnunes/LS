@@ -10,7 +10,9 @@ notification::~notification()
 }
 
 void notification::add(char * msg){
-    char n[30] = {'\0'};
+    char n[300] = {'\0'};
+    if(sizeof(msg) > 299)
+        memcpy(n, n, 299);
     strcpy(n, msg);
     this->list.push_back(msg);
 }
