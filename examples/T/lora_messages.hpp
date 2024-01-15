@@ -13,6 +13,7 @@ struct lora_packet{
     char status[7] = {'\0'};
     bool me = false;
     char msg[200] = {'\0'};
+    char date_time[30] = {'\0'};
 };
 
 struct lora_contact_messages{

@@ -438,6 +438,7 @@ void processReceivedPacket(void * param){
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
                     if(contacts_list.getContactByID(p.id) != NULL){
+                        strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                         messages_list.addMessage(p);
                         if(strcmp(p.status, "recv") != 0){
                             lv_task_handler();
@@ -777,6 +778,8 @@ void check_new_msg(void * param){
     vector<lora_packet> caller_msg;
     uint32_t actual_count = 0;
     lv_obj_t * btn = NULL, * lbl = NULL;
+    char date[30] = {'\0'};
+    char name[100] = {'\0'};
     
     while(true){
         caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
@@ -785,13 +788,18 @@ void check_new_msg(void * param){
             Serial.println("new messages");
             for(uint32_t i = msg_count; i < actual_count; i++){
                 if(caller_msg[i].me){
-                    Serial.print("me: ");
-                    lv_list_add_text(frm_chat_list, "Me");
+                    strcpy(name, "Me");
+                    strcat(name, caller_msg[i].date_time);
+                    Serial.print(name);
+                    lv_list_add_text(frm_chat_list, name);
                 }else{
                     if(strcmp(caller_msg[i].status, "recv") == 0)
                         btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
-                    else
-                        lv_list_add_text(frm_chat_list, actual_contact->getName().c_str());
+                    else{
+                        strcpy(name, actual_contact->getName().c_str());
+                        strcat(name, caller_msg[i].date_time);
+                        lv_list_add_text(frm_chat_list, name);
+                    }
                 }
                 Serial.println(caller_msg[i].msg);
                 if(strcmp(caller_msg[i].status, "recv") != 0)
@@ -1529,6 +1537,7 @@ void setup(){
 
     // Initial date
     setDate(2024, 1, 13, 0, 0, 0, 0);
+    
 
     // Notification task
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
