@@ -441,12 +441,9 @@ void processReceivedPacket(void * param){
                         messages_list.addMessage(p);
                         if(strcmp(p.status, "recv") != 0){
                             lv_task_handler();
-                            //show_notification(LV_SYMBOL_ENVELOPE " you have a new message");
                             notification_list.add(LV_SYMBOL_ENVELOPE " you have a new message");
                             lv_task_handler();
                             strcpy(c.id, user_id);
-                            //strcpy(p.msg, "");
-                            //strcpy(p.status, "recv");
                             Serial.println("sending recv");
                             Serial.println(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)));
                         }
