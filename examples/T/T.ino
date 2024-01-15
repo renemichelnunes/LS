@@ -7,6 +7,7 @@
 #include <Contacts.hpp>
 #include "SPIFFS.h"
 #include "lora_messages.hpp"
+#include "notification.hpp"
 #include <time.h>
 #include "esp_wpa2.h"
 #include "WiFi.h"
@@ -51,6 +52,7 @@ TaskHandle_t task_recv_pkt = NULL,
 
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
+notification notification_list = notification();
 
 char user_name[50] = "";
 char user_id[7] = "";
@@ -204,27 +206,29 @@ std::string generate_ID(){
 }
 
 static void notify(void * param){
-    //vTaskDelay(2000 / portTICK_PERIOD_MS);
-    lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
-    lv_task_handler();
-    lv_obj_t * label = lv_label_create(frm_not);
-    lv_task_handler();
-    lv_label_set_text(label, (char *)param);
-    lv_task_handler();
-    lv_label_set_text(frm_home_title_lbl, (char*)param);
-    lv_task_handler();
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    lv_obj_clean(frm_not);
-    lv_task_handler();
-    lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
-    lv_task_handler();
-    vTaskDelete(task_not);
-    lv_task_handler();
-    Serial.println("notified");
-}
-
-void show_notification(char * msg){
-    xTaskCreatePinnedToCore(notify, "notify", 11000, (void *)msg, 1, &task_not, 1);
+    char n[30] = {'\0'};
+    while(true){
+        if(notification_list.size() > 0){
+            //vTaskDelay(2000 / portTICK_PERIOD_MS);
+            notification_list.pop(n);
+            lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+            lv_task_handler();
+            lv_obj_t * label = lv_label_create(frm_not);
+            lv_task_handler();
+            lv_label_set_text(label, n);
+            lv_task_handler();
+            lv_label_set_text(frm_home_title_lbl, n);
+            lv_task_handler();
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            lv_obj_clean(frm_not);
+            lv_task_handler();
+            lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+            lv_task_handler();
+            strcpy(n, "");
+            Serial.println("notified");
+        }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
 }
 
 static void disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )
@@ -437,7 +441,8 @@ void processReceivedPacket(void * param){
                         messages_list.addMessage(p);
                         if(strcmp(p.status, "recv") != 0){
                             lv_task_handler();
-                            show_notification(LV_SYMBOL_ENVELOPE " you have a new message");
+                            //show_notification(LV_SYMBOL_ENVELOPE " you have a new message");
+                            notification_list.add(LV_SYMBOL_ENVELOPE " you have a new message");
                             lv_task_handler();
                             strcpy(c.id, user_id);
                             //strcpy(p.msg, "");
@@ -555,7 +560,8 @@ void test(lv_event_t * e){
                 Serial.println(state);
             }else{
                 Serial.println("transmitted");
-                show_notification("transmitted");
+                //show_notification("transmitted");
+                notification_list.add(LV_SYMBOL_UPLOAD " transmitted");
             }
             // clear the cache
             radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet2));
@@ -1526,6 +1532,10 @@ void setup(){
 
     // Initial date
     setDate(2024, 1, 13, 0, 0, 0, 0);
+
+    // Notification task
+    xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
+
     /*
     // wpa2-enterprise peap
     WiFi.mode(WIFI_STA);
