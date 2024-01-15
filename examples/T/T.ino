@@ -413,6 +413,7 @@ bool checkKb()
 
 void processReceivedPacket(void * param){
     lora_packet p;
+    lora_packet_status c;
     while(true){
         if(gotPacket){
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -434,14 +435,15 @@ void processReceivedPacket(void * param){
                     Serial.println(p.me ? "true": "false");
                     if(contacts_list.getContactByID(p.id) != NULL){
                         messages_list.addMessage(p);
-                        if(strcmp(p.msg, "recv") != 0){
+                        if(strcmp(p.status, "recv") != 0){
                             lv_task_handler();
                             show_notification(LV_SYMBOL_ENVELOPE " you have a new message");
                             lv_task_handler();
-                            strcpy(p.id, user_id);
-                            strcpy(p.msg, "recv");
+                            strcpy(c.id, user_id);
+                            //strcpy(p.msg, "");
+                            //strcpy(p.status, "recv");
                             Serial.println("sending recv");
-                            Serial.println(radio.transmit((uint8_t*)&p, sizeof(lora_packet)));
+                            Serial.println(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)));
                         }
                     }
                     else
@@ -778,22 +780,21 @@ void check_new_msg(void * param){
         actual_count = caller_msg.size();
         if(actual_count > msg_count){
             Serial.println("new messages");
-            //show_notification(LV_SYMBOL_BELL " you have a new message");
             for(uint32_t i = msg_count; i < actual_count; i++){
                 if(caller_msg[i].me){
                     Serial.print("me: ");
                     lv_list_add_text(frm_chat_list, "Me");
                 }else{
-                    if(strcmp(caller_msg[i].msg, "recv") == 0)
+                    if(strcmp(caller_msg[i].status, "recv") == 0)
                         btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
                     else
                         lv_list_add_text(frm_chat_list, actual_contact->getName().c_str());
                 }
                 Serial.println(caller_msg[i].msg);
-                if(strcmp(caller_msg[i].msg, "recv") != 0)
+                if(strcmp(caller_msg[i].status, "recv") != 0)
                     btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
                 lbl = lv_obj_get_child(btn, 0);
-                if(strcmp(caller_msg[i].msg, "recv") != 0)
+                if(strcmp(caller_msg[i].status, "recv") != 0)
                     lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
                 lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
             }

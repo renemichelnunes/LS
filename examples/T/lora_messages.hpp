@@ -3,11 +3,16 @@
 #include <Arduino.h>
 #include <exception>
 
+struct lora_packet_status{
+    char id[7] = {'\0'};
+    char status[7] = "recv";
+};
+
 struct lora_packet{
     char id[7] = {'\0'};
+    char status[7] = {'\0'};
     bool me = false;
     char msg[200] = {'\0'};
-    char status[7] = {'\0'};
 };
 
 struct lora_contact_messages{
