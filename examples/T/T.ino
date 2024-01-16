@@ -50,7 +50,8 @@ lv_indev_t *kb_indev = NULL;
 TaskHandle_t task_recv_pkt = NULL, 
              task_check_new_msg = NULL,
              task_not = NULL,
-             task_date_time = NULL;
+             task_date_time = NULL,
+             task_bat = NULL;
 
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
@@ -63,6 +64,8 @@ struct tm timeinfo;
 
 uint32_t ui_primary_color = 0x5c81aa;
 int vRef = 0;
+
+void update_bat();
 
 static void loadSettings(){
     char color[7];
@@ -923,20 +926,6 @@ void update_time(void *timeStruct) {
     vTaskDelete(task_date_time);
 }
 
-char * add_battery_icon(int percentage) {
-  if (percentage >= 90) {
-    return (LV_SYMBOL_BATTERY_FULL);
-  } else if (percentage >= 65 && percentage < 90) {
-    return (LV_SYMBOL_BATTERY_3);
-  } else if (percentage >= 40 && percentage < 65) {
-    return (LV_SYMBOL_BATTERY_2);
-  } else if (percentage >= 15 && percentage < 40) {
-    return (LV_SYMBOL_BATTERY_1);
-  } else {
-    return (LV_SYMBOL_BATTERY_EMPTY);
-  }
-}
-
 void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst){
     timeinfo.tm_year = yr - 1900;   // Set date
     timeinfo.tm_mon = month-1;
@@ -994,17 +983,12 @@ void apply_color(lv_event_t * e){
     lv_disp_set_theme(dispp, theme);
 }
 
-void initADCBat(){
-    esp_adc_cal_characteristics_t adc_chars;
-    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(
-        ADC_UNIT_1,
-        ADC_ATTEN_DB_11,
-        ADC_WIDTH_BIT_12,
-        1100,
-        &adc_chars);
+void initBat(){
+    esp_adc_cal_characteristics_t adc_bat;
+    esp_adc_cal_value_t type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_bat);
 
-    if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-        vRef = adc_chars.vref;
+    if (type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
+        vRef = adc_bat.vref;
     } else {
         vRef = 1100;
     }
@@ -1012,7 +996,7 @@ void initADCBat(){
 
 uint32_t read_bat(){
     uint16_t v = analogRead(BOARD_BAT_ADC);
-    double vBat = ((float)v / 4095.0) * 2.0 * 3.3 * (vRef / 1000.0);
+    double vBat = ((double)v / 4095.0) * 2.0 * 3.3 * (vRef / 1000.0);
     if (vBat > 4.2) {
         vBat = 4.2;
     }
@@ -1022,6 +1006,35 @@ uint32_t read_bat(){
     }
 
     return batPercent;
+}
+
+char * get_battery_icon(uint32_t percentage) {
+  if (percentage >= 90) {
+    return LV_SYMBOL_BATTERY_FULL;
+  } else if (percentage >= 65 && percentage < 90) {
+    return LV_SYMBOL_BATTERY_3;
+  } else if (percentage >= 40 && percentage < 65) {
+    return LV_SYMBOL_BATTERY_2;
+  } else if (percentage >= 15 && percentage < 40) {
+    return LV_SYMBOL_BATTERY_1;
+  } else {
+    return LV_SYMBOL_BATTERY_EMPTY;
+  }
+}
+
+void update_bat(void * param){
+    char icon[12] = {'\0'};
+    uint32_t p = read_bat();
+    char pc[4] = {'\0'};
+    char msg[30]= {'\0'};
+    while(true){
+        itoa(p, pc, 10);
+        strcpy(msg, pc);
+        strcat(msg, "% ");
+        strcat(msg, get_battery_icon(p));
+        lv_label_set_text(frm_home_bat_lbl, msg);
+        vTaskDelay(30000 / portTICK_PERIOD_MS);
+    }
 }
 
 void ui(){
@@ -1595,6 +1608,9 @@ void setup(){
     // Initial date
     setDate(2024, 1, 13, 0, 0, 0, 0);
     
+    // battery
+    initBat();
+    xTaskCreatePinnedToCore(update_bat, "task_bat", 11000, NULL, 2, &task_bat, 1);
 
     // Notification task
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
