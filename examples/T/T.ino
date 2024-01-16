@@ -58,7 +58,7 @@ lora_incomming_messages messages_list = lora_incomming_messages();
 notification notification_list = notification();
 
 char user_name[50] = "";
-char user_id[7] = "";
+char user_id[18] = "";
 
 struct tm timeinfo;
 
@@ -572,22 +572,20 @@ void setupRadio(lv_event_t * e)
 }
 
 void test(lv_event_t * e){
-    lora_packet2 dummy;
-    
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
             int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet2));
+            radio.finishTransmit();
             
             if(state != RADIOLIB_ERR_NONE){
                 Serial.print("transmission failed ");
                 Serial.println(state);
             }else{
                 Serial.println("transmitted");
-                //show_notification("transmitted");
+                lv_task_handler();
                 notification_list.add(LV_SYMBOL_UPLOAD " transmitted");
+                lv_task_handler();
             }
-            // clear the cache
-            radio.startTransmit((uint8_t *)&dummy, sizeof(lora_packet2));
         }
         xSemaphoreGive(xSemaphore);
     }
@@ -1597,6 +1595,7 @@ void setup(){
 
     //Load settings
     loadSettings();
+    
     // set brightness
     analogWrite(BOARD_BL_PIN, 100);
     
@@ -1636,6 +1635,17 @@ void setup(){
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());*/
+    
+    uint n = WiFi.scanNetworks();
+    if(n > 0){
+        for(uint i = 0; i < n; i++){
+            Serial.print(WiFi.SSID(i));
+            Serial.print(" : ");
+            Serial.print(WiFi.RSSI(i));
+            Serial.print(" : ");
+            Serial.println(WiFi.encryptionType(i));
+        }
+    }
 }
 
 void loop(){
