@@ -1479,7 +1479,7 @@ void datetime(){
 void setup(){
     bool ret = false;
     Serial.begin(115200);
-    delay(2000);
+    //delay(2000);
 
     //Load contacts
     loadContacts();
