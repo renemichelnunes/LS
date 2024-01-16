@@ -11,6 +11,8 @@
 #include <time.h>
 #include "esp_wpa2.h"
 #include "WiFi.h"
+#include "esp32-hal.h"
+#include "esp_adc_cal.h"
 
 
 LV_FONT_DECLARE(clocknum);
@@ -60,6 +62,7 @@ char user_id[7] = "";
 struct tm timeinfo;
 
 uint32_t ui_primary_color = 0x5c81aa;
+int vRef = 0;
 
 static void loadSettings(){
     char color[7];
@@ -819,7 +822,7 @@ void check_new_msg(void * param){
                 if(caller_msg[i].me){
                     strcpy(name, "Me");
                     strcat(name, caller_msg[i].date_time);
-                    Serial.print(name);
+                    Serial.println(name);
                     lv_list_add_text(frm_chat_list, name);
                 }else{
                     if(strcmp(caller_msg[i].status, "recv") == 0)
@@ -828,6 +831,7 @@ void check_new_msg(void * param){
                         strcpy(name, actual_contact->getName().c_str());
                         strcat(name, caller_msg[i].date_time);
                         lv_list_add_text(frm_chat_list, name);
+                        Serial.println(name);
                     }
                 }
                 Serial.println(caller_msg[i].msg);
@@ -988,6 +992,36 @@ void apply_color(lv_event_t * e){
     lv_disp_t *dispp = lv_disp_get_default();
     lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
     lv_disp_set_theme(dispp, theme);
+}
+
+void initADCBat(){
+    esp_adc_cal_characteristics_t adc_chars;
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(
+        ADC_UNIT_1,
+        ADC_ATTEN_DB_11,
+        ADC_WIDTH_BIT_12,
+        1100,
+        &adc_chars);
+
+    if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
+        vRef = adc_chars.vref;
+    } else {
+        vRef = 1100;
+    }
+}
+
+uint32_t read_bat(){
+    uint16_t v = analogRead(BOARD_BAT_ADC);
+    double vBat = ((float)v / 4095.0) * 2.0 * 3.3 * (vRef / 1000.0);
+    if (vBat > 4.2) {
+        vBat = 4.2;
+    }
+    uint32_t batPercent = map(vBat * 100, 320, 420, 0, 100);
+    if (batPercent < 0) {
+        batPercent = 0;
+    }
+
+    return batPercent;
 }
 
 void ui(){
@@ -1281,7 +1315,7 @@ void ui(){
     // Settings form**************************************************************
     frm_settings = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_settings, LV_HOR_RES, LV_VER_RES);
-    //lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_SCROLLABLE);
 
     // Title
     frm_settings_btn_title = lv_btn_create(frm_settings);
@@ -1302,24 +1336,29 @@ void ui(){
     lv_label_set_text(frm_settings_btn_back_lbl, "Back");
     lv_obj_set_align(frm_settings_btn_back_lbl, LV_ALIGN_CENTER);
 
+    //base form
+    frm_settings_dialog = lv_obj_create(frm_settings);
+    lv_obj_set_size(frm_settings_dialog, LV_HOR_RES, 220);
+    lv_obj_align(frm_settings_dialog, LV_ALIGN_TOP_MID, 0, 10);
+
     // Name
-    frm_settings_name = lv_textarea_create(frm_settings);
+    frm_settings_name = lv_textarea_create(frm_settings_dialog);
     lv_textarea_set_one_line(frm_settings_name, true);
-    lv_obj_set_size(frm_settings_name, 300, 30);
+    lv_obj_set_size(frm_settings_name, 280, 30);
     lv_textarea_set_placeholder_text(frm_settings_name, "Name");
-    lv_obj_align(frm_settings_name, LV_ALIGN_OUT_TOP_LEFT, 0, 10);
+    lv_obj_align(frm_settings_name, LV_ALIGN_OUT_TOP_LEFT, 0, -10);
 
     // ID
-    frm_settings_id = lv_textarea_create(frm_settings);
+    frm_settings_id = lv_textarea_create(frm_settings_dialog);
     lv_textarea_set_one_line(frm_settings_id, true);
     lv_obj_set_size(frm_settings_id, 90, 30);
     lv_textarea_set_placeholder_text(frm_settings_id, "ID");
-    lv_obj_align(frm_settings_id, LV_ALIGN_TOP_LEFT, 0, 40);
+    lv_obj_align(frm_settings_id, LV_ALIGN_TOP_LEFT, 0, 20);
 
     //Generate button
-    frm_settings_btn_generate = lv_btn_create(frm_settings);
+    frm_settings_btn_generate = lv_btn_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_btn_generate, 80, 20);
-    lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 100, 45);
+    lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 100, 25);
     lv_textarea_set_max_length(frm_settings_id, 6);
     lv_obj_add_event_cb(frm_settings_btn_generate, generateID, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -1328,68 +1367,68 @@ void ui(){
     lv_obj_set_align(frm_settings_btn_generate_lbl, LV_ALIGN_CENTER);
 
     // dx switch
-    frm_settings_switch_dx = lv_switch_create(frm_settings);
-    lv_obj_align(frm_settings_switch_dx, LV_ALIGN_OUT_TOP_LEFT, 30, 75);
+    frm_settings_switch_dx = lv_switch_create(frm_settings_dialog);
+    lv_obj_align(frm_settings_switch_dx, LV_ALIGN_OUT_TOP_LEFT, 30, 55);
     lv_obj_add_event_cb(frm_settings_switch_dx, DX, LV_EVENT_VALUE_CHANGED, NULL);
 
-    frm_settings_switch_dx_lbl = lv_label_create(frm_settings);
+    frm_settings_switch_dx_lbl = lv_label_create(frm_settings_dialog);
     lv_label_set_text(frm_settings_switch_dx_lbl, "DX");
-    lv_obj_align(frm_settings_switch_dx_lbl, LV_ALIGN_TOP_LEFT, 0, 80);
+    lv_obj_align(frm_settings_switch_dx_lbl, LV_ALIGN_TOP_LEFT, 0, 60);
 
     //date label
-    frm_settings_date_lbl = lv_label_create(frm_settings);
+    frm_settings_date_lbl = lv_label_create(frm_settings_dialog);
     lv_label_set_text(frm_settings_date_lbl, "Date");
-    lv_obj_align(frm_settings_date_lbl, LV_ALIGN_TOP_LEFT, 0, 120);
+    lv_obj_align(frm_settings_date_lbl, LV_ALIGN_TOP_LEFT, 0, 100);
 
     //day
-    frm_settings_day = lv_textarea_create(frm_settings);
+    frm_settings_day = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_day, 60, 30);
-    lv_obj_align(frm_settings_day, LV_ALIGN_TOP_LEFT, 40, 115);
+    lv_obj_align(frm_settings_day, LV_ALIGN_TOP_LEFT, 40, 95);
     lv_textarea_set_accepted_chars(frm_settings_day, "1234567890");
     lv_textarea_set_max_length(frm_settings_day, 2);
     lv_textarea_set_placeholder_text(frm_settings_day, "dd");
 
     //month
-    frm_settings_month = lv_textarea_create(frm_settings);
+    frm_settings_month = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_month, 60, 30);
-    lv_obj_align(frm_settings_month, LV_ALIGN_TOP_LEFT, 100, 115);
+    lv_obj_align(frm_settings_month, LV_ALIGN_TOP_LEFT, 100, 95);
     lv_textarea_set_accepted_chars(frm_settings_month, "1234567890");
     lv_textarea_set_max_length(frm_settings_month, 2);
     lv_textarea_set_placeholder_text(frm_settings_month, "mm");
 
     //year
-    frm_settings_year = lv_textarea_create(frm_settings);
+    frm_settings_year = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_year, 60, 30);
-    lv_obj_align(frm_settings_year, LV_ALIGN_TOP_LEFT, 160, 115);
+    lv_obj_align(frm_settings_year, LV_ALIGN_TOP_LEFT, 160, 95);
     lv_textarea_set_accepted_chars(frm_settings_year, "1234567890");
     lv_textarea_set_max_length(frm_settings_year, 4);
     lv_textarea_set_placeholder_text(frm_settings_year, "yyyy");
 
     //time label
-    frm_settings_time_lbl = lv_label_create(frm_settings);
+    frm_settings_time_lbl = lv_label_create(frm_settings_dialog);
     lv_label_set_text(frm_settings_time_lbl, "Time");
-    lv_obj_align(frm_settings_time_lbl, LV_ALIGN_TOP_LEFT, 0, 155);
+    lv_obj_align(frm_settings_time_lbl, LV_ALIGN_TOP_LEFT, 0, 135);
 
     //hour
-    frm_settings_hour = lv_textarea_create(frm_settings);
+    frm_settings_hour = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_hour, 60, 30);
-    lv_obj_align(frm_settings_hour, LV_ALIGN_TOP_LEFT, 40, 150);
+    lv_obj_align(frm_settings_hour, LV_ALIGN_TOP_LEFT, 40, 130);
     lv_textarea_set_accepted_chars(frm_settings_hour, "1234567890");
     lv_textarea_set_max_length(frm_settings_hour, 2);
     lv_textarea_set_placeholder_text(frm_settings_hour, "hh");
 
     //minute
-    frm_settings_minute = lv_textarea_create(frm_settings);
+    frm_settings_minute = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_minute, 60, 30);
-    lv_obj_align(frm_settings_minute, LV_ALIGN_TOP_LEFT, 100, 150);
+    lv_obj_align(frm_settings_minute, LV_ALIGN_TOP_LEFT, 100, 130);
     lv_textarea_set_accepted_chars(frm_settings_minute, "1234567890");
     lv_textarea_set_max_length(frm_settings_minute, 2);
     lv_textarea_set_placeholder_text(frm_settings_minute, "mm");
 
     // setDate button
-    frm_settings_btn_setDate = lv_btn_create(frm_settings);
+    frm_settings_btn_setDate = lv_btn_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_btn_setDate, 50, 20);
-    lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_LEFT, 170, 155);
+    lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_LEFT, 170, 135);
     lv_obj_add_event_cb(frm_settings_btn_setDate, applyDate, LV_EVENT_SHORT_CLICKED, NULL);
 
     //setDate label
@@ -1398,21 +1437,21 @@ void ui(){
     lv_obj_set_align(frm_settings_btn_setDate_lbl, LV_ALIGN_CENTER);
 
     // color label
-    frm_settings_btn_color_lbl = lv_label_create(frm_settings);
+    frm_settings_btn_color_lbl = lv_label_create(frm_settings_dialog);
     lv_label_set_text(frm_settings_btn_color_lbl, "UI color");
-    lv_obj_align(frm_settings_btn_color_lbl, LV_ALIGN_TOP_LEFT, 0, 190);
+    lv_obj_align(frm_settings_btn_color_lbl, LV_ALIGN_TOP_LEFT, 0, 170);
     
     //color 
-    frm_settings_color = lv_textarea_create(frm_settings);
+    frm_settings_color = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_color , 100, 30);
-    lv_obj_align(frm_settings_color, LV_ALIGN_TOP_LEFT, 60, 185);
+    lv_obj_align(frm_settings_color, LV_ALIGN_TOP_LEFT, 60, 165);
     lv_textarea_set_max_length(frm_settings_color, 6);
     lv_textarea_set_accepted_chars(frm_settings_color, "abcdefABCDEF1234567890");
 
     //apply color button
-    frm_settings_btn_applycolor = lv_btn_create(frm_settings);
+    frm_settings_btn_applycolor = lv_btn_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_btn_applycolor, 50, 20);
-    lv_obj_align(frm_settings_btn_applycolor, LV_ALIGN_TOP_LEFT, 170, 190);
+    lv_obj_align(frm_settings_btn_applycolor, LV_ALIGN_TOP_LEFT, 170, 170);
     lv_obj_add_event_cb(frm_settings_btn_applycolor, apply_color, LV_EVENT_SHORT_CLICKED, NULL);
 
     // apply color label
