@@ -85,3 +85,23 @@ lv_obj_t * frm_settings_btn_applycolor;
 lv_obj_t * frm_settings_btn_applycolor_lbl;
 /*notification form*/
 lv_obj_t * frm_not;
+/*form wifi*/
+lv_obj_t * frm_wifi;
+lv_obj_t * frm_wifi_btn_title;
+lv_obj_t * frm_wifi_btn_title_lbl;
+lv_obj_t * frm_wifi_list;
+lv_obj_t * frm_wifi_btn_scan;
+lv_obj_t * frm_wifi_btn_scan_lbl;
+lv_obj_t * frm_wifi_btn_back;
+lv_obj_t * frm_wifi_btn_back_lbl;
+/*form wifi auth simple*/
+lv_obj_t * frm_wifi_simple;
+lv_obj_t * frm_wifi_simple_ta_pass;
+lv_obj_t * frm_wifi_simple_btn_connect;
+lv_obj_t * frm_wifi_simple_btn_connect_lbl;
+/*form wifi auth login*/
+lv_obj_t * frm_wifi_login;
+lv_obj_t * frm_wifi_login_ta_login;
+lv_obj_t * frm_wifi_login_ta_pass;
+lv_obj_t * frm_wifi_login_btn_connect;
+lv_obj_t * frm_wifi_login_btn_connect_lbl;

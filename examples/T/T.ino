@@ -13,7 +13,7 @@
 #include "WiFi.h"
 #include "esp32-hal.h"
 #include "esp_adc_cal.h"
-
+#include <vector>
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
@@ -28,6 +28,15 @@ struct lora_packet2{
     char status[7] = "sent";
 }my_packet;
 
+struct wifi_info{
+    char SSID[50] = {'\0'};
+    wifi_auth_mode_t auth_type = WIFI_AUTH_OPEN;
+    int32_t RSSI = 0;
+    char login[100] = {'\0'};
+    char pass[100] = {'\0'};
+};
+
+vector <wifi_info> wifi_list;
 
 #define TOUCH_MODULES_GT911
 #include "TouchLib.h"
@@ -1035,6 +1044,77 @@ void update_bat(void * param){
     }
 }
 
+void hide_wifi(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_wifi != NULL){
+            lv_obj_add_flag(frm_wifi, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void show_wifi(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_wifi != NULL){
+            lv_obj_clear_flag(frm_wifi, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void wifi_connect_to(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+    uint i = (int)lv_event_get_user_data(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        Serial.print("Connecing to ");
+        Serial.println(wifi_list[i].SSID);
+        Serial.println(wifi_list[i].RSSI);
+        Serial.println(wifi_list[i].auth_type);
+
+        switch(wifi_list[i].auth_type){
+            case WIFI_AUTH_WPA2_PSK:
+
+                break;
+            case WIFI_AUTH_WPA2_ENTERPRISE:
+
+                break;
+        }
+    }
+}
+
+void wifi_scan(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+    int n = 0;
+    wifi_info wi;
+    char ssid[50] = {'\0'};
+    char rssi[5] = {'\0'};
+    lv_obj_t * btn = NULL;
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        WiFi.disconnect();
+        n = WiFi.scanNetworks();
+        if(n > 0){
+            lv_obj_clean(frm_wifi_list);
+            wifi_list.clear();
+            for(uint i = 0; i < n; i++){
+                wi.auth_type = WiFi.encryptionType(i);
+                wi.RSSI = WiFi.RSSI(i);
+                strcpy(wi.SSID, WiFi.SSID(i).c_str());
+                wifi_list.push_back(wi);
+                strcpy(ssid, WiFi.SSID(i).c_str());
+                strcat(ssid, " ");
+                itoa(WiFi.RSSI(i), rssi, 10);
+                strcat(ssid, rssi);
+                btn = lv_list_add_btn(frm_wifi_list, LV_SYMBOL_WIFI, ssid);
+                lv_obj_add_event_cb(btn, wifi_connect_to, LV_EVENT_SHORT_CLICKED, (void *)i);
+            }
+        }
+    }
+}
+
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
@@ -1478,6 +1558,45 @@ void ui(){
     lv_obj_align(frm_not, LV_ALIGN_TOP_MID, 0, 0);
 
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+
+    /*form wifi*/
+    frm_wifi = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(frm_wifi, LV_HOR_RES, LV_VER_RES);
+    lv_obj_clear_flag(frm_wifi, LV_OBJ_FLAG_SCROLLABLE);
+
+    /*title*/
+    frm_wifi_btn_title = lv_btn_create(frm_wifi);
+    lv_obj_set_size(frm_wifi_btn_title, 200, 20);
+    lv_obj_align(frm_wifi_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
+
+    frm_wifi_btn_title_lbl = lv_label_create(frm_wifi_btn_title);
+    lv_label_set_text(frm_wifi_btn_title_lbl, "WiFi Networks");
+    lv_obj_set_align(frm_wifi_btn_title_lbl, LV_ALIGN_LEFT_MID);
+
+    /*back button*/
+    frm_wifi_btn_back = lv_btn_create(frm_wifi);
+    lv_obj_set_size(frm_wifi_btn_back, 50, 20);
+    lv_obj_align(frm_wifi_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
+    lv_obj_add_event_cb(frm_wifi_btn_back, hide_wifi, LV_EVENT_SHORT_CLICKED, NULL);
+
+    frm_wifi_btn_back_lbl = lv_label_create(frm_wifi_btn_back);
+    lv_label_set_text(frm_wifi_btn_back_lbl, "Back");
+    lv_obj_set_align(frm_wifi_btn_back_lbl, LV_ALIGN_CENTER);
+
+    /*scan button*/
+    frm_wifi_btn_scan = lv_btn_create(frm_wifi);
+    lv_obj_set_size(frm_wifi_btn_scan, 50, 20);
+    lv_obj_align(frm_wifi_btn_scan, LV_ALIGN_TOP_RIGHT, -45, -15);
+    lv_obj_add_event_cb(frm_wifi_btn_scan, wifi_scan, LV_EVENT_SHORT_CLICKED, NULL);
+
+    frm_wifi_btn_scan_lbl = lv_label_create(frm_wifi_btn_scan);
+    lv_label_set_text(frm_wifi_btn_scan_lbl, "Scan");
+    lv_obj_set_align(frm_wifi_btn_scan_lbl, LV_ALIGN_CENTER);
+
+    /*list*/
+    frm_wifi_list = lv_list_create(frm_wifi);
+    lv_obj_set_size(frm_wifi_list, 310, 210);
+    lv_obj_align(frm_wifi_list, LV_ALIGN_TOP_LEFT, -10, 10);
 }
 
 void datetime(){
@@ -1524,6 +1643,31 @@ void datetime(){
             Serial.println("WiFi diconnected");
     }else
         Serial.println("Failed to connect");
+}
+
+char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
+    switch(auth_mode){
+        case WIFI_AUTH_OPEN:
+            return "WIFI_AUTH_OPEN";
+        case WIFI_AUTH_WEP:
+            return "WIFI_AUTH_WEP";
+        case WIFI_AUTH_WPA_PSK:
+            return "WIFI_AUTH_WPA_PSK";
+        case WIFI_AUTH_WPA2_PSK:
+            return "WIFI_AUTH_WPA2_PSK";
+        case WIFI_AUTH_WPA_WPA2_PSK:
+            return "WIFI_AUTH_WPA_WPA2_PSK";
+        case WIFI_AUTH_WPA2_ENTERPRISE:
+            return "WIFI_AUTH_WPA2_ENTERPRISE";
+        case WIFI_AUTH_WPA3_PSK:
+            return "WIFI_AUTH_WPA3_PSK";
+        case WIFI_AUTH_WPA2_WPA3_PSK:
+            return "WIFI_AUTH_WPA2_WPA3_PSK";
+        case WIFI_AUTH_WAPI_PSK:
+            return "WIFI_AUTH_WAPI_PSK";
+        case WIFI_AUTH_MAX:
+            return "WIFI_AUTH_MAX";
+    }
 }
 
 void setup(){
@@ -1635,7 +1779,8 @@ void setup(){
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());*/
-    
+    /*
+    WiFi.disconnect();
     uint n = WiFi.scanNetworks();
     if(n > 0){
         for(uint i = 0; i < n; i++){
@@ -1643,9 +1788,21 @@ void setup(){
             Serial.print(" : ");
             Serial.print(WiFi.RSSI(i));
             Serial.print(" : ");
-            Serial.println(WiFi.encryptionType(i));
+            Serial.println(wifi_auth_mode_to_str(WiFi.encryptionType(i)));
         }
     }
+
+    WiFi.begin("K-OVO", "123456789");
+    while(!WiFi.isConnected()){
+        Serial.print(".");
+        delay(1000);
+    }
+
+    if(WiFi.isConnected())
+        Serial.println(WiFi.localIP().toString());
+    else  
+        Serial.println("Conexion failed");
+        */
 }
 
 void loop(){
