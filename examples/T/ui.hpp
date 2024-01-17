@@ -15,6 +15,7 @@ lv_obj_t * frm_home_contacts_img;
 lv_obj_t * frm_home_time_lbl;
 lv_obj_t * frm_home_date_lbl;
 lv_obj_t * frm_home_bat_lbl;
+lv_obj_t * frm_home_wifi_lbl;
 /*contacts form*/
 lv_obj_t * frm_contacts;
 lv_obj_t * frm_contacts_btn_back;
@@ -94,14 +95,25 @@ lv_obj_t * frm_wifi_btn_scan;
 lv_obj_t * frm_wifi_btn_scan_lbl;
 lv_obj_t * frm_wifi_btn_back;
 lv_obj_t * frm_wifi_btn_back_lbl;
+lv_obj_t * frm_wifi_connected_to_lbl;
 /*form wifi auth simple*/
 lv_obj_t * frm_wifi_simple;
+lv_obj_t * frm_wifi_simple_title_lbl;
 lv_obj_t * frm_wifi_simple_ta_pass;
 lv_obj_t * frm_wifi_simple_btn_connect;
 lv_obj_t * frm_wifi_simple_btn_connect_lbl;
+lv_obj_t * frm_wifi_simple_btn_see;
+lv_obj_t * frm_wifi_simple_btn_see_lbl;
+lv_obj_t * frm_wifi_simple_btn_back;
+lv_obj_t * frm_wifi_simple_btn_back_lbl;
 /*form wifi auth login*/
 lv_obj_t * frm_wifi_login;
+lv_obj_t * frm_wifi_login_title_lbl;
 lv_obj_t * frm_wifi_login_ta_login;
 lv_obj_t * frm_wifi_login_ta_pass;
 lv_obj_t * frm_wifi_login_btn_connect;
 lv_obj_t * frm_wifi_login_btn_connect_lbl;
+lv_obj_t * frm_wifi_login_btn_see;
+lv_obj_t * frm_wifi_login_btn_see_lbl;
+lv_obj_t * frm_wifi_login_btn_back;
+lv_obj_t * frm_wifi_login_btn_back_lbl;

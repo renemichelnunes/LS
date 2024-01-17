@@ -75,6 +75,7 @@ uint32_t ui_primary_color = 0x5c81aa;
 int vRef = 0;
 
 void update_bat();
+void datetime();
 
 static void loadSettings(){
     char color[7];
@@ -223,6 +224,7 @@ std::string generate_ID(){
 static void notify(void * param){
     char n[30] = {'\0'};
     while(true){
+        update_wifi_icon();
         if(notification_list.size() > 0){
             //vTaskDelay(2000 / portTICK_PERIOD_MS);
             notification_list.pop(n);
@@ -1064,22 +1066,121 @@ void show_wifi(lv_event_t * e){
     }
 }
 
-void wifi_connect_to(lv_event_t * e){
+void wifi_apply(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+    int i = (int)lv_event_get_user_data(e);
+    uint32_t count = 0;
+    char msg[100] = {'\0'};
+    
+    if(code == LV_EVENT_SHORT_CLICKED){
+        switch(wifi_list[i].auth_type){
+            case WIFI_AUTH_WPA2_PSK || WIFI_AUTH_WPA_WPA2_PSK:
+                strcpy(wifi_list[i].pass, lv_textarea_get_text(frm_wifi_simple_ta_pass));
+                if(strcmp(wifi_list[i].pass, "") == 0){
+                    Serial.println("Provide a password");
+                    return;
+                }
+                lv_label_set_text(frm_wifi_simple_title_lbl, "Connecting...");
+                WiFi.disconnect();
+                WiFi.mode(WIFI_STA);
+                WiFi.begin(wifi_list[i].SSID, wifi_list[i].pass);
+                while(!WiFi.isConnected()){
+                    Serial.print(".");
+                    count++;
+                    if(count == 10){
+                        WiFi.disconnect();
+                        break;
+                    }
+                    delay(1000);
+                }
+
+                if(WiFi.isConnected()){
+                    Serial.println(WiFi.localIP().toString());
+                    strcat(msg, wifi_list[i].SSID);
+                    strcat(msg, " ");
+                    strcat(msg, WiFi.localIP().toString().c_str());
+                    lv_label_set_text(frm_wifi_connected_to_lbl, msg);
+                    lv_obj_add_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN); 
+                    datetime();
+                }
+                else{
+                    Serial.println("Connection failed");
+                    lv_label_set_text(frm_wifi_simple_title_lbl, "Auth failed");
+                }
+                break;
+            
+            case WIFI_AUTH_WPA2_ENTERPRISE:
+                strcpy(wifi_list[i].pass, lv_textarea_get_text(frm_wifi_login_ta_pass));
+                strcpy(wifi_list[i].login, lv_textarea_get_text(frm_wifi_login_ta_login));
+                if(strcmp(wifi_list[i].pass, "") == 0 || strcmp(wifi_list[i].login, "") == 0){
+                    Serial.println("Provide a login and passwod");
+                    return;
+                }
+                lv_label_set_text(frm_wifi_login_title_lbl, "Connecting...");
+                WiFi.disconnect();
+                WiFi.mode(WIFI_STA);
+                
+                esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_list[i].login, strlen(wifi_list[i].login));
+                esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_list[i].login, strlen(wifi_list[i].login));
+                esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_list[i].login, strlen(wifi_list[i].login));
+                esp_wifi_sta_wpa2_ent_enable();
+                
+                WiFi.begin(wifi_list[i].SSID, wifi_list[i].pass);
+
+                while(!WiFi.isConnected()){
+                    Serial.print(".");
+                    count++;
+                    if(count == 30){
+                        WiFi.disconnect();
+                        break;
+                    }
+                    delay(1000);
+                }
+
+                if(WiFi.isConnected()){
+                    Serial.println(WiFi.localIP().toString());
+                    strcat(msg, wifi_list[i].SSID);
+                    strcat(msg, " ");
+                    strcat(msg, WiFi.localIP().toString().c_str());
+                    lv_label_set_text(frm_wifi_connected_to_lbl, msg);
+                    lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN); 
+                    datetime();
+                }
+                else{
+                    Serial.println("Connection failed");
+                    lv_label_set_text(frm_wifi_login_title_lbl, "Auth failed");
+                }
+                break;
+        }
+    }
+
+}
+
+void wifi_select(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     uint i = (int)lv_event_get_user_data(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
-        Serial.print("Connecing to ");
+        Serial.print("Connecting to ");
         Serial.println(wifi_list[i].SSID);
         Serial.println(wifi_list[i].RSSI);
         Serial.println(wifi_list[i].auth_type);
 
         switch(wifi_list[i].auth_type){
             case WIFI_AUTH_WPA2_PSK:
-
+                lv_obj_remove_event_cb(frm_wifi_simple_btn_connect, wifi_apply);
+                lv_obj_add_event_cb(frm_wifi_simple_btn_connect, wifi_apply, LV_EVENT_SHORT_CLICKED, (void *)i);
+                lv_obj_clear_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
+                break;
+            case WIFI_AUTH_WPA_WPA2_PSK:
+                lv_obj_remove_event_cb(frm_wifi_simple_btn_connect, wifi_apply);
+                lv_obj_add_event_cb(frm_wifi_simple_btn_connect, wifi_apply, LV_EVENT_SHORT_CLICKED, (void *)i);
+                lv_obj_clear_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
                 break;
             case WIFI_AUTH_WPA2_ENTERPRISE:
-
+                lv_obj_remove_event_cb(frm_wifi_login_btn_connect, wifi_apply);
+                lv_obj_add_event_cb(frm_wifi_login_btn_connect, wifi_apply, LV_EVENT_SHORT_CLICKED, (void *)i);
+                lv_obj_clear_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN);
                 break;
         }
     }
@@ -1094,6 +1195,8 @@ void wifi_scan(lv_event_t * e){
     lv_obj_t * btn = NULL;
 
     if(code == LV_EVENT_SHORT_CLICKED){
+        lv_label_set_text(frm_wifi_connected_to_lbl, "Scanning...");
+        lv_task_handler();
         WiFi.disconnect();
         n = WiFi.scanNetworks();
         if(n > 0){
@@ -1109,8 +1212,82 @@ void wifi_scan(lv_event_t * e){
                 itoa(WiFi.RSSI(i), rssi, 10);
                 strcat(ssid, rssi);
                 btn = lv_list_add_btn(frm_wifi_list, LV_SYMBOL_WIFI, ssid);
-                lv_obj_add_event_cb(btn, wifi_connect_to, LV_EVENT_SHORT_CLICKED, (void *)i);
+                lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_SHORT_CLICKED, (void *)i);
             }
+        }
+        lv_label_set_text(frm_wifi_connected_to_lbl, "Scan complete");
+    }
+}
+
+void update_wifi_icon(){
+    if(WiFi.isConnected())
+        lv_label_set_text(frm_home_wifi_lbl, LV_SYMBOL_WIFI);
+    else
+        lv_label_set_text(frm_home_wifi_lbl, "");
+}
+
+void show_pass(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    switch(code){
+        case LV_EVENT_PRESSED:
+            lv_textarea_set_password_mode(frm_wifi_simple_ta_pass, false);
+            break;
+        case LV_EVENT_RELEASED:
+            lv_textarea_set_password_mode(frm_wifi_simple_ta_pass, true);
+            break;
+    }
+}
+
+void show_login_pass(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    switch(code){
+        case LV_EVENT_PRESSED:
+            lv_textarea_set_password_mode(frm_wifi_login_ta_pass, false);
+            break;
+        case LV_EVENT_RELEASED:
+            lv_textarea_set_password_mode(frm_wifi_login_ta_pass, true);
+            break;
+    }
+}
+
+void show_simple(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_wifi_simple != NULL){
+            lv_obj_clear_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void hide_simple(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_wifi_simple != NULL){
+            lv_obj_add_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void show_wifi_login(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_wifi_login != NULL){
+            lv_obj_clear_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+void hide_wifi_login(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm_wifi_login != NULL){
+            lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
@@ -1148,6 +1325,12 @@ void ui(){
     lv_label_set_text(frm_home_bat_lbl, LV_SYMBOL_BATTERY_FULL);
     lv_obj_set_style_text_color(frm_home_bat_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_align(frm_home_bat_lbl, LV_ALIGN_TOP_RIGHT, 5, -10);
+
+    //Wifi icon
+    frm_home_wifi_lbl = lv_label_create(frm_home);
+    lv_label_set_text(frm_home_wifi_lbl, "");
+    lv_obj_set_style_text_color(frm_home_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(frm_home_wifi_lbl, LV_ALIGN_TOP_RIGHT, -55, -10);
 
     //date label
     frm_home_date_lbl = lv_label_create(frm_home);
@@ -1595,20 +1778,129 @@ void ui(){
 
     /*list*/
     frm_wifi_list = lv_list_create(frm_wifi);
-    lv_obj_set_size(frm_wifi_list, 310, 210);
-    lv_obj_align(frm_wifi_list, LV_ALIGN_TOP_LEFT, -10, 10);
+    lv_obj_set_size(frm_wifi_list, 310, 190);
+    lv_obj_align(frm_wifi_list, LV_ALIGN_TOP_LEFT, -10, 30);
+
+    /*Connected network label*/
+    frm_wifi_connected_to_lbl = lv_label_create(frm_wifi);
+    lv_obj_align(frm_wifi_connected_to_lbl, LV_ALIGN_TOP_LEFT, 0, 10);
+    lv_label_set_long_mode(frm_wifi_connected_to_lbl, LV_LABEL_LONG_SCROLL);
+    lv_label_set_text(frm_wifi_connected_to_lbl, "");
+    
+    /*Form wifi auth simple******************************************************************/
+    frm_wifi_simple = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(frm_wifi_simple, 230, 110);
+    lv_obj_align(frm_wifi_simple, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_clear_flag(frm_wifi_simple, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Title
+    frm_wifi_simple_title_lbl = lv_label_create(frm_wifi_simple);
+    lv_obj_align(frm_wifi_simple_title_lbl, LV_ALIGN_TOP_MID, -10, -10);
+    lv_label_set_long_mode(frm_wifi_simple_title_lbl, LV_LABEL_LONG_SCROLL);
+    lv_label_set_text(frm_wifi_simple_title_lbl, "Connect to network");
+
+    // password
+    frm_wifi_simple_ta_pass = lv_textarea_create(frm_wifi_simple);
+    lv_obj_set_size(frm_wifi_simple_ta_pass, 180, 30);
+    lv_obj_align(frm_wifi_simple_ta_pass, LV_ALIGN_OUT_TOP_MID, -10, 20);
+    lv_textarea_set_placeholder_text(frm_wifi_simple_ta_pass, "password");
+    lv_textarea_set_password_mode(frm_wifi_simple_ta_pass, true);
+
+    // see button
+    frm_wifi_simple_btn_see = lv_btn_create(frm_wifi_simple);
+    lv_obj_set_size(frm_wifi_simple_btn_see, 30, 20);
+    lv_obj_align(frm_wifi_simple_btn_see, LV_ALIGN_TOP_LEFT, 180, 25);
+    lv_obj_add_event_cb(frm_wifi_simple_btn_see, show_pass, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(frm_wifi_simple_btn_see, show_pass, LV_EVENT_RELEASED, NULL);
+
+    frm_wifi_simple_btn_see_lbl = lv_label_create(frm_wifi_simple_btn_see);
+    lv_label_set_text(frm_wifi_simple_btn_see_lbl, LV_SYMBOL_EYE_OPEN);
+    lv_obj_set_align(frm_wifi_simple_btn_see_lbl, LV_ALIGN_CENTER);
+
+    //connect button
+    frm_wifi_simple_btn_connect = lv_btn_create(frm_wifi_simple);
+    lv_obj_set_size(frm_wifi_simple_btn_connect, 70, 20);
+    lv_obj_align(frm_wifi_simple_btn_connect, LV_ALIGN_OUT_TOP_LEFT, -10, 60);
+
+    frm_wifi_simple_btn_connect_lbl = lv_label_create(frm_wifi_simple_btn_connect);
+    lv_label_set_text(frm_wifi_simple_btn_connect_lbl, "Connect");
+    lv_obj_set_align(frm_wifi_simple_btn_connect_lbl, LV_ALIGN_CENTER);
+
+    //back button
+    frm_wifi_simple_btn_back = lv_btn_create(frm_wifi_simple);
+    lv_obj_set_size(frm_wifi_simple_btn_back, 50, 20);
+    lv_obj_align(frm_wifi_simple_btn_back, LV_ALIGN_TOP_RIGHT, 10, 60);
+    lv_obj_add_event_cb(frm_wifi_simple_btn_back, hide_simple, LV_EVENT_SHORT_CLICKED, NULL);
+
+    frm_wifi_simple_btn_back_lbl = lv_label_create(frm_wifi_simple_btn_back);
+    lv_label_set_text(frm_wifi_simple_btn_back_lbl, "Back");
+    lv_obj_set_align(frm_wifi_simple_btn_back_lbl, LV_ALIGN_CENTER);
+
+    lv_obj_add_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
+
+    /*form wifi auth with login**************************************************************/
+    frm_wifi_login = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(frm_wifi_login, 230, 140);
+    lv_obj_align(frm_wifi_login, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_clear_flag(frm_wifi_login, LV_OBJ_FLAG_SCROLLABLE);
+
+    //title
+    frm_wifi_login_title_lbl = lv_label_create(frm_wifi_login);
+    lv_obj_align(frm_wifi_login_title_lbl, LV_ALIGN_TOP_MID, -10, -10);
+    lv_label_set_long_mode(frm_wifi_login_title_lbl, LV_LABEL_LONG_SCROLL);
+    lv_label_set_text(frm_wifi_login_title_lbl, "Connect to network");
+
+    // login
+    frm_wifi_login_ta_login = lv_textarea_create(frm_wifi_login);
+    lv_obj_set_size(frm_wifi_login_ta_login, 180, 30);
+    lv_obj_align(frm_wifi_login_ta_login, LV_ALIGN_OUT_TOP_MID, -10, 20);
+    lv_textarea_set_placeholder_text(frm_wifi_login_ta_login, "login");
+
+    // password
+    frm_wifi_login_ta_pass = lv_textarea_create(frm_wifi_login);
+    lv_obj_set_size(frm_wifi_login_ta_pass, 180, 30);
+    lv_obj_align(frm_wifi_login_ta_pass, LV_ALIGN_OUT_TOP_MID, -10, 50);
+    lv_textarea_set_placeholder_text(frm_wifi_login_ta_pass, "password");
+    lv_textarea_set_password_mode(frm_wifi_login_ta_pass, true);
+
+    // see button
+    frm_wifi_login_btn_see = lv_btn_create(frm_wifi_login);
+    lv_obj_set_size(frm_wifi_login_btn_see, 30, 20);
+    lv_obj_align(frm_wifi_login_btn_see, LV_ALIGN_TOP_LEFT, 180, 55);
+    lv_obj_add_event_cb(frm_wifi_login_btn_see, show_login_pass, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(frm_wifi_login_btn_see, show_login_pass, LV_EVENT_RELEASED, NULL);
+
+    frm_wifi_login_btn_see_lbl = lv_label_create(frm_wifi_login_btn_see);
+    lv_label_set_text(frm_wifi_login_btn_see_lbl, LV_SYMBOL_EYE_OPEN);
+    lv_obj_set_align(frm_wifi_login_btn_see_lbl, LV_ALIGN_CENTER);
+
+    //connect button
+    frm_wifi_login_btn_connect = lv_btn_create(frm_wifi_login);
+    lv_obj_set_size(frm_wifi_login_btn_connect, 70, 20);
+    lv_obj_align(frm_wifi_login_btn_connect, LV_ALIGN_OUT_TOP_LEFT, -10, 90);
+
+    frm_wifi_login_btn_connect_lbl = lv_label_create(frm_wifi_login_btn_connect);
+    lv_label_set_text(frm_wifi_login_btn_connect_lbl, "Connect");
+    lv_obj_set_align(frm_wifi_login_btn_connect_lbl, LV_ALIGN_CENTER);
+
+    //back button
+    frm_wifi_login_btn_back = lv_btn_create(frm_wifi_login);
+    lv_obj_set_size(frm_wifi_login_btn_back, 50, 20);
+    lv_obj_align(frm_wifi_login_btn_back, LV_ALIGN_TOP_RIGHT, 10, 90);
+    lv_obj_add_event_cb(frm_wifi_login_btn_back, hide_wifi_login, LV_EVENT_SHORT_CLICKED, NULL);
+
+    frm_wifi_login_btn_back_lbl = lv_label_create(frm_wifi_login_btn_back);
+    lv_label_set_text(frm_wifi_login_btn_back_lbl, "Back");
+    lv_obj_set_align(frm_wifi_login_btn_back_lbl, LV_ALIGN_CENTER);
+
+    lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN);
 }
 
 void datetime(){
-    const char * ssid = "K-OVO";
-    const char * password = "123456789";
     const char * timezone = "<-03>3";
     char hm[6] = {'\0'};
     char date[12] = {'\0'};
 
-    WiFi.begin(ssid, password);
-    
-    Serial.print("connecting");
     while(WiFi.status() != WL_CONNECTED){
         Serial.print(".");
         delay(500);
@@ -1639,10 +1931,8 @@ void datetime(){
         strftime(date, 12, "%a, %b %d", &timeinfo);
         lv_label_set_text(frm_home_time_lbl, hm);
         lv_label_set_text(frm_home_date_lbl, date);
-        if(WiFi.disconnect())
-            Serial.println("WiFi diconnected");
     }else
-        Serial.println("Failed to connect");
+        Serial.println("Connect to a WiFi network to update the time and date");
 }
 
 char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
