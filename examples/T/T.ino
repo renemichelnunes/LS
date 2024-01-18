@@ -14,6 +14,7 @@
 #include "esp32-hal.h"
 #include "esp_adc_cal.h"
 #include <vector>
+#include "con_nets.hpp"
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
@@ -29,15 +30,8 @@ struct lora_packet2{
     char status[7] = "sent";
 }my_packet;
 
-struct wifi_info{
-    char SSID[50] = {'\0'};
-    wifi_auth_mode_t auth_type = WIFI_AUTH_OPEN;
-    int32_t RSSI = 0;
-    char login[100] = {'\0'};
-    char pass[100] = {'\0'};
-};
-
 vector <wifi_info> wifi_list;
+Wifi_connected_nets wifi_connected_nets = Wifi_connected_nets();
 
 #define TOUCH_MODULES_GT911
 #include "TouchLib.h"
@@ -61,7 +55,8 @@ TaskHandle_t task_recv_pkt = NULL,
              task_check_new_msg = NULL,
              task_not = NULL,
              task_date_time = NULL,
-             task_bat = NULL;
+             task_bat = NULL,
+             task_wifi_auto = NULL;
 
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
@@ -77,6 +72,7 @@ int vRef = 0;
 
 void update_bat();
 void datetime();
+char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode);
 
 static void loadSettings(){
     char color[7];
@@ -140,39 +136,39 @@ static void saveSettings(){
 }
 
 static void loadContacts(){
-  if(!SPIFFS.begin(true)){
-    Serial.println("failed mounting SPIFFS");
-    return;
-  }
+    if(!SPIFFS.begin(true)){
+        Serial.println("failed mounting SPIFFS");
+        return;
+    }
 
-  fs::File file = SPIFFS.open("/contacts", FILE_READ);
-  if(!file){
-    Serial.println("contacts file problem");
-    return;
-  }
-  
-  vector<String> v;
-  while(file.available()){
-    v.push_back(file.readStringUntil('\n'));
-  }
+    fs::File file = SPIFFS.open("/contacts", FILE_READ);
+    if(!file){
+        Serial.println("contacts file problem");
+        return;
+    }
+    
+    vector<String> v;
+    while(file.available()){
+        v.push_back(file.readStringUntil('\n'));
+    }
 
-  file.close();
+    file.close();
 
-  for(uint32_t index = 0; index < v.size(); index ++){
-    v[index].remove(v[index].length() - 1);
-  }
+    for(uint32_t index = 0; index < v.size(); index ++){
+        v[index].remove(v[index].length() - 1);
+    }
 
     Serial.println("Loading contacts...");
-  Contact c;
-  for(uint32_t index = 0; index < v.size(); index += 2){
-    c.setName(v[index]);
-    c.setID(v[index + 1]);
-    Serial.println(c.getID());
-    Serial.println(c.getName());
-    contacts_list.add(c);
-  }
-  Serial.print(contacts_list.size());
-  Serial.println(" contacts found");
+    Contact c;
+    for(uint32_t index = 0; index < v.size(); index += 2){
+        c.setName(v[index]);
+        c.setID(v[index + 1]);
+        Serial.println(c.getID());
+        Serial.println(c.getName());
+        contacts_list.add(c);
+    }
+    Serial.print(contacts_list.size());
+    Serial.println(" contacts found");
 }
 
 static void saveContacts(){
@@ -1074,7 +1070,9 @@ void wifi_apply(lv_event_t * e){
     char msg[100] = {'\0'};
     
     if(code == LV_EVENT_SHORT_CLICKED){
-        if(wifi_list[i].auth_type == WIFI_AUTH_WPA2_PSK || wifi_list[i].auth_type == WIFI_AUTH_WPA_WPA2_PSK){
+        if(wifi_list[i].auth_type == WIFI_AUTH_WPA2_PSK || 
+           wifi_list[i].auth_type == WIFI_AUTH_WPA_WPA2_PSK || 
+           wifi_list[i].auth_type == WIFI_AUTH_WEP){
             strcpy(wifi_list[i].pass, lv_textarea_get_text(frm_wifi_simple_ta_pass));
             if(strcmp(wifi_list[i].pass, "") == 0){
                 Serial.println("Provide a password");
@@ -1087,7 +1085,7 @@ void wifi_apply(lv_event_t * e){
             while(!WiFi.isConnected()){
                 Serial.print(".");
                 count++;
-                if(count == 10){
+                if(count == 30){
                     WiFi.disconnect();
                     break;
                 }
@@ -1095,6 +1093,8 @@ void wifi_apply(lv_event_t * e){
             }
 
             if(WiFi.isConnected()){
+                wifi_connected_nets.add(wifi_list[i]);
+                wifi_connected_nets.save();
                 lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                 Serial.println(WiFi.localIP().toString());
                 strcat(msg, wifi_list[i].SSID);
@@ -1139,6 +1139,8 @@ void wifi_apply(lv_event_t * e){
             }
 
             if(WiFi.isConnected()){
+                wifi_connected_nets.add(wifi_list[i]);
+                wifi_connected_nets.save();
                 lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                 Serial.println(WiFi.localIP().toString());
                 strcat(msg, wifi_list[i].SSID);
@@ -1196,6 +1198,7 @@ void wifi_scan(lv_event_t * e){
     lv_obj_t * btn = NULL;
 
     if(code == LV_EVENT_SHORT_CLICKED){
+        lv_task_handler();
         lv_label_set_text(frm_wifi_connected_to_lbl, "Scanning...");
         lv_task_handler();
         WiFi.disconnect();
@@ -1209,6 +1212,8 @@ void wifi_scan(lv_event_t * e){
                 strcpy(wi.SSID, WiFi.SSID(i).c_str());
                 wifi_list.push_back(wi);
                 strcpy(ssid, WiFi.SSID(i).c_str());
+                strcat(ssid, " ");
+                strcat(ssid, wifi_auth_mode_to_str(WiFi.encryptionType(i)));
                 strcat(ssid, " ");
                 itoa(WiFi.RSSI(i), rssi, 10);
                 strcat(ssid, rssi);
@@ -1960,35 +1965,96 @@ void datetime(){
 char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
     switch(auth_mode){
         case WIFI_AUTH_OPEN:
-            return "WIFI_AUTH_OPEN";
+            return "OPEN";
         case WIFI_AUTH_WEP:
-            return "WIFI_AUTH_WEP";
+            return "WEP";
         case WIFI_AUTH_WPA_PSK:
-            return "WIFI_AUTH_WPA_PSK";
+            return "WPA PSK";
         case WIFI_AUTH_WPA2_PSK:
-            return "WIFI_AUTH_WPA2_PSK";
+            return "WPA2 PSK";
         case WIFI_AUTH_WPA_WPA2_PSK:
-            return "WIFI_AUTH_WPA_WPA2_PSK";
+            return "WPA WPA2 PSK";
         case WIFI_AUTH_WPA2_ENTERPRISE:
-            return "WIFI_AUTH_WPA2_ENTERPRISE";
+            return "WPA2 ENTERPRISE";
         case WIFI_AUTH_WPA3_PSK:
-            return "WIFI_AUTH_WPA3_PSK";
+            return "WPA3 PSK";
         case WIFI_AUTH_WPA2_WPA3_PSK:
-            return "WIFI_AUTH_WPA2_WPA3_PSK";
+            return "WPA2 WPA3 PSK";
         case WIFI_AUTH_WAPI_PSK:
-            return "WIFI_AUTH_WAPI_PSK";
+            return "WAPI PSK";
         case WIFI_AUTH_MAX:
-            return "WIFI_AUTH_MAX";
+            return "MAX";
     }
+}
+
+void wifi_auto_connect(void * param){
+    vector<String>list;
+    int n = 0;
+    int count = 0;
+
+    WiFi.disconnect();
+    WiFi.mode(WIFI_STA);
+    n = WiFi.scanNetworks();
+    if(n > 0)
+        for(int i = 0; i < n; i++){
+            list.push_back(WiFi.SSID(i));
+        }
+
+    if(wifi_connected_nets.list.size() > 0){
+        for(uint32_t i = 0; i < wifi_connected_nets.list.size(); i++)
+            for(uint32_t j = 0; j < list.size(); j++){
+                if(strcmp(wifi_connected_nets.list[i].SSID, list[j].c_str()) == 0){
+                    if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_ENTERPRISE){
+                        esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
+                        esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
+                        esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_connected_nets.list[i].pass, strlen(wifi_connected_nets.list[i].pass));
+                        esp_wifi_sta_wpa2_ent_enable();
+                        
+                        Serial.print("Connecting to ");
+                        Serial.print(wifi_connected_nets.list[i].SSID);
+                        
+                        WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
+                        
+                        while(!WiFi.isConnected()){
+                            Serial.print(".");
+                            count++;
+                            if(count == 30){
+                                WiFi.disconnect();
+                                break;
+                            }
+                            delay(1000);
+                        }
+
+                        if(WiFi.isConnected()){
+                            lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+                            Serial.println(" connected");
+                            datetime();
+                            return;
+                        }else
+                            Serial.println("failed");
+                    }else{
+
+                    }
+                }
+            }
+    }
+    if(task_wifi_auto != NULL)
+        vTaskDelete(task_wifi_auto);
 }
 
 void setup(){
     bool ret = false;
     Serial.begin(115200);
-    //delay(2000);
+    delay(3000);
 
     //Load contacts
     loadContacts();
+
+    //load connected wifi networks
+    if(wifi_connected_nets.load())
+        Serial.println("wifi networks loaded");
+    else
+        Serial.println("no wifi networks loaded");
 
     pinMode(BOARD_POWERON, OUTPUT);
     digitalWrite(BOARD_POWERON, HIGH);
@@ -2073,6 +2139,11 @@ void setup(){
         lv_label_set_text(frm_home_title_lbl, "LoRa radio ready");
     else
         lv_label_set_text(frm_home_title_lbl, "LoRa radio failed");
+
+    if(wifi_connected_nets.list.size() > 0)
+        wifi_auto_connect(NULL);
+        //xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 1, &task_wifi_auto, 0);
+        
     /*
     // wpa2-enterprise peap
     WiFi.mode(WIFI_STA);
