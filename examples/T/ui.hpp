@@ -84,6 +84,8 @@ lv_obj_t * frm_settings_color;
 lv_obj_t * frm_settings_btn_color_lbl;
 lv_obj_t * frm_settings_btn_applycolor;
 lv_obj_t * frm_settings_btn_applycolor_lbl;
+lv_obj_t * frm_settings_btn_wifi;
+lv_obj_t * frm_settings_btn_wifi_lbl;
 /*notification form*/
 lv_obj_t * frm_not;
 /*form wifi*/
