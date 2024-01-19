@@ -2075,6 +2075,8 @@ void wifi_auto_toggle(){
                             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                             Serial.println(" connected");
                             lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
+                            vTaskDelay(2000 / portTICK_PERIOD_MS);
+                            lv_label_set_text(frm_home_title_lbl, "");
                             datetime();
                             break;
                         }else{
@@ -2101,6 +2103,8 @@ void wifi_auto_toggle(){
                             last_wifi_con = i;
                             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                             Serial.println(" connected");
+                            vTaskDelay(2000 / portTICK_PERIOD_MS);
+                            lv_label_set_text(frm_home_title_lbl, "");
                             datetime();
                             break;
                         }else{
@@ -2121,6 +2125,7 @@ void wifi_auto_connect(void * param){
     vector<wifi_info>list;
     char a[50] = {'\0'};
     
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
     Serial.print("Searching for wifi connections...");
     lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
     WiFi.disconnect();
@@ -2170,6 +2175,8 @@ void wifi_auto_connect(void * param){
                             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                             Serial.println(" connected");
                             lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
+                            vTaskDelay(2000 / portTICK_PERIOD_MS);
+                            lv_label_set_text(frm_home_title_lbl, "");
                             datetime();
                             break;
                         }else{
@@ -2192,10 +2199,12 @@ void wifi_auto_connect(void * param){
                         }
 
                         if(WiFi.isConnected()){
-                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
+                            lv_label_set_text(frm_home_title_lbl, "");
                             last_wifi_con = i;
                             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                             Serial.println(" connected");
+                            vTaskDelay(2000 / portTICK_PERIOD_MS);
+                            lv_label_set_text(frm_home_title_lbl, "");
                             datetime();
                             break;
                         }else{
