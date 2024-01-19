@@ -12,6 +12,7 @@ lv_obj_t * lbl_btn_test;
 lv_obj_t * frm_home_btn_settings;
 lv_obj_t * frm_home_btn_settings_lbl;
 lv_obj_t * frm_home_contacts_img;
+lv_obj_t * frm_home_frm_date_time;
 lv_obj_t * frm_home_time_lbl;
 lv_obj_t * frm_home_date_lbl;
 lv_obj_t * frm_home_bat_lbl;

@@ -232,6 +232,10 @@ static void notify(void * param){
             lv_task_handler();
             lv_label_set_text(label, n);
             lv_task_handler();
+            lv_obj_align(label, LV_ALIGN_TOP_LEFT, -10, -10);
+            lv_task_handler();
+            lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
+            lv_task_handler();
             lv_label_set_text(frm_home_title_lbl, n);
             lv_task_handler();
             vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -1311,59 +1315,7 @@ void wifi_toggle(lv_event_t * e){
         if(wifi_connected_nets.list.size() == 0)
             return;
         if(!WiFi.isConnected()){
-            WiFi.disconnect(false);
-            WiFi.mode(WIFI_STA);
-            Serial.println("wifi on");
-            if(wifi_connected_nets.list[last_wifi_con].auth_type == WIFI_AUTH_WPA2_PSK ||
-            wifi_connected_nets.list[last_wifi_con].auth_type == WIFI_AUTH_WPA_WPA2_PSK ||
-            wifi_connected_nets.list[last_wifi_con].auth_type == WIFI_AUTH_WEP){
-                Serial.print("reconnecting to ");
-                Serial.println(wifi_connected_nets.list[last_wifi_con].SSID);
-                WiFi.begin(wifi_connected_nets.list[last_wifi_con].SSID, wifi_connected_nets.list[last_wifi_con].pass);
-
-                while(!WiFi.isConnected()){
-                    Serial.print(".");
-                    c++;
-                    if(c == 30){
-                        WiFi.disconnect();
-                        break;
-                    }
-                    delay(1000);
-                }
-
-                if(WiFi.isConnected()){
-                    lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-                    Serial.println(" connected");
-                    datetime();
-                    return;
-                }else 
-                    Serial.println(" failed");
-            }else if(wifi_connected_nets.list[last_wifi_con].auth_type == WIFI_AUTH_WPA2_ENTERPRISE){
-                esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_connected_nets.list[last_wifi_con].login, strlen(wifi_connected_nets.list[last_wifi_con].login));
-                esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_connected_nets.list[last_wifi_con].login, strlen(wifi_connected_nets.list[last_wifi_con].login));
-                esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_connected_nets.list[last_wifi_con].pass, strlen(wifi_connected_nets.list[last_wifi_con].pass));
-                esp_wifi_sta_wpa2_ent_enable();
-                
-                WiFi.begin(wifi_connected_nets.list[last_wifi_con].SSID, wifi_connected_nets.list[last_wifi_con].pass);
-                
-                while(!WiFi.isConnected()){
-                    Serial.print(".");
-                    c++;
-                    if(c == 30){
-                        WiFi.disconnect();
-                        break;
-                    }
-                    delay(1000);
-                }
-
-                if(WiFi.isConnected()){
-                    lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-                    Serial.println(" connected");
-                    datetime();
-                    return;
-                }else
-                    Serial.println("failed");
-            }
+            wifi_auto_connect(NULL);
         }
         else{
             WiFi.disconnect(true);
@@ -1839,12 +1791,15 @@ void ui(){
     
     // notification form************************************************************
     frm_not = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(frm_not, 300, 50);
+    lv_obj_set_size(frm_not, 300, 25);
     lv_obj_align(frm_not, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_style_border_color(frm_not, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(frm_not, 0, 0 ) ;
+    lv_obj_set_style_border_width(frm_not, 0, 0);
 
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
 
-    /*form wifi*/
+    /*form wifi********************************************************************/
     frm_wifi = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_wifi, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_wifi, LV_OBJ_FLAG_SCROLLABLE);
@@ -2090,6 +2045,9 @@ void wifi_auto_connect(void * param){
             for(uint32_t j = 0; j < list.size(); j++){
                 if(strcmp(wifi_connected_nets.list[i].SSID, list[j].SSID) == 0){
                     Serial.print("Connecting to ");
+                    s = "Connecting to ";
+                    tft.drawCentreString(s, 120, 40, 1);
+                    tft.drawCentreString(wifi_connected_nets.list[i].SSID, 120, 80, 1);
                     Serial.print(wifi_connected_nets.list[i].SSID);
                     if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_ENTERPRISE){
                         esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
@@ -2113,33 +2071,39 @@ void wifi_auto_connect(void * param){
                             last_wifi_con = i;
                             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                             Serial.println(" connected");
+                            tft.drawCentreString("connected", 120, 120, 1);
                             datetime();
                             return;
-                        }else
+                        }else{
                             Serial.println("failed");
+                            tft.drawCentreString("failed", 120, 160, 1);
+                        }
                     }else if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_PSK ||
                              wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA_WPA2_PSK ||
                              wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WEP){
-                            WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
+                        WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
 
-                            while(!WiFi.isConnected()){
-                                Serial.print(".");
-                                c++;
-                                if(c == 30){
-                                    WiFi.disconnect();
-                                    break;
-                                }
-                                delay(1000);
+                        while(!WiFi.isConnected()){
+                            Serial.print(".");
+                            c++;
+                            if(c == 30){
+                                WiFi.disconnect();
+                                break;
                             }
+                            delay(1000);
+                        }
 
-                            if(WiFi.isConnected()){
-                                last_wifi_con = i;
-                                lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-                                Serial.println(" connected");
-                                datetime();
-                                return;
-                            }else
-                                Serial.println("failed");
+                        if(WiFi.isConnected()){
+                            tft.drawCentreString("connected", 120, 120, 1);
+                            last_wifi_con = i;
+                            lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+                            Serial.println(" connected");
+                            datetime();
+                            return;
+                        }else{
+                            Serial.println("failed");
+                            tft.drawCentreString("failed", 120, 160, 1);
+                        }
                     }
                 }
             }
