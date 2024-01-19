@@ -72,6 +72,7 @@ int vRef = 0;
 
 void update_bat();
 void datetime();
+void wifi_auto_toggle();
 char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode);
 uint last_wifi_con = -1;
 
@@ -1315,7 +1316,7 @@ void wifi_toggle(lv_event_t * e){
         if(wifi_connected_nets.list.size() == 0)
             return;
         if(!WiFi.isConnected()){
-            wifi_auto_connect(NULL);
+            wifi_auto_toggle();
         }
         else{
             WiFi.disconnect(true);
@@ -2018,16 +2019,15 @@ char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
     }
 }
 
-void wifi_auto_connect(void * param){
+void wifi_auto_toggle(){
     int n = 0;
     int c = 0;
     wifi_info wi;
     vector<wifi_info>list;
-    String s = "Searching for wifi connections...";
-
-    tft.drawCentreString(s, 120, 0, 1);
+    char a[50] = {'\0'};
     
     Serial.print("Searching for wifi connections...");
+    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
     WiFi.disconnect();
     WiFi.mode(WIFI_STA);
     n = WiFi.scanNetworks();
@@ -2036,19 +2036,22 @@ void wifi_auto_connect(void * param){
             strcpy(wi.SSID, WiFi.SSID(i).c_str());
             list.push_back(wi);
         }
-    else
+    else{
         Serial.println("No wifi networks found");
+        lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI "No wifi networks found");
+    }
     Serial.println("done");
-
+    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI "done");
     if(wifi_connected_nets.list.size() > 0){
         for(uint32_t i = 0; i < wifi_connected_nets.list.size(); i++){
             for(uint32_t j = 0; j < list.size(); j++){
                 if(strcmp(wifi_connected_nets.list[i].SSID, list[j].SSID) == 0){
                     Serial.print("Connecting to ");
-                    s = "Connecting to ";
-                    tft.drawCentreString(s, 120, 40, 1);
-                    tft.drawCentreString(wifi_connected_nets.list[i].SSID, 120, 80, 1);
                     Serial.print(wifi_connected_nets.list[i].SSID);
+                    strcpy(a, LV_SYMBOL_WIFI);
+                    strcat(a, " Connecting to ");
+                    strcat(a, wifi_connected_nets.list[i].SSID);
+                    lv_label_set_text(frm_home_title_lbl, a);
                     if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_ENTERPRISE){
                         esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
                         esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
@@ -2071,12 +2074,12 @@ void wifi_auto_connect(void * param){
                             last_wifi_con = i;
                             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                             Serial.println(" connected");
-                            tft.drawCentreString("connected", 120, 120, 1);
+                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
                             datetime();
-                            return;
+                            break;
                         }else{
                             Serial.println("failed");
-                            tft.drawCentreString("failed", 120, 160, 1);
+                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " failed");
                         }
                     }else if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_PSK ||
                              wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA_WPA2_PSK ||
@@ -2094,23 +2097,120 @@ void wifi_auto_connect(void * param){
                         }
 
                         if(WiFi.isConnected()){
-                            tft.drawCentreString("connected", 120, 120, 1);
+                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
                             last_wifi_con = i;
                             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                             Serial.println(" connected");
                             datetime();
-                            return;
+                            break;
                         }else{
                             Serial.println("failed");
-                            tft.drawCentreString("failed", 120, 160, 1);
+                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " failed");
                         }
                     }
                 }
             }
         }
     }
-    if(task_wifi_auto != NULL)
+}
+
+void wifi_auto_connect(void * param){
+    int n = 0;
+    int c = 0;
+    wifi_info wi;
+    vector<wifi_info>list;
+    char a[50] = {'\0'};
+    
+    Serial.print("Searching for wifi connections...");
+    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
+    WiFi.disconnect();
+    WiFi.mode(WIFI_STA);
+    n = WiFi.scanNetworks();
+    if(n > 0)
+        for(int i = 0; i < n; i++){
+            strcpy(wi.SSID, WiFi.SSID(i).c_str());
+            list.push_back(wi);
+        }
+    else{
+        Serial.println("No wifi networks found");
+        lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI "No wifi networks found");
+    }
+    Serial.println("done");
+    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI "done");
+    if(wifi_connected_nets.list.size() > 0){
+        for(uint32_t i = 0; i < wifi_connected_nets.list.size(); i++){
+            for(uint32_t j = 0; j < list.size(); j++){
+                if(strcmp(wifi_connected_nets.list[i].SSID, list[j].SSID) == 0){
+                    Serial.print("Connecting to ");
+                    Serial.print(wifi_connected_nets.list[i].SSID);
+                    strcpy(a, LV_SYMBOL_WIFI);
+                    strcat(a, " Connecting to ");
+                    strcat(a, wifi_connected_nets.list[i].SSID);
+                    lv_label_set_text(frm_home_title_lbl, a);
+                    if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_ENTERPRISE){
+                        esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
+                        esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
+                        esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_connected_nets.list[i].pass, strlen(wifi_connected_nets.list[i].pass));
+                        esp_wifi_sta_wpa2_ent_enable();
+                        
+                        WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
+                        
+                        while(!WiFi.isConnected()){
+                            Serial.print(".");
+                            c++;
+                            if(c == 30){
+                                WiFi.disconnect();
+                                break;
+                            }
+                            delay(1000);
+                        }
+
+                        if(WiFi.isConnected()){
+                            last_wifi_con = i;
+                            lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+                            Serial.println(" connected");
+                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
+                            datetime();
+                            break;
+                        }else{
+                            Serial.println("failed");
+                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " failed");
+                        }
+                    }else if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_PSK ||
+                             wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA_WPA2_PSK ||
+                             wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WEP){
+                        WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
+
+                        while(!WiFi.isConnected()){
+                            Serial.print(".");
+                            c++;
+                            if(c == 30){
+                                WiFi.disconnect();
+                                break;
+                            }
+                            delay(1000);
+                        }
+
+                        if(WiFi.isConnected()){
+                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
+                            last_wifi_con = i;
+                            lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+                            Serial.println(" connected");
+                            datetime();
+                            break;
+                        }else{
+                            Serial.println("failed");
+                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " failed");
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if(task_wifi_auto != NULL){
         vTaskDelete(task_wifi_auto);
+        task_wifi_auto = NULL;
+    }
 }
 
 void setup(){
@@ -2212,8 +2312,7 @@ void setup(){
         lv_label_set_text(frm_home_title_lbl, "LoRa radio failed");
 
     if(wifi_connected_nets.list.size() > 0)
-        wifi_auto_connect(NULL);
-        //xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 1, &task_wifi_auto, 0);
+        xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 2, &task_wifi_auto, 0);
 }
 
 void loop(){
