@@ -1367,18 +1367,28 @@ void ui(){
     lv_obj_set_style_text_color(frm_home_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_align(frm_home_wifi_lbl, LV_ALIGN_TOP_RIGHT, -55, -10);
 
+    //date time background
+    frm_home_frm_date_time = lv_obj_create(frm_home);
+    lv_obj_set_size(frm_home_frm_date_time, 90, 55);
+    lv_obj_align(frm_home_frm_date_time, LV_ALIGN_TOP_MID, 0, 15);
+    lv_obj_clear_flag(frm_home_frm_date_time, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(frm_home_frm_date_time, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(frm_home_frm_date_time, 64, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(frm_home_frm_date_time, lv_color_hex(0x151515), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(frm_home_frm_date_time, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
     //date label
-    frm_home_date_lbl = lv_label_create(frm_home);
+    frm_home_date_lbl = lv_label_create(frm_home_frm_date_time);
     lv_obj_set_style_text_color(frm_home_date_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(frm_home_date_lbl, "-");
-    lv_obj_align(frm_home_date_lbl, LV_ALIGN_TOP_MID, 0, 20);
+    lv_obj_align(frm_home_date_lbl, LV_ALIGN_TOP_MID, 0, -10);
 
     //time label
-    frm_home_time_lbl = lv_label_create(frm_home);
+    frm_home_time_lbl = lv_label_create(frm_home_frm_date_time);
     lv_obj_set_style_text_font(frm_home_time_lbl, &clocknum, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(frm_home_time_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(frm_home_time_lbl, "00:00");
-    lv_obj_align(frm_home_time_lbl, LV_ALIGN_TOP_MID, 0, 40);
+    lv_obj_align(frm_home_time_lbl, LV_ALIGN_TOP_MID, 0, 10);
 
     // Contacts button
     frm_home_btn_contacts = lv_btn_create(frm_home);
