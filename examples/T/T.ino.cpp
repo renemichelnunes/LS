@@ -1,3 +1,6 @@
+# 1 "/tmp/tmp89c3yf5s"
+#include <Arduino.h>
+# 1 "/home/rene/Documents/T-Deck/examples/T/T.ino"
 #include <Arduino.h>
 #include "utilities.h"
 #include <Wire.h>
@@ -18,7 +21,7 @@
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
-//LV_IMG_DECLARE(bg);
+
 LV_IMG_DECLARE(bg2);
 LV_IMG_DECLARE(icon_lora2);
 LV_IMG_DECLARE(icon_mail);
@@ -33,7 +36,7 @@ struct lora_packet2{
 vector <wifi_info> wifi_list;
 Wifi_connected_nets wifi_connected_nets = Wifi_connected_nets();
 
-#define TOUCH_MODULES_GT911
+#define TOUCH_MODULES_GT911 
 #include "TouchLib.h"
 #include <lwip/apps/sntp.h>
 
@@ -46,12 +49,12 @@ TFT_eSPI tft;
 SemaphoreHandle_t xSemaphore = NULL;
 bool touchDected = false;
 bool kbDected = false;
-bool hasRadio = false; 
+bool hasRadio = false;
 bool wifi_connected = false;
 volatile bool gotPacket = false;
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
-TaskHandle_t task_recv_pkt = NULL, 
+TaskHandle_t task_recv_pkt = NULL,
              task_check_new_msg = NULL,
              task_not = NULL,
              task_date_time = NULL,
@@ -75,7 +78,67 @@ void datetime();
 void wifi_auto_toggle();
 char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode);
 uint last_wifi_con = -1;
-
+static void loadSettings();
+static void saveSettings();
+static void loadContacts();
+static void saveContacts();
+static void refresh_contact_list();
+static void notify(void * param);
+static void disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p );
+static bool getTouch(int16_t &x, int16_t &y);
+static void touchpad_read( lv_indev_drv_t *indev_driver, lv_indev_data_t *data );
+static uint32_t keypad_get_key(void);
+static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
+void setupLvgl();
+void scanDevices(TwoWire *w);
+bool checkKb();
+void processReceivedPacket(void * param);
+void listen();
+void setupRadio(lv_event_t * e);
+void test(lv_event_t * e);
+void hide_contacts_frm(lv_event_t * e);
+void show_contacts_form(lv_event_t * e);
+void hide_settings(lv_event_t * e);
+void show_settings(lv_event_t * e);
+void hide_add_contacts_frm(lv_event_t * e);
+void show_add_contacts_frm(lv_event_t * e);
+void hide_edit_contacts(lv_event_t * e);
+void show_edit_contacts(lv_event_t * e);
+void hide_chat(lv_event_t * e);
+void show_chat(lv_event_t * e);
+void send_message(lv_event_t * e);
+void copy_text(lv_event_t * e);
+void check_new_msg(void * param);
+void add_contact(lv_event_t * e);
+void del_contact(lv_event_t * e);
+void generateID(lv_event_t * e);
+void DX(lv_event_t * e);
+void update_time(void *timeStruct);
+void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst);
+void setDateTime();
+void applyDate(lv_event_t * e);
+void apply_color(lv_event_t * e);
+void initBat();
+uint32_t read_bat();
+void update_bat(void * param);
+void hide_wifi(lv_event_t * e);
+void show_wifi(lv_event_t * e);
+void wifi_apply(lv_event_t * e);
+void wifi_select(lv_event_t * e);
+void wifi_scan(lv_event_t * e);
+void update_wifi_icon();
+void show_pass(lv_event_t * e);
+void show_login_pass(lv_event_t * e);
+void show_simple(lv_event_t * e);
+void hide_simple(lv_event_t * e);
+void show_wifi_login(lv_event_t * e);
+void hide_wifi_login(lv_event_t * e);
+void wifi_toggle(lv_event_t * e);
+void ui();
+void wifi_auto_connect(void * param);
+void setup();
+void loop();
+#line 79 "/home/rene/Documents/T-Deck/examples/T/T.ino"
 static void loadSettings(){
     char color[7];
     if(!SPIFFS.begin(true)){
@@ -148,7 +211,7 @@ static void loadContacts(){
         Serial.println("contacts file problem");
         return;
     }
-    
+
     vector<String> v;
     while(file.available()){
         v.push_back(file.readStringUntil('\n'));
@@ -225,7 +288,7 @@ static void notify(void * param){
     while(true){
         update_wifi_icon();
         if(notification_list.size() > 0){
-            //vTaskDelay(2000 / portTICK_PERIOD_MS);
+
             notification_list.pop(n);
             lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
             lv_task_handler();
@@ -290,7 +353,7 @@ static bool getTouch(int16_t &x, int16_t &y)
         x = t.x;
         y = t.y;
     }
-    //Serial.printf("R:%d X:%d Y:%d\n", rotation, x, y);
+
     return true;
 }
 
@@ -305,7 +368,7 @@ static uint32_t keypad_get_key(void)
     Wire.requestFrom(0x55, 1);
     while (Wire.available() > 0) {
         key_ch = Wire.read();
-        
+
     }
     return key_ch;
 }
@@ -317,7 +380,7 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
     act_key = keypad_get_key();
     if (act_key != 0) {
         data->state = LV_INDEV_STATE_PR;
-        //Serial.printf("Key pressed : 0x%x\n", act_key);
+
         last_key = act_key;
     } else {
         data->state = LV_INDEV_STATE_REL;
@@ -330,10 +393,10 @@ void setupLvgl()
     static lv_disp_draw_buf_t draw_buf;
 
 #ifndef BOARD_HAS_PSRAM
-#define LVGL_BUFFER_SIZE    ( TFT_HEIGHT * 100 )
+#define LVGL_BUFFER_SIZE ( TFT_HEIGHT * 100 )
     static lv_color_t buf[ LVGL_BUFFER_SIZE ];
 #else
-#define LVGL_BUFFER_SIZE    (TFT_WIDTH * TFT_HEIGHT * sizeof(lv_color_t))
+#define LVGL_BUFFER_SIZE (TFT_WIDTH * TFT_HEIGHT * sizeof(lv_color_t))
     static lv_color_t *buf = (lv_color_t *)ps_malloc(LVGL_BUFFER_SIZE);
     if (!buf) {
         Serial.println("menory alloc failed!");
@@ -354,11 +417,11 @@ void setupLvgl()
 
     lv_disp_draw_buf_init( &draw_buf, buf, NULL, LVGL_BUFFER_SIZE );
 
-    /*Initialize the display*/
+
     static lv_disp_drv_t disp_drv;
     lv_disp_drv_init( &disp_drv );
 
-    /*Change the following line to your display resolution*/
+
     disp_drv.hor_res = TFT_HEIGHT;
     disp_drv.ver_res = TFT_WIDTH;
     disp_drv.flush_cb = disp_flush;
@@ -368,9 +431,9 @@ void setupLvgl()
 #endif
     lv_disp_drv_register( &disp_drv );
 
-    /*Initialize the  input device driver*/
 
-    /*Register a touchscreen input device*/
+
+
     if (touchDected) {
         static lv_indev_drv_t indev_touchpad;
         lv_indev_drv_init( &indev_touchpad );
@@ -381,7 +444,7 @@ void setupLvgl()
 
     if (kbDected) {
         Serial.println("Keyboard registered!!");
-        /*Register a keypad input device*/
+
         static lv_indev_drv_t indev_keypad;
         lv_indev_drv_init(&indev_keypad);
         indev_keypad.type = LV_INDEV_TYPE_KEYPAD;
@@ -509,7 +572,7 @@ void setupRadio(lv_event_t * e)
     digitalWrite(RADIO_CS_PIN, HIGH);
     digitalWrite(BOARD_TFT_CS, HIGH);
     SPI.end();
-    SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI); //SD
+    SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
 
     int state = radio.begin(RADIO_FREQ);
     if (state == RADIOLIB_ERR_NONE) {
@@ -517,71 +580,71 @@ void setupRadio(lv_event_t * e)
     } else {
         Serial.print("Start Radio failed,code:");
         Serial.println(state);
-        //return false;
+
     }
 
-    
 
-    // set carrier frequency to 868.0 MHz
+
+
     if (radio.setFrequency(RADIO_FREQ) == RADIOLIB_ERR_INVALID_FREQUENCY) {
         Serial.println(F("Selected frequency is invalid for this module!"));
-        //return false;
+
     }
 
-    // set bandwidth to 250 kHz
+
     if (radio.setBandwidth(250.0) == RADIOLIB_ERR_INVALID_BANDWIDTH) {
         Serial.println(F("Selected bandwidth is invalid for this module!"));
-        //return false;
+
     }
 
-    // set spreading factor to 10
+
     if (radio.setSpreadingFactor(10) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
         Serial.println(F("Selected spreading factor is invalid for this module!"));
-        //return false;
+
     }
 
-    // set coding rate to 6
+
     if (radio.setCodingRate(6) == RADIOLIB_ERR_INVALID_CODING_RATE) {
         Serial.println(F("Selected coding rate is invalid for this module!"));
-        //return false;
+
     }
 
-    // set LoRa sync word to 0xAB
+
     if (radio.setSyncWord(0xAB) != RADIOLIB_ERR_NONE) {
         Serial.println(F("Unable to set sync word!"));
-        //return false;
+
     }
 
-    // set output power to 10 dBm (accepted range is -17 - 22 dBm)
+
     if (radio.setOutputPower(17) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
         Serial.println(F("Selected output power is invalid for this module!"));
-        //return false;
+
     }
 
-    // set over current protection limit to 140 mA (accepted range is 45 - 140 mA)
-    // NOTE: set value to 0 to disable overcurrent protection
+
+
     if (radio.setCurrentLimit(140) == RADIOLIB_ERR_INVALID_CURRENT_LIMIT) {
         Serial.println(F("Selected current limit is invalid for this module!"));
-        //return false;
+
     }
 
-    // set LoRa preamble length to 15 symbols (accepted range is 0 - 65535)
+
     if (radio.setPreambleLength(15) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
-        //return false;
+
     }
 
-    // disable CRC
+
     if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
         Serial.println(F("Selected CRC is invalid for this module!"));
-        //return false;
+
     }
 
     xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 10000, NULL, 1, &task_recv_pkt, 1);
     radio.setPacketReceivedAction(listen);
     if(radio.startReceive() == RADIOLIB_ERR_NONE)
         hasRadio = true;
-    //return true;
+
 
 }
 
@@ -590,7 +653,7 @@ void test(lv_event_t * e){
         if(hasRadio){
             int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet2));
             radio.finishTransmit();
-            
+
             if(state != RADIOLIB_ERR_NONE){
                 Serial.print("transmission failed ");
                 Serial.println(state);
@@ -617,7 +680,7 @@ void hide_contacts_frm(lv_event_t * e){
 
 void show_contacts_form(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
-    
+
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_contacts != NULL){
             lv_obj_clear_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
@@ -786,18 +849,18 @@ void send_message(lv_event_t * e){
         strcpy(pkt.status, "send");
         strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
         strcpy(pkt.msg, lv_textarea_get_text(frm_chat_text_ans));
-        
+
         if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
             if(hasRadio){
                 if(strcmp(lv_textarea_get_text(frm_chat_text_ans), "") != 0){
                     int state = radio.startTransmit((uint8_t *)&pkt, sizeof(lora_packet));
-                
+
                     if(state != RADIOLIB_ERR_NONE){
                         Serial.print("transmission failed ");
                         Serial.println(state);
                     }else{
                         Serial.println("transmitted");
-                        // add the message to the list of messages
+
                         pkt.me = true;
                         strcpy(pkt.id, actual_contact->getID().c_str());
                         Serial.println("Adding answer to ");
@@ -827,7 +890,7 @@ void check_new_msg(void * param){
     lv_obj_t * btn = NULL, * lbl = NULL;
     char date[30] = {'\0'};
     char name[100] = {'\0'};
-    
+
     while(true){
         caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
         actual_count = caller_msg.size();
@@ -868,7 +931,7 @@ void check_new_msg(void * param){
 void add_contact(lv_event_t * e){
     const char * name, * id;
     lv_event_code_t code = lv_event_get_code(e);
-    
+
     if(code == LV_EVENT_SHORT_CLICKED){
         id = lv_textarea_get_text(frm_add_contact_textarea_id);
         name = lv_textarea_get_text(frm_add_contact_textarea_name);
@@ -880,7 +943,7 @@ void add_contact(lv_event_t * e){
                     refresh_contact_list();
                     lv_obj_add_flag(frm_add_contact, LV_OBJ_FLAG_HIDDEN);
                 }
-                else      
+                else
                     Serial.println("failed to add contact");
             }else
                 Serial.println("Contact already exists");
@@ -926,7 +989,7 @@ void update_time(void *timeStruct) {
     char date[12];
     while(true){
         if(getLocalTime((struct tm*)timeStruct)){
-            
+
             strftime(hourMin, 6, "%H:%M %p", (struct tm *)timeStruct);
             lv_label_set_text(frm_home_time_lbl, hourMin);
 
@@ -939,13 +1002,13 @@ void update_time(void *timeStruct) {
 }
 
 void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst){
-    timeinfo.tm_year = yr - 1900;   // Set date
+    timeinfo.tm_year = yr - 1900;
     timeinfo.tm_mon = month-1;
     timeinfo.tm_mday = mday;
-    timeinfo.tm_hour = hr;      // Set time
+    timeinfo.tm_hour = hr;
     timeinfo.tm_min = minute;
     timeinfo.tm_sec = sec;
-    timeinfo.tm_isdst = isDst;  // 1 or 0
+    timeinfo.tm_isdst = isDst;
     time_t t = mktime(&timeinfo);
     Serial.printf("Setting time: %s", asctime(&timeinfo));
     struct timeval now = { .tv_sec = t };
@@ -1075,10 +1138,10 @@ void wifi_apply(lv_event_t * e){
     int i = (int)lv_event_get_user_data(e);
     uint32_t count = 0;
     char msg[100] = {'\0'};
-    
+
     if(code == LV_EVENT_SHORT_CLICKED){
-        if(wifi_list[i].auth_type == WIFI_AUTH_WPA2_PSK || 
-           wifi_list[i].auth_type == WIFI_AUTH_WPA_WPA2_PSK || 
+        if(wifi_list[i].auth_type == WIFI_AUTH_WPA2_PSK ||
+           wifi_list[i].auth_type == WIFI_AUTH_WPA_WPA2_PSK ||
            wifi_list[i].auth_type == WIFI_AUTH_WEP){
             strcpy(wifi_list[i].pass, lv_textarea_get_text(frm_wifi_simple_ta_pass));
             if(strcmp(wifi_list[i].pass, "") == 0){
@@ -1110,7 +1173,7 @@ void wifi_apply(lv_event_t * e){
                 strcat(msg, " ");
                 strcat(msg, WiFi.localIP().toString().c_str());
                 lv_label_set_text(frm_wifi_connected_to_lbl, msg);
-                lv_obj_add_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN); 
+                lv_obj_add_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
                 datetime();
             }
             else{
@@ -1129,12 +1192,12 @@ void wifi_apply(lv_event_t * e){
             lv_task_handler();
             WiFi.disconnect();
             WiFi.mode(WIFI_STA);
-            
+
             esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_list[i].login, strlen(wifi_list[i].login));
             esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_list[i].login, strlen(wifi_list[i].login));
             esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_list[i].pass, strlen(wifi_list[i].pass));
             esp_wifi_sta_wpa2_ent_enable();
-            
+
             WiFi.begin(wifi_list[i].SSID, wifi_list[i].pass);
 
             while(!WiFi.isConnected()){
@@ -1158,7 +1221,7 @@ void wifi_apply(lv_event_t * e){
                 strcat(msg, " ");
                 strcat(msg, WiFi.localIP().toString().c_str());
                 lv_label_set_text(frm_wifi_connected_to_lbl, msg);
-                lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN); 
+                lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN);
                 datetime();
             }
             else{
@@ -1329,12 +1392,12 @@ void wifi_toggle(lv_event_t * e){
 }
 
 void ui(){
-    //style**************************************************************
+
     lv_disp_t *dispp = lv_disp_get_default();
     lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
     lv_disp_set_theme(dispp, theme);
 
-    // Home screen**************************************************************
+
     frm_home = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_home, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_home, LV_OBJ_FLAG_SCROLLABLE);
@@ -1342,13 +1405,13 @@ void ui(){
     lv_obj_set_style_radius(frm_home, 0, 0 ) ;
     lv_obj_set_style_border_width(frm_home, 0, 0);
 
-    //background image
+
     lv_obj_set_style_bg_img_src(frm_home, &bg2, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    // title bar
-    /*frm_home_title = lv_btn_create(frm_home);
-    lv_obj_set_size(frm_home_title, 310, 20);
-    lv_obj_align(frm_home_title, LV_ALIGN_TOP_MID, 0, -10);*/
+
+
+
+
 
     frm_home_title_lbl = lv_label_create(frm_home);
     lv_obj_set_style_text_color(frm_home_title_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -1356,19 +1419,19 @@ void ui(){
     lv_obj_set_size(frm_home_title_lbl, 200, 30);
     lv_label_set_long_mode(frm_home_title_lbl, LV_LABEL_LONG_SCROLL);
 
-    // battery icon
+
     frm_home_bat_lbl = lv_label_create(frm_home);
     lv_label_set_text(frm_home_bat_lbl, LV_SYMBOL_BATTERY_FULL);
     lv_obj_set_style_text_color(frm_home_bat_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_align(frm_home_bat_lbl, LV_ALIGN_TOP_RIGHT, 5, -10);
 
-    //Wifi icon
+
     frm_home_wifi_lbl = lv_label_create(frm_home);
     lv_label_set_text(frm_home_wifi_lbl, "");
     lv_obj_set_style_text_color(frm_home_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_align(frm_home_wifi_lbl, LV_ALIGN_TOP_RIGHT, -55, -10);
 
-    //date time background
+
     frm_home_frm_date_time = lv_obj_create(frm_home);
     lv_obj_set_size(frm_home_frm_date_time, 90, 55);
     lv_obj_align(frm_home_frm_date_time, LV_ALIGN_TOP_MID, 0, 15);
@@ -1378,36 +1441,36 @@ void ui(){
     lv_obj_set_style_border_color(frm_home_frm_date_time, lv_color_hex(0x151515), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(frm_home_frm_date_time, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    //date label
+
     frm_home_date_lbl = lv_label_create(frm_home_frm_date_time);
     lv_obj_set_style_text_color(frm_home_date_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(frm_home_date_lbl, "-");
     lv_obj_align(frm_home_date_lbl, LV_ALIGN_TOP_MID, 0, -10);
 
-    //time label
+
     frm_home_time_lbl = lv_label_create(frm_home_frm_date_time);
     lv_obj_set_style_text_font(frm_home_time_lbl, &clocknum, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(frm_home_time_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(frm_home_time_lbl, "00:00");
     lv_obj_align(frm_home_time_lbl, LV_ALIGN_TOP_MID, 0, 10);
 
-    // Contacts button
+
     frm_home_btn_contacts = lv_btn_create(frm_home);
     lv_obj_set_size(frm_home_btn_contacts, 50, 35);
     lv_obj_set_align(frm_home_btn_contacts, LV_ALIGN_BOTTOM_LEFT);
     lv_obj_add_event_cb(frm_home_btn_contacts, show_contacts_form, LV_EVENT_SHORT_CLICKED, NULL);
-    /*
-    frm_home_btn_contacts_lbl = lv_label_create(frm_home_btn_contacts);
-    lv_label_set_text(frm_home_btn_contacts_lbl, LV_SYMBOL_CALL);
-    lv_obj_align(frm_home_btn_contacts_lbl, LV_ALIGN_CENTER, 0, 0);
-    
-    */
-    //lora icon
+
+
+
+
+
+
+
     frm_home_contacts_img = lv_img_create(frm_home_btn_contacts);
     lv_img_set_src(frm_home_contacts_img, &icon_lora2);
     lv_obj_set_align(frm_home_contacts_img, LV_ALIGN_CENTER);
-    
-    // Settings button
+
+
     frm_home_btn_settings = lv_btn_create(frm_home);
     lv_obj_set_size(frm_home_btn_settings, 20, 20);
     lv_obj_align(frm_home_btn_settings, LV_ALIGN_BOTTOM_MID, 0, 0);
@@ -1417,42 +1480,42 @@ void ui(){
     lv_label_set_text(frm_home_btn_settings_lbl, LV_SYMBOL_SETTINGS);
     lv_obj_set_align(frm_home_btn_settings_lbl, LV_ALIGN_CENTER);
 
-    // Test button
+
     btn_test = lv_btn_create(frm_home);
     lv_obj_set_size(btn_test, 50, 20);
     lv_obj_set_align(btn_test, LV_ALIGN_BOTTOM_RIGHT);
-    
+
     lbl_btn_test = lv_label_create(btn_test);
     lv_obj_set_style_text_font(lbl_btn_test, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(lbl_btn_test, "Test");
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
 
-    // Contacts form**************************************************************
+
     frm_contacts = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_contacts, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_contacts, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Title button
+
     frm_contatcs_btn_title = lv_btn_create(frm_contacts);
     lv_obj_set_size(frm_contatcs_btn_title, 200, 20);
     lv_obj_align(frm_contatcs_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
-    
+
     frm_contatcs_btn_title_lbl = lv_label_create(frm_contatcs_btn_title);
     lv_label_set_text(frm_contatcs_btn_title_lbl, "Contacts");
     lv_obj_set_align(frm_contatcs_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
-    // Close button
+
     frm_contacts_btn_back = lv_btn_create(frm_contacts);
     lv_obj_set_size(frm_contacts_btn_back, 50, 20);
     lv_obj_align(frm_contacts_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
-    //lv_obj_set_pos(btn_contacts, 10, -10);
+
     frm_contacts_btn_back_lbl = lv_label_create(frm_contacts_btn_back);
     lv_label_set_text(frm_contacts_btn_back_lbl, "Back");
     lv_obj_set_align(frm_contacts_btn_back_lbl, LV_ALIGN_CENTER);
     lv_obj_add_event_cb(frm_contacts_btn_back, hide_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
 
-    // Contact list
+
     frm_contacts_list = lv_list_create(frm_contacts);
     lv_obj_set_size(frm_contacts_list, LV_HOR_RES, 220);
     lv_obj_align(frm_contacts_list, LV_ALIGN_TOP_MID, 0, 5);
@@ -1461,25 +1524,25 @@ void ui(){
 
     refresh_contact_list();
 
-    // Add contact button
+
     frm_contacts_btn_add = lv_btn_create(frm_contacts);
     lv_obj_set_size(frm_contacts_btn_add, 50, 20);
     lv_obj_align(frm_contacts_btn_add, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
-    
+
     frm_contacts_btn_add_lbl = lv_label_create(frm_contacts_btn_add);
     lv_label_set_text(frm_contacts_btn_add_lbl, "Add");
     lv_obj_set_align(frm_contacts_btn_add_lbl, LV_ALIGN_CENTER);
     lv_obj_add_event_cb(frm_contacts_btn_add, show_add_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
 
-    // Hide contacts form
+
     lv_obj_add_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
 
-    // Add contacts form**************************************************************
+
     frm_add_contact = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_add_contact, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_add_contact, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Title
+
     frm_add_contacts_btn_title = lv_btn_create(frm_add_contact);
     lv_obj_set_size(frm_add_contacts_btn_title, 200, 20);
     lv_obj_align(frm_add_contacts_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
@@ -1488,19 +1551,19 @@ void ui(){
     lv_label_set_text(frm_add_contacts_btn_title_lbl, "Add contact");
     lv_obj_set_align(frm_add_contacts_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
-    // id text input
+
     frm_add_contact_textarea_id = lv_textarea_create(frm_add_contact);
     lv_obj_set_size(frm_add_contact_textarea_id, 150, 30);
     lv_obj_align(frm_add_contact_textarea_id, LV_ALIGN_TOP_LEFT, 0, 25);
     lv_textarea_set_placeholder_text(frm_add_contact_textarea_id, "ID");
 
-    // name text input
+
     frm_add_contact_textarea_name = lv_textarea_create(frm_add_contact);
     lv_obj_set_size(frm_add_contact_textarea_name, 240, 30);
     lv_obj_align(frm_add_contact_textarea_name, LV_ALIGN_TOP_LEFT, 0, 60);
     lv_textarea_set_placeholder_text(frm_add_contact_textarea_name, "Name");
 
-    // add button
+
     frm_add_contacts_btn_add = lv_btn_create(frm_add_contact);
     lv_obj_set_size(frm_add_contacts_btn_add, 50, 20);
     lv_obj_align(frm_add_contacts_btn_add, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
@@ -1511,25 +1574,25 @@ void ui(){
 
     lv_obj_add_event_cb(frm_add_contacts_btn_add, add_contact, LV_EVENT_SHORT_CLICKED, NULL);
 
-    // Close button
+
     btn_frm_add_contatcs_close = lv_btn_create(frm_add_contact);
     lv_obj_set_size(btn_frm_add_contatcs_close, 50, 20);
     lv_obj_align(btn_frm_add_contatcs_close, LV_ALIGN_TOP_RIGHT, 15, -15);
-    
+
     lbl_btn_frm_add_contacts_close = lv_label_create(btn_frm_add_contatcs_close);
     lv_label_set_text(lbl_btn_frm_add_contacts_close, "Back");
     lv_obj_align(lbl_btn_frm_add_contacts_close, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_frm_add_contatcs_close, hide_add_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
-    
-    // hide add contact form
+
+
     lv_obj_add_flag(frm_add_contact, LV_OBJ_FLAG_HIDDEN);
 
-    // Edit contacts form**************************************************************
+
     frm_edit_contacts = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_edit_contacts, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_edit_contacts, LV_OBJ_FLAG_SCROLLABLE);
 
-    //title
+
     frm_edit_btn_title = lv_btn_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_btn_title, 200, 20);
     lv_obj_align(frm_edit_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
@@ -1538,7 +1601,7 @@ void ui(){
     lv_label_set_text(frm_edit_btn_title_lbl, "Edit contact");
     lv_obj_set_align(frm_edit_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
-    // back button
+
     frm_edit_btn_back = lv_btn_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_btn_back, 50, 20);
     lv_obj_align(frm_edit_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
@@ -1549,7 +1612,7 @@ void ui(){
 
     lv_obj_add_event_cb(frm_edit_btn_back, hide_edit_contacts, LV_EVENT_SHORT_CLICKED, NULL);
 
-    //Del button
+
     frm_edit_btn_del = lv_btn_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_btn_del, 50, 20);
     lv_obj_align(frm_edit_btn_del, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
@@ -1559,13 +1622,13 @@ void ui(){
     lv_label_set_text(frm_edit_btn_del_lbl, "Del");
     lv_obj_set_align(frm_edit_btn_del_lbl, LV_ALIGN_CENTER);
 
-    // ID text input
+
     frm_edit_text_ID = lv_textarea_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_text_ID, 150, 30);
     lv_obj_align(frm_edit_text_ID, LV_ALIGN_TOP_LEFT, 0, 25);
     lv_textarea_set_placeholder_text(frm_edit_text_ID, "ID");
 
-    // Name text input
+
     frm_edit_text_name = lv_textarea_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_text_name, 240, 30);
     lv_obj_align(frm_edit_text_name, LV_ALIGN_TOP_LEFT, 0, 60);
@@ -1573,12 +1636,12 @@ void ui(){
 
     lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
 
-    // Chat form**************************************************************
+
     frm_chat = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_chat, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_chat, LV_OBJ_FLAG_SCROLLABLE);
 
-    //title
+
     frm_chat_btn_title = lv_btn_create(frm_chat);
     lv_obj_set_size(frm_chat_btn_title, 200, 20);
     lv_obj_align(frm_chat_btn_title, LV_ALIGN_OUT_TOP_LEFT, -15, -15);
@@ -1587,7 +1650,7 @@ void ui(){
     lv_label_set_text(frm_chat_btn_title_lbl, "chat with ");
     lv_obj_set_align(frm_chat_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
-    //back button
+
     frm_chat_btn_back = lv_btn_create(frm_chat);
     lv_obj_set_size(frm_chat_btn_back, 50, 20);
     lv_obj_align(frm_chat_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
@@ -1598,19 +1661,19 @@ void ui(){
 
     lv_obj_add_event_cb(frm_chat_btn_back, hide_chat, LV_EVENT_SHORT_CLICKED, NULL);
 
-    //list
+
     frm_chat_list = lv_list_create(frm_chat);
     lv_obj_set_size(frm_chat_list, 320, 170);
     lv_obj_align(frm_chat_list, LV_ALIGN_TOP_MID, 0, 5);
 
-    //answer text input
+
     frm_chat_text_ans = lv_textarea_create(frm_chat);
     lv_obj_set_size(frm_chat_text_ans, 260, 50);
     lv_obj_align(frm_chat_text_ans, LV_ALIGN_BOTTOM_LEFT, -15, 15);
     lv_textarea_set_max_length(frm_chat_text_ans, 199);
     lv_textarea_set_placeholder_text(frm_chat_text_ans, "Answer");
 
-    //send button
+
     frm_chat_btn_send = lv_btn_create(frm_chat);
     lv_obj_set_size(frm_chat_btn_send, 50, 50);
     lv_obj_align(frm_chat_btn_send, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
@@ -1620,7 +1683,7 @@ void ui(){
     lv_label_set_text(frm_chat_btn_send_lbl, "Send");
     lv_obj_set_align(frm_chat_btn_send_lbl, LV_ALIGN_CENTER);
 
-    //group the objects, the answer area will be almost on focus every time we send a msg
+
     frm_chat_group = lv_group_create();
     lv_group_add_obj(frm_chat_group, frm_chat_btn_back);
     lv_group_add_obj(frm_chat_group, frm_chat_btn_send);
@@ -1632,12 +1695,12 @@ void ui(){
 
     lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
 
-    // Settings form**************************************************************
+
     frm_settings = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_settings, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Title
+
     frm_settings_btn_title = lv_btn_create(frm_settings);
     lv_obj_set_size(frm_settings_btn_title, 200, 20);
     lv_obj_align(frm_settings_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
@@ -1646,7 +1709,7 @@ void ui(){
     lv_label_set_text(frm_settings_btn_title_lbl, "Settings");
     lv_obj_set_align(frm_settings_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
-    // back button
+
     frm_settings_btn_back = lv_btn_create(frm_settings);
     lv_obj_set_size(frm_settings_btn_back, 50, 20);
     lv_obj_align(frm_settings_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
@@ -1656,26 +1719,26 @@ void ui(){
     lv_label_set_text(frm_settings_btn_back_lbl, "Back");
     lv_obj_set_align(frm_settings_btn_back_lbl, LV_ALIGN_CENTER);
 
-    //base form
+
     frm_settings_dialog = lv_obj_create(frm_settings);
     lv_obj_set_size(frm_settings_dialog, LV_HOR_RES, 220);
     lv_obj_align(frm_settings_dialog, LV_ALIGN_TOP_MID, 0, 10);
 
-    // Name
+
     frm_settings_name = lv_textarea_create(frm_settings_dialog);
     lv_textarea_set_one_line(frm_settings_name, true);
     lv_obj_set_size(frm_settings_name, 280, 30);
     lv_textarea_set_placeholder_text(frm_settings_name, "Name");
     lv_obj_align(frm_settings_name, LV_ALIGN_OUT_TOP_LEFT, 0, -10);
 
-    // ID
+
     frm_settings_id = lv_textarea_create(frm_settings_dialog);
     lv_textarea_set_one_line(frm_settings_id, true);
     lv_obj_set_size(frm_settings_id, 90, 30);
     lv_textarea_set_placeholder_text(frm_settings_id, "ID");
     lv_obj_align(frm_settings_id, LV_ALIGN_TOP_LEFT, 0, 20);
 
-    //Generate button
+
     frm_settings_btn_generate = lv_btn_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_btn_generate, 80, 20);
     lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 100, 25);
@@ -1686,7 +1749,7 @@ void ui(){
     lv_label_set_text(frm_settings_btn_generate_lbl, "Generate");
     lv_obj_set_align(frm_settings_btn_generate_lbl, LV_ALIGN_CENTER);
 
-    // dx switch
+
     frm_settings_switch_dx = lv_switch_create(frm_settings_dialog);
     lv_obj_align(frm_settings_switch_dx, LV_ALIGN_OUT_TOP_LEFT, 30, 55);
     lv_obj_add_event_cb(frm_settings_switch_dx, DX, LV_EVENT_VALUE_CHANGED, NULL);
@@ -1695,7 +1758,7 @@ void ui(){
     lv_label_set_text(frm_settings_switch_dx_lbl, "DX");
     lv_obj_align(frm_settings_switch_dx_lbl, LV_ALIGN_TOP_LEFT, 0, 60);
 
-    //wifi toggle button
+
     frm_settings_btn_wifi = lv_btn_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_btn_wifi, 30, 30);
     lv_obj_align(frm_settings_btn_wifi, LV_ALIGN_TOP_LEFT, 90, 55);
@@ -1705,7 +1768,7 @@ void ui(){
     lv_label_set_text(frm_settings_btn_wifi_lbl, LV_SYMBOL_WIFI);
     lv_obj_set_align(frm_settings_btn_wifi_lbl, LV_ALIGN_CENTER);
 
-    // wifi config button
+
     frm_settings_btn_wifi_conf = lv_btn_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_btn_wifi_conf, 100, 30);
     lv_obj_align(frm_settings_btn_wifi_conf, LV_ALIGN_TOP_LEFT, 130, 55);
@@ -1715,12 +1778,12 @@ void ui(){
     lv_label_set_text(frm_settings_btn_wifi_conf_lbl, "Configure");
     lv_obj_set_align(frm_settings_btn_wifi_conf_lbl, LV_ALIGN_CENTER);
 
-    //date label
+
     frm_settings_date_lbl = lv_label_create(frm_settings_dialog);
     lv_label_set_text(frm_settings_date_lbl, "Date");
     lv_obj_align(frm_settings_date_lbl, LV_ALIGN_TOP_LEFT, 0, 100);
 
-    //day
+
     frm_settings_day = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_day, 60, 30);
     lv_obj_align(frm_settings_day, LV_ALIGN_TOP_LEFT, 40, 95);
@@ -1728,7 +1791,7 @@ void ui(){
     lv_textarea_set_max_length(frm_settings_day, 2);
     lv_textarea_set_placeholder_text(frm_settings_day, "dd");
 
-    //month
+
     frm_settings_month = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_month, 60, 30);
     lv_obj_align(frm_settings_month, LV_ALIGN_TOP_LEFT, 100, 95);
@@ -1736,7 +1799,7 @@ void ui(){
     lv_textarea_set_max_length(frm_settings_month, 2);
     lv_textarea_set_placeholder_text(frm_settings_month, "mm");
 
-    //year
+
     frm_settings_year = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_year, 60, 30);
     lv_obj_align(frm_settings_year, LV_ALIGN_TOP_LEFT, 160, 95);
@@ -1744,12 +1807,12 @@ void ui(){
     lv_textarea_set_max_length(frm_settings_year, 4);
     lv_textarea_set_placeholder_text(frm_settings_year, "yyyy");
 
-    //time label
+
     frm_settings_time_lbl = lv_label_create(frm_settings_dialog);
     lv_label_set_text(frm_settings_time_lbl, "Time");
     lv_obj_align(frm_settings_time_lbl, LV_ALIGN_TOP_LEFT, 0, 135);
 
-    //hour
+
     frm_settings_hour = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_hour, 60, 30);
     lv_obj_align(frm_settings_hour, LV_ALIGN_TOP_LEFT, 40, 130);
@@ -1757,7 +1820,7 @@ void ui(){
     lv_textarea_set_max_length(frm_settings_hour, 2);
     lv_textarea_set_placeholder_text(frm_settings_hour, "hh");
 
-    //minute
+
     frm_settings_minute = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_minute, 60, 30);
     lv_obj_align(frm_settings_minute, LV_ALIGN_TOP_LEFT, 100, 130);
@@ -1765,43 +1828,43 @@ void ui(){
     lv_textarea_set_max_length(frm_settings_minute, 2);
     lv_textarea_set_placeholder_text(frm_settings_minute, "mm");
 
-    // setDate button
+
     frm_settings_btn_setDate = lv_btn_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_btn_setDate, 50, 20);
     lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_LEFT, 170, 135);
     lv_obj_add_event_cb(frm_settings_btn_setDate, applyDate, LV_EVENT_SHORT_CLICKED, NULL);
 
-    //setDate label
+
     frm_settings_btn_setDate_lbl = lv_label_create(frm_settings_btn_setDate);
     lv_label_set_text(frm_settings_btn_setDate_lbl, "Set");
     lv_obj_set_align(frm_settings_btn_setDate_lbl, LV_ALIGN_CENTER);
 
-    // color label
+
     frm_settings_btn_color_lbl = lv_label_create(frm_settings_dialog);
     lv_label_set_text(frm_settings_btn_color_lbl, "UI color");
     lv_obj_align(frm_settings_btn_color_lbl, LV_ALIGN_TOP_LEFT, 0, 170);
-    
-    //color 
+
+
     frm_settings_color = lv_textarea_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_color , 100, 30);
     lv_obj_align(frm_settings_color, LV_ALIGN_TOP_LEFT, 60, 165);
     lv_textarea_set_max_length(frm_settings_color, 6);
     lv_textarea_set_accepted_chars(frm_settings_color, "abcdefABCDEF1234567890");
 
-    //apply color button
+
     frm_settings_btn_applycolor = lv_btn_create(frm_settings_dialog);
     lv_obj_set_size(frm_settings_btn_applycolor, 50, 20);
     lv_obj_align(frm_settings_btn_applycolor, LV_ALIGN_TOP_LEFT, 170, 170);
     lv_obj_add_event_cb(frm_settings_btn_applycolor, apply_color, LV_EVENT_SHORT_CLICKED, NULL);
 
-    // apply color label
+
     frm_settings_btn_applycolor_lbl = lv_label_create(frm_settings_btn_applycolor);
     lv_label_set_text(frm_settings_btn_applycolor_lbl, "Apply");
     lv_obj_set_align(frm_settings_btn_applycolor_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
-    
-    // notification form************************************************************
+
+
     frm_not = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_not, 300, 25);
     lv_obj_align(frm_not, LV_ALIGN_TOP_MID, 0, 0);
@@ -1811,12 +1874,12 @@ void ui(){
 
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
 
-    /*form wifi********************************************************************/
+
     frm_wifi = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_wifi, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_wifi, LV_OBJ_FLAG_SCROLLABLE);
 
-    /*title*/
+
     frm_wifi_btn_title = lv_btn_create(frm_wifi);
     lv_obj_set_size(frm_wifi_btn_title, 200, 20);
     lv_obj_align(frm_wifi_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
@@ -1825,7 +1888,7 @@ void ui(){
     lv_label_set_text(frm_wifi_btn_title_lbl, "WiFi Networks");
     lv_obj_set_align(frm_wifi_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
-    /*back button*/
+
     frm_wifi_btn_back = lv_btn_create(frm_wifi);
     lv_obj_set_size(frm_wifi_btn_back, 50, 20);
     lv_obj_align(frm_wifi_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
@@ -1835,7 +1898,7 @@ void ui(){
     lv_label_set_text(frm_wifi_btn_back_lbl, "Back");
     lv_obj_set_align(frm_wifi_btn_back_lbl, LV_ALIGN_CENTER);
 
-    /*scan button*/
+
     frm_wifi_btn_scan = lv_btn_create(frm_wifi);
     lv_obj_set_size(frm_wifi_btn_scan, 50, 20);
     lv_obj_align(frm_wifi_btn_scan, LV_ALIGN_TOP_RIGHT, -45, -15);
@@ -1845,39 +1908,39 @@ void ui(){
     lv_label_set_text(frm_wifi_btn_scan_lbl, "Scan");
     lv_obj_set_align(frm_wifi_btn_scan_lbl, LV_ALIGN_CENTER);
 
-    /*list*/
+
     frm_wifi_list = lv_list_create(frm_wifi);
     lv_obj_set_size(frm_wifi_list, 310, 190);
     lv_obj_align(frm_wifi_list, LV_ALIGN_TOP_LEFT, -10, 30);
 
-    /*Connected network label*/
+
     frm_wifi_connected_to_lbl = lv_label_create(frm_wifi);
     lv_obj_align(frm_wifi_connected_to_lbl, LV_ALIGN_TOP_LEFT, 0, 10);
     lv_label_set_long_mode(frm_wifi_connected_to_lbl, LV_LABEL_LONG_SCROLL);
     lv_label_set_text(frm_wifi_connected_to_lbl, "");
 
     lv_obj_add_flag(frm_wifi, LV_OBJ_FLAG_HIDDEN);
-    
-    /*Form wifi auth simple******************************************************************/
+
+
     frm_wifi_simple = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_wifi_simple, 230, 110);
     lv_obj_align(frm_wifi_simple, LV_ALIGN_CENTER, 0, 0);
     lv_obj_clear_flag(frm_wifi_simple, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Title
+
     frm_wifi_simple_title_lbl = lv_label_create(frm_wifi_simple);
     lv_obj_align(frm_wifi_simple_title_lbl, LV_ALIGN_TOP_MID, -10, -10);
     lv_label_set_long_mode(frm_wifi_simple_title_lbl, LV_LABEL_LONG_SCROLL);
     lv_label_set_text(frm_wifi_simple_title_lbl, "Connect to network");
 
-    // password
+
     frm_wifi_simple_ta_pass = lv_textarea_create(frm_wifi_simple);
     lv_obj_set_size(frm_wifi_simple_ta_pass, 180, 30);
     lv_obj_align(frm_wifi_simple_ta_pass, LV_ALIGN_OUT_TOP_MID, -10, 20);
     lv_textarea_set_placeholder_text(frm_wifi_simple_ta_pass, "password");
     lv_textarea_set_password_mode(frm_wifi_simple_ta_pass, true);
 
-    // see button
+
     frm_wifi_simple_btn_see = lv_btn_create(frm_wifi_simple);
     lv_obj_set_size(frm_wifi_simple_btn_see, 30, 20);
     lv_obj_align(frm_wifi_simple_btn_see, LV_ALIGN_TOP_LEFT, 180, 25);
@@ -1888,7 +1951,7 @@ void ui(){
     lv_label_set_text(frm_wifi_simple_btn_see_lbl, LV_SYMBOL_EYE_OPEN);
     lv_obj_set_align(frm_wifi_simple_btn_see_lbl, LV_ALIGN_CENTER);
 
-    //connect button
+
     frm_wifi_simple_btn_connect = lv_btn_create(frm_wifi_simple);
     lv_obj_set_size(frm_wifi_simple_btn_connect, 70, 20);
     lv_obj_align(frm_wifi_simple_btn_connect, LV_ALIGN_OUT_TOP_LEFT, -10, 60);
@@ -1897,7 +1960,7 @@ void ui(){
     lv_label_set_text(frm_wifi_simple_btn_connect_lbl, "Connect");
     lv_obj_set_align(frm_wifi_simple_btn_connect_lbl, LV_ALIGN_CENTER);
 
-    //back button
+
     frm_wifi_simple_btn_back = lv_btn_create(frm_wifi_simple);
     lv_obj_set_size(frm_wifi_simple_btn_back, 50, 20);
     lv_obj_align(frm_wifi_simple_btn_back, LV_ALIGN_TOP_RIGHT, 10, 60);
@@ -1909,32 +1972,32 @@ void ui(){
 
     lv_obj_add_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
 
-    /*form wifi auth with login**************************************************************/
+
     frm_wifi_login = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_wifi_login, 230, 140);
     lv_obj_align(frm_wifi_login, LV_ALIGN_CENTER, 0, 0);
     lv_obj_clear_flag(frm_wifi_login, LV_OBJ_FLAG_SCROLLABLE);
 
-    //title
+
     frm_wifi_login_title_lbl = lv_label_create(frm_wifi_login);
     lv_obj_align(frm_wifi_login_title_lbl, LV_ALIGN_TOP_MID, -10, -10);
     lv_label_set_long_mode(frm_wifi_login_title_lbl, LV_LABEL_LONG_SCROLL);
     lv_label_set_text(frm_wifi_login_title_lbl, "Connect to network");
 
-    // login
+
     frm_wifi_login_ta_login = lv_textarea_create(frm_wifi_login);
     lv_obj_set_size(frm_wifi_login_ta_login, 180, 30);
     lv_obj_align(frm_wifi_login_ta_login, LV_ALIGN_OUT_TOP_MID, -10, 20);
     lv_textarea_set_placeholder_text(frm_wifi_login_ta_login, "login");
 
-    // password
+
     frm_wifi_login_ta_pass = lv_textarea_create(frm_wifi_login);
     lv_obj_set_size(frm_wifi_login_ta_pass, 180, 30);
     lv_obj_align(frm_wifi_login_ta_pass, LV_ALIGN_OUT_TOP_MID, -10, 50);
     lv_textarea_set_placeholder_text(frm_wifi_login_ta_pass, "password");
     lv_textarea_set_password_mode(frm_wifi_login_ta_pass, true);
 
-    // see button
+
     frm_wifi_login_btn_see = lv_btn_create(frm_wifi_login);
     lv_obj_set_size(frm_wifi_login_btn_see, 30, 20);
     lv_obj_align(frm_wifi_login_btn_see, LV_ALIGN_TOP_LEFT, 180, 55);
@@ -1945,7 +2008,7 @@ void ui(){
     lv_label_set_text(frm_wifi_login_btn_see_lbl, LV_SYMBOL_EYE_OPEN);
     lv_obj_set_align(frm_wifi_login_btn_see_lbl, LV_ALIGN_CENTER);
 
-    //connect button
+
     frm_wifi_login_btn_connect = lv_btn_create(frm_wifi_login);
     lv_obj_set_size(frm_wifi_login_btn_connect, 70, 20);
     lv_obj_align(frm_wifi_login_btn_connect, LV_ALIGN_OUT_TOP_LEFT, -10, 90);
@@ -1954,7 +2017,7 @@ void ui(){
     lv_label_set_text(frm_wifi_login_btn_connect_lbl, "Connect");
     lv_obj_set_align(frm_wifi_login_btn_connect_lbl, LV_ALIGN_CENTER);
 
-    //back button
+
     frm_wifi_login_btn_back = lv_btn_create(frm_wifi_login);
     lv_obj_set_size(frm_wifi_login_btn_back, 50, 20);
     lv_obj_align(frm_wifi_login_btn_back, LV_ALIGN_TOP_RIGHT, 10, 90);
@@ -1994,8 +2057,8 @@ void datetime(){
             return;
         }
         Serial.println("Got time from NTP");
-        
-        
+
+
         Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S zone %Z %z ");
         strftime(hm, 6, "%H:%M %p", &timeinfo);
         strftime(date, 12, "%a, %b %d", &timeinfo);
@@ -2036,7 +2099,7 @@ void wifi_auto_toggle(){
     wifi_info wi;
     vector<wifi_info>list;
     char a[50] = {'\0'};
-    
+
     Serial.print("Searching for wifi connections...");
     lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
     WiFi.disconnect();
@@ -2068,9 +2131,9 @@ void wifi_auto_toggle(){
                         esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
                         esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_connected_nets.list[i].pass, strlen(wifi_connected_nets.list[i].pass));
                         esp_wifi_sta_wpa2_ent_enable();
-                        
+
                         WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
-                        
+
                         while(!WiFi.isConnected()){
                             Serial.print(".");
                             c++;
@@ -2135,7 +2198,7 @@ void wifi_auto_connect(void * param){
     wifi_info wi;
     vector<wifi_info>list;
     char a[50] = {'\0'};
-    
+
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     Serial.print("Searching for wifi connections...");
     lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
@@ -2168,9 +2231,9 @@ void wifi_auto_connect(void * param){
                         esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
                         esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_connected_nets.list[i].pass, strlen(wifi_connected_nets.list[i].pass));
                         esp_wifi_sta_wpa2_ent_enable();
-                        
+
                         WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
-                        
+
                         while(!WiFi.isConnected()){
                             Serial.print(".");
                             c++;
@@ -2238,10 +2301,10 @@ void setup(){
     Serial.begin(115200);
     delay(3000);
 
-    //Load contacts
+
     loadContacts();
 
-    //load connected wifi networks
+
     if(wifi_connected_nets.load())
         Serial.println("wifi networks loaded");
     else
@@ -2270,13 +2333,13 @@ void setup(){
     pinMode(BOARD_TOUCH_INT, OUTPUT);
     digitalWrite(BOARD_TOUCH_INT, HIGH);
 
-    pinMode(BOARD_TOUCH_INT, INPUT); 
+    pinMode(BOARD_TOUCH_INT, INPUT);
     delay(200);
 
     setupRadio(NULL);
 
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
-    //scanDevices(&Wire);
+
 
     touch = new TouchLib(Wire, BOARD_I2C_SDA, BOARD_I2C_SCL, touchAddress);
     touch->init();
@@ -2285,7 +2348,7 @@ void setup(){
     touchDected = ret;
     if(touchDected)
         Serial.println("touch detected");
-    else 
+    else
         Serial.println("touch not detected");
 
     tft.begin();
@@ -2306,25 +2369,25 @@ void setup(){
 
     ui();
 
-    //Load settings
+
     loadSettings();
-    
-    // set brightness
+
+
     analogWrite(BOARD_BL_PIN, 100);
-    
+
     if(wifi_connected)
         datetime();
-    //date time task
+
     xTaskCreatePinnedToCore(update_time, "update_time", 11000, (struct tm*)&timeinfo, 2, &task_date_time, 1);
 
-    // Initial date
+
     setDate(2024, 1, 13, 0, 0, 0, 0);
-    
-    // battery
+
+
     initBat();
     xTaskCreatePinnedToCore(update_bat, "task_bat", 11000, NULL, 2, &task_bat, 1);
 
-    // Notification task
+
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
     if(hasRadio)
         lv_label_set_text(frm_home_title_lbl, "LoRa radio ready");
