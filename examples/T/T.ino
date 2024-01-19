@@ -2236,7 +2236,7 @@ void wifi_auto_connect(void * param){
 void setup(){
     bool ret = false;
     Serial.begin(115200);
-    delay(3000);
+    //delay(3000);
 
     //Load contacts
     loadContacts();
