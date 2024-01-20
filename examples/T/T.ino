@@ -23,13 +23,6 @@ LV_IMG_DECLARE(bg2);
 LV_IMG_DECLARE(icon_lora2);
 LV_IMG_DECLARE(icon_mail);
 
-struct lora_packet2{
-    char id[7] = "aaaa";
-    bool me = false;
-    char msg[200] = "testando";
-    char status[7] = "sent";
-}my_packet;
-
 vector <wifi_info> wifi_list;
 Wifi_connected_nets wifi_connected_nets = Wifi_connected_nets();
 
@@ -438,8 +431,10 @@ bool checkKb()
 void processReceivedPacket(void * param){
     lora_packet p;
     lora_packet_status c;
+    lora_packet_status t,t1;
     Contact * contact = NULL;
     char message[300] = {'\0'}, pmsg [200] = {'\0'};
+    
 
     while(true){
         if(gotPacket){
@@ -460,6 +455,7 @@ void processReceivedPacket(void * param){
                     Serial.println(p.status);
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
+
                     contact = contacts_list.getContactByID(p.id);
                     if(contact != NULL){
                         strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
@@ -487,8 +483,12 @@ void processReceivedPacket(void * param){
                             Serial.println(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)));
                         }
                     }
-                    else
+                    else{
+                        lv_task_handler();
+                        notification_list.add(LV_SYMBOL_WARNING "Packet ignored");
+                        lv_task_handler();
                         Serial.println("Packet ignored");
+                    }
                 }
                 gotPacket = false;
                 radio.startReceive();
@@ -586,10 +586,12 @@ void setupRadio(lv_event_t * e)
 }
 
 void test(lv_event_t * e){
+    lora_packet_status my_packet;
+    strcpy(my_packet.id, "aaaa");
+    strcpy(my_packet.status, "ping");
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
-            int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet2));
-            radio.finishTransmit();
+            int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet_status));
             
             if(state != RADIOLIB_ERR_NONE){
                 Serial.print("transmission failed ");
