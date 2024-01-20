@@ -22,6 +22,7 @@ class Wifi_connected_nets{
         std::vector <wifi_info> list;
         wifi_info * find(char * ssid);
         bool add(wifi_info wi);
+        bool del(char * ssid);
         bool save();
         bool load();
 };

@@ -91,3 +91,18 @@ bool Wifi_connected_nets::load(){
     else
         return false;
 }
+
+bool Wifi_connected_nets::del(char * ssid){
+    uint index = -1;
+
+    for(uint i = 0; i < list.size(); i++)
+        if(strcmp(list[i].SSID, ssid) == 0){
+            index = i;
+            break;
+        }
+    if(index != -1){
+        list.erase(list.begin() + index);
+        return true;
+    }
+    return false;
+}

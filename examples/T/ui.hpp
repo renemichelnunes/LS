@@ -122,3 +122,9 @@ lv_obj_t * frm_wifi_login_btn_see;
 lv_obj_t * frm_wifi_login_btn_see_lbl;
 lv_obj_t * frm_wifi_login_btn_back;
 lv_obj_t * frm_wifi_login_btn_back_lbl;
+/*form forget network*/
+lv_obj_t * frm_forget_net;
+lv_obj_t * frm_forget_net_btn_forget;
+lv_obj_t * frm_forget_net_btn_forget_lbl;
+lv_obj_t * frm_forget_net_btn_back;
+lv_obj_t * frm_forget_net_btn_back_lbl;
