@@ -2210,7 +2210,7 @@ void wifi_auto_connect(void * param){
                         }
 
                         if(WiFi.isConnected()){
-                            lv_label_set_text(frm_home_title_lbl, "");
+                            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
                             last_wifi_con = i;
                             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                             Serial.println(" connected");
