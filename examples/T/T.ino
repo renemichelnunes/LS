@@ -15,6 +15,9 @@
 #include "esp_adc_cal.h"
 #include <vector>
 #include "con_nets.hpp"
+#include <Audio.h>
+#include <driver/i2s.h>
+#include "es7210.h"
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
@@ -33,6 +36,7 @@ Wifi_connected_nets wifi_connected_nets = Wifi_connected_nets();
 #define RADIO_FREQ 915.0
 SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
 
+Audio audio;
 uint8_t touchAddress = GT911_SLAVE_ADDRESS1;
 TouchLib *touch = NULL;
 TFT_eSPI tft;
@@ -49,7 +53,8 @@ TaskHandle_t task_recv_pkt = NULL,
              task_not = NULL,
              task_date_time = NULL,
              task_bat = NULL,
-             task_wifi_auto = NULL;
+             task_wifi_auto = NULL,
+             task_play = NULL;
 
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
@@ -1249,7 +1254,7 @@ void wifi_scan(lv_event_t * e){
                 lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_LONG_PRESSED, (void *)i);
             }
         }
-        Serial.print("done");
+        Serial.println("done");
         lv_label_set_text(frm_wifi_connected_to_lbl, "Scan complete");
     }
 }
@@ -1343,6 +1348,59 @@ void wifi_toggle(lv_event_t * e){
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
             Serial.println("wifi off");
         }
+    }
+}
+
+bool setupCoder() {
+    uint32_t ret_val = ESP_OK;
+
+    Wire.beginTransmission(ES7210_ADDR);
+    uint8_t error = Wire.endTransmission();
+    if (error != 0) {
+        Serial.println("ES7210 address not found");
+        return false;
+    }
+
+    audio_hal_codec_config_t cfg = {
+        .adc_input = AUDIO_HAL_ADC_INPUT_ALL,
+        .codec_mode = AUDIO_HAL_CODEC_MODE_ENCODE,
+        .i2s_iface = {
+        .mode = AUDIO_HAL_MODE_SLAVE,
+        .fmt = AUDIO_HAL_I2S_NORMAL,
+        .samples = AUDIO_HAL_16K_SAMPLES,
+        .bits = AUDIO_HAL_BIT_LENGTH_16BITS,
+        },
+    };
+
+    ret_val |= es7210_adc_init(&Wire, &cfg);
+    ret_val |= es7210_adc_config_i2s(cfg.codec_mode, &cfg.i2s_iface);
+    ret_val |= es7210_adc_set_gain(
+        (es7210_input_mics_t)(ES7210_INPUT_MIC1 | ES7210_INPUT_MIC2),
+        (es7210_gain_value_t)GAIN_0DB);
+    ret_val |= es7210_adc_set_gain(
+        (es7210_input_mics_t)(ES7210_INPUT_MIC3 | ES7210_INPUT_MIC4),
+        (es7210_gain_value_t)GAIN_37_5DB);
+    ret_val |= es7210_adc_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
+    return ret_val == ESP_OK;
+}
+
+void taskplaySong(void *p) {
+    while (1) {
+        if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
+            if (SD.exists("/key.mp3")) {
+                const char *path = "key.mp3";
+                audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
+                audio.setVolume(12);
+                audio.connecttoFS(SD, path);
+                Serial.printf("play %s\r\n", path);
+                while (audio.isRunning()) {
+                audio.loop();
+                }
+                audio.stopSong();
+            }
+            xSemaphoreGive(xSemaphore);
+        }
+        vTaskDelete(task_play);
     }
 }
 
@@ -2341,6 +2399,9 @@ void setup(){
     setupLvgl();
 
     ui();
+
+    //Audio setup
+    setupCoder();
 
     //Load settings
     loadSettings();
