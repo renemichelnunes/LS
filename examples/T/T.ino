@@ -436,10 +436,9 @@ bool checkKb()
 void processReceivedPacket(void * param){
     lora_packet p;
     lora_packet_status c;
-    lora_packet_status t,t1;
+    lora_packet_status pong;
     Contact * contact = NULL;
     char message[300] = {'\0'}, pmsg [200] = {'\0'};
-    
 
     while(true){
         if(gotPacket){
@@ -463,9 +462,11 @@ void processReceivedPacket(void * param){
 
                     contact = contacts_list.getContactByID(p.id);
                     if(contact != NULL){
-                        strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        messages_list.addMessage(p);
-                        if(strcmp(p.status, "recv") != 0){
+                        if(strcmp(p.status, "recv") != 0 && strcmp(p.status, "ping") != 0 && strcmp(p.status, "pong") != 0){
+                            strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                            
+                            messages_list.addMessage(p);
+                            
                             lv_task_handler();
                             strcpy(message, LV_SYMBOL_ENVELOPE);
                             strcat(message, " ");
@@ -483,15 +484,37 @@ void processReceivedPacket(void * param){
                             message[33] = '\0';
                             notification_list.add(message);
                             lv_task_handler();
+
                             strcpy(c.id, user_id);
-                            Serial.println("sending recv");
-                            Serial.println(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)));
+                            Serial.print("sending confirmation...");
+                            if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
+                                Serial.println("done");
+                            else
+                                Serial.print("failed");
+                        }
+                        if(strcmp(p.status, "ping") == 0){
+                            lv_task_handler();
+                            notification_list.add("ping");
+                            lv_task_handler();
+                            Serial.print("sending pong...");
+                            strcpy(pong.id, user_id);
+                            strcpy(pong.status, "pong");
+                            if(radio.transmit((uint8_t*)&pong, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
+                                Serial.println("done");
+                            else
+                                Serial.print("failed");
+                        }
+                        if(strcmp(p.status, "pong") == 0){
+                            Serial.println("pong");
+                            lv_task_handler();
+                            notification_list.add("pong");
+                            lv_task_handler();
                         }
                     }
                     else{
-                        lv_task_handler();
-                        notification_list.add(LV_SYMBOL_WARNING "Packet ignored");
-                        lv_task_handler();
+                        //lv_task_handler();
+                        //notification_list.add(LV_SYMBOL_WARNING "Packet ignored");
+                        //lv_task_handler();
                         Serial.println("Packet ignored");
                     }
                 }
@@ -592,7 +615,8 @@ void setupRadio(lv_event_t * e)
 
 void test(lv_event_t * e){
     lora_packet_status my_packet;
-    strcpy(my_packet.id, "aaaa");
+    
+    strcpy(my_packet.id, user_id);
     strcpy(my_packet.status, "ping");
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
