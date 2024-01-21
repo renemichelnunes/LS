@@ -2048,10 +2048,6 @@ void datetime(){
     char hm[6] = {'\0'};
     char date[12] = {'\0'};
 
-    while(WiFi.status() != WL_CONNECTED){
-        Serial.print(".");
-        delay(500);
-    }
     if(WiFi.status() == WL_CONNECTED){
         Serial.print("RSSI ");
         Serial.println(WiFi.RSSI());
