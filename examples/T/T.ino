@@ -462,7 +462,7 @@ void processReceivedPacket(void * param){
 
                     contact = contacts_list.getContactByID(p.id);
                     if(contact != NULL){
-                        if(strcmp(p.status, "recv") != 0 && strcmp(p.status, "ping") != 0 && strcmp(p.status, "pong") != 0){
+                        if(strcmp(p.status, "send") == 0){
                             strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                             
                             messages_list.addMessage(p);
@@ -492,6 +492,11 @@ void processReceivedPacket(void * param){
                             else
                                 Serial.print("failed");
                         }
+
+                        if(strcmp(p.status, "recv") == 0){
+                            messages_list.addMessage(p);
+                        }
+
                         if(strcmp(p.status, "ping") == 0){
                             lv_task_handler();
                             notification_list.add("ping");
@@ -981,7 +986,7 @@ void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst
     Serial.printf("Setting time: %s", asctime(&timeinfo));
     struct timeval now = { .tv_sec = t };
     settimeofday(&now, NULL);
-    notification_list.add(LV_SYMBOL_SETTINGS "date & time updated");
+    notification_list.add(LV_SYMBOL_SETTINGS " date & time updated");
 }
 
 void setDateTime(){
@@ -1268,8 +1273,6 @@ void wifi_scan(lv_event_t * e){
                 strcpy(wi.SSID, WiFi.SSID(i).c_str());
                 wifi_list.push_back(wi);
                 strcpy(ssid, WiFi.SSID(i).c_str());
-                strcat(ssid, " ");
-                strcat(ssid, wifi_auth_mode_to_str(WiFi.encryptionType(i)));
                 strcat(ssid, " ");
                 itoa(WiFi.RSSI(i), rssi, 10);
                 strcat(ssid, rssi);
