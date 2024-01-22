@@ -1108,9 +1108,13 @@ void DX(lv_event_t * e){
             lv_obj_clear_state(frm_settings_switch_dx, LV_STATE_CHECKED);
         }
     }else{
-        normalMode();
-        notification_list.add(LV_SYMBOL_SETTINGS " Normal mode");
-        Serial.println("DX mode off");
+        if(normalMode()){
+            notification_list.add(LV_SYMBOL_SETTINGS " Normal mode");
+            Serial.println("DX mode off");
+        }else{
+            notification_list.add(LV_SYMBOL_SETTINGS " Normal mode failed");
+            lv_obj_add_state(frm_settings_switch_dx, LV_STATE_CHECKED);
+        }
     }
 }
 
