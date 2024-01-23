@@ -781,7 +781,7 @@ void test(lv_event_t * e){
     char key[10] =  {'\0'};
     strcpy(key, user_id);
     cipher->setKey(key);
-    String data = "isto é um teste para ver se funciona ";
+    String data = "ABCD";
     String cipherString = cipher->encryptString(data);
     String decipheredString = cipher->decryptString(cipherString);
 
@@ -797,6 +797,9 @@ void test(lv_event_t * e){
     Serial.print("decrypted: ");
     Serial.println(decipheredString);
     Serial.println(decipheredString.length());
+
+    for(int i = 0; i < decipheredString.length(); i++)
+        Serial.printf("0x%x ", decipheredString[i]);
 
     strcpy(my_packet.id, user_id);
     strcpy(my_packet.status, "ping");
