@@ -18,6 +18,7 @@
 #include <Audio.h>
 #include <driver/i2s.h>
 #include "es7210.h"
+#include "Cipher.h"
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
@@ -73,6 +74,8 @@ void datetime();
 void wifi_auto_toggle();
 char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode);
 uint last_wifi_con = -1;
+
+Cipher * cipher = new Cipher();
 
 static void loadSettings(){
     char color[7];
@@ -767,9 +770,34 @@ void setupRadio(lv_event_t * e)
 
 }
 
+String encrypt(char * msg){
+    cipher->setKey(user_id);
+    return cipher->encryptBuffer(msg);
+}
+
 void test(lv_event_t * e){
     lora_packet_status my_packet;
     
+    char key[10] =  {'\0'};
+    strcpy(key, user_id);
+    cipher->setKey(key);
+    String data = "isto é um teste para ver se funciona ";
+    String cipherString = cipher->encryptString(data);
+    String decipheredString = cipher->decryptString(cipherString);
+
+    Serial.print("Key: ");
+    Serial.println(key);
+    Serial.println(sizeof(key));
+    Serial.print("data: ");
+    Serial.println(data);
+    Serial.println(data.length());
+    Serial.print("encrypted: ");
+    Serial.println(cipherString);
+    Serial.println(cipherString.length());
+    Serial.print("decrypted: ");
+    Serial.println(decipheredString);
+    Serial.println(decipheredString.length());
+
     strcpy(my_packet.id, user_id);
     strcpy(my_packet.status, "ping");
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -782,7 +810,7 @@ void test(lv_event_t * e){
             }else{
                 Serial.println("transmitted");
                 lv_task_handler();
-                notification_list.add(LV_SYMBOL_UPLOAD " transmitted");
+                notification_list.add(LV_SYMBOL_UPLOAD " ping sent");
                 lv_task_handler();
             }
         }
@@ -1688,7 +1716,7 @@ void ui(){
     
     lbl_btn_test = lv_label_create(btn_test);
     lv_obj_set_style_text_font(lbl_btn_test, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_label_set_text(lbl_btn_test, "Test");
+    lv_label_set_text(lbl_btn_test, "Ping");
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -2381,8 +2409,8 @@ void wifi_auto_toggle(){
             lv_label_set_text(frm_home_title_lbl, "");
             datetime();
         }else{
-            Serial.println("failed");
-            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " failed");
+            Serial.println("disconnected");
+            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " disconnected");
         }
     }
 }
@@ -2393,6 +2421,7 @@ void wifi_auto_connect(void * param){
     wifi_info wi;
     vector<wifi_info>list;
     char a[50] = {'\0'};
+    bool noNet = false;
     
     if(wifi_connected_nets.list.size() != 0){
         vTaskDelay(2000 / portTICK_PERIOD_MS);
@@ -2474,6 +2503,8 @@ void wifi_auto_connect(void * param){
                         }
                     }
                 }
+                if(i == wifi_connected_nets.list.size())
+                    noNet = true;
             }
 
             if(WiFi.isConnected()){
@@ -2484,11 +2515,8 @@ void wifi_auto_connect(void * param){
                 lv_label_set_text(frm_home_title_lbl, "");
                 datetime();
             }else{
-                Serial.println("failed");
-                lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " failed");
-            }
-
-            if(!WiFi.isConnected()){
+                Serial.println("disconnected");
+                lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " disconnected");
                 WiFi.disconnect();
                 WiFi.mode(WIFI_OFF);
             }
