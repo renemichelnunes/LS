@@ -226,31 +226,31 @@ static void notify(void * param){
     while(true){
         update_wifi_icon();
         if(notification_list.size() > 0){
-            //if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                //vTaskDelay(1000 / portTICK_PERIOD_MS);
-                notification_list.pop(n);
-                //lv_task_handler();
-                lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
-                lv_task_handler();
-                lv_obj_t * label = lv_label_create(frm_not);
-                lv_task_handler();
-                lv_label_set_text(label, n);
-                lv_task_handler();
-                lv_obj_align(label, LV_ALIGN_TOP_LEFT, -10, -10);
-                lv_task_handler();
-                lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
-                lv_task_handler();
-                lv_label_set_text(frm_home_title_lbl, n);
-                lv_task_handler();
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            notification_list.pop(n);
+            lv_task_handler();
+            lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+            lv_task_handler();
+            lv_obj_t * label = lv_label_create(frm_not);
+            lv_task_handler();
+            lv_label_set_text(label, n);
+            lv_task_handler();
+            lv_obj_align(label, LV_ALIGN_TOP_LEFT, -10, -10);
+            lv_task_handler();
+            lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
+            lv_task_handler();
+            lv_label_set_text(frm_home_title_lbl, n);
+            lv_task_handler();
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            if(xSemaphoreTake(xSemaphore, 5000 / portTICK_PERIOD_MS) == pdTRUE){
                 lv_obj_clean(frm_not);
-                lv_task_handler();
-                lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
-                lv_task_handler();
-                strcpy(n, "");
-                Serial.println("notified");
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
-            //}
-            //xSemaphoreGive(xSemaphore);
+                xSemaphoreGive(xSemaphore);
+            }
+            lv_task_handler();
+            lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+            lv_task_handler();
+            strcpy(n, "");
+            Serial.println("notified");
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
