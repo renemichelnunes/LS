@@ -62,7 +62,7 @@ lora_incomming_messages messages_list = lora_incomming_messages();
 notification notification_list = notification();
 
 char user_name[50] = "";
-char user_id[18] = "";
+char user_id[7] = "";
 
 struct tm timeinfo;
 
@@ -226,27 +226,31 @@ static void notify(void * param){
     while(true){
         update_wifi_icon();
         if(notification_list.size() > 0){
-            //vTaskDelay(2000 / portTICK_PERIOD_MS);
-            notification_list.pop(n);
-            lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
-            lv_task_handler();
-            lv_obj_t * label = lv_label_create(frm_not);
-            lv_task_handler();
-            lv_label_set_text(label, n);
-            lv_task_handler();
-            lv_obj_align(label, LV_ALIGN_TOP_LEFT, -10, -10);
-            lv_task_handler();
-            lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
-            lv_task_handler();
-            lv_label_set_text(frm_home_title_lbl, n);
-            lv_task_handler();
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            lv_obj_clean(frm_not);
-            lv_task_handler();
-            lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
-            lv_task_handler();
-            strcpy(n, "");
-            Serial.println("notified");
+            //if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                //vTaskDelay(2000 / portTICK_PERIOD_MS);
+                notification_list.pop(n);
+                //lv_task_handler();
+                lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+                lv_task_handler();
+                lv_obj_t * label = lv_label_create(frm_not);
+                lv_task_handler();
+                lv_label_set_text(label, n);
+                lv_task_handler();
+                lv_obj_align(label, LV_ALIGN_TOP_LEFT, -10, -10);
+                lv_task_handler();
+                lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
+                lv_task_handler();
+                lv_label_set_text(frm_home_title_lbl, n);
+                lv_task_handler();
+                lv_obj_clean(frm_not);
+                lv_task_handler();
+                lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+                lv_task_handler();
+                strcpy(n, "");
+                Serial.println("notified");
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+            //}
+            //xSemaphoreGive(xSemaphore);
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
@@ -441,7 +445,7 @@ void processReceivedPacket(void * param){
     lora_packet_status c;
     lora_packet_status pong;
     Contact * contact = NULL;
-    char message[300] = {'\0'}, pmsg [200] = {'\0'};
+    char message[200] = {'\0'}, pmsg [200] = {'\0'}, dec_msg[200] = {'\0'};
 
     while(true){
         if(gotPacket){
@@ -473,7 +477,7 @@ void processReceivedPacket(void * param){
                     if(contact != NULL){
                         if(strcmp(p.status, "send") == 0){
                             strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                            
+                            strcpy(dec_msg, decrypt(p.id, p.msg).c_str());
                             messages_list.addMessage(p);
                             
                             lv_task_handler();
@@ -482,7 +486,7 @@ void processReceivedPacket(void * param){
                             strcat(message, contact->getName().c_str());
                             strcat(message, ": ");
                             if(sizeof(p.msg) > 199){
-                                memcpy(pmsg, p.msg, 199);
+                                memcpy(pmsg, dec_msg, 199);
                                 strcat(message, pmsg);
                             }
                             else
@@ -770,33 +774,49 @@ void setupRadio(lv_event_t * e)
 
 }
 
-String encrypt(char * msg){
-    cipher->setKey(user_id);
-    return cipher->encryptBuffer(msg);
+String encrypt(String msg){
+    char k[19] = {'\0'};
+    //Minimum cipher key must be 16 bytes long, or the default key will be used
+    strcpy(k, user_id);
+    strcat(k, user_id);
+    strcat(k, user_id);
+    cipher->setKey(k);
+    return cipher->encryptString(msg);
+}
+
+String decrypt(char * contact_id, String msg){
+    char k[19] = {'\0'};
+
+    strcpy(k, contact_id);
+    strcat(k, contact_id);
+    strcat(k, contact_id);
+    cipher->setKey(k);
+    return cipher->decryptBuffer(msg);
 }
 
 void test(lv_event_t * e){
     lora_packet_status my_packet;
-    
+    char dec[5] = {'\0'};
     char key[10] =  {'\0'};
     strcpy(key, user_id);
     cipher->setKey(key);
     String data = "ABCD";
     String cipherString = cipher->encryptString(data);
     String decipheredString = cipher->decryptString(cipherString);
-
+    
     Serial.print("Key: ");
     Serial.println(key);
     Serial.println(sizeof(key));
     Serial.print("data: ");
     Serial.println(data);
-    Serial.println(data.length());
+    Serial.println(sizeof(data.c_str()));
     Serial.print("encrypted: ");
     Serial.println(cipherString);
     Serial.println(cipherString.length());
     Serial.print("decrypted: ");
-    Serial.println(decipheredString);
-    Serial.println(decipheredString.length());
+    strcpy(dec, decipheredString.c_str());
+    Serial.println(dec);
+    Serial.println(sizeof(dec));
 
     for(int i = 0; i < decipheredString.length(); i++)
         Serial.printf("0x%x ", decipheredString[i]);
@@ -995,17 +1015,22 @@ void show_chat(lv_event_t * e){
 void send_message(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     lora_packet dummy;
+    String enc_msg;
+    char msg[200] = {'\0'};
 
     if(code == LV_EVENT_SHORT_CLICKED){
         lora_packet pkt;
         strcpy(pkt.id, user_id);
         strcpy(pkt.status, "send");
         strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-        strcpy(pkt.msg, lv_textarea_get_text(frm_chat_text_ans));
         
         if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
             if(hasRadio){
                 if(strcmp(lv_textarea_get_text(frm_chat_text_ans), "") != 0){
+                    strcpy(msg, lv_textarea_get_text(frm_chat_text_ans));
+                    enc_msg = encrypt(lv_textarea_get_text(frm_chat_text_ans));
+                    strcpy(pkt.msg, enc_msg.c_str());
+
                     int state = radio.startTransmit((uint8_t *)&pkt, sizeof(lora_packet));
                 
                     if(state != RADIOLIB_ERR_NONE){
@@ -1016,8 +1041,10 @@ void send_message(lv_event_t * e){
                         // add the message to the list of messages
                         pkt.me = true;
                         strcpy(pkt.id, actual_contact->getID().c_str());
-                        Serial.println("Adding answer to ");
+                        strcpy(pkt.msg, msg);
+                        Serial.print("Adding answer to ");
                         Serial.println(pkt.id);
+                        Serial.println(pkt.msg);
                         messages_list.addMessage(pkt);
                         lv_textarea_set_text(frm_chat_text_ans, "");
                     }
@@ -1067,7 +1094,10 @@ void check_new_msg(void * param){
                 }
                 Serial.println(caller_msg[i].msg);
                 if(strcmp(caller_msg[i].status, "recv") != 0){
-                    btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
+                    if(caller_msg[i].me)
+                        btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
+                    else
+                        btn = lv_list_add_btn(frm_chat_list, NULL, decrypt(caller_msg[i].id, caller_msg[i].msg).c_str());
                     lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
                 }
                 lbl = lv_obj_get_child(btn, 0);
