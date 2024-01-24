@@ -227,7 +227,7 @@ static void notify(void * param){
         update_wifi_icon();
         if(notification_list.size() > 0){
             //if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                //vTaskDelay(2000 / portTICK_PERIOD_MS);
+                //vTaskDelay(1000 / portTICK_PERIOD_MS);
                 notification_list.pop(n);
                 //lv_task_handler();
                 lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
@@ -478,6 +478,7 @@ void processReceivedPacket(void * param){
                         if(strcmp(p.status, "send") == 0){
                             strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                             strcpy(dec_msg, decrypt(p.id, p.msg).c_str());
+                            strcpy(p.msg, dec_msg);
                             messages_list.addMessage(p);
                             
                             lv_task_handler();
@@ -796,30 +797,6 @@ String decrypt(char * contact_id, String msg){
 
 void test(lv_event_t * e){
     lora_packet_status my_packet;
-    char dec[5] = {'\0'};
-    char key[10] =  {'\0'};
-    strcpy(key, user_id);
-    cipher->setKey(key);
-    String data = "ABCD";
-    String cipherString = cipher->encryptString(data);
-    String decipheredString = cipher->decryptString(cipherString);
-    
-    Serial.print("Key: ");
-    Serial.println(key);
-    Serial.println(sizeof(key));
-    Serial.print("data: ");
-    Serial.println(data);
-    Serial.println(sizeof(data.c_str()));
-    Serial.print("encrypted: ");
-    Serial.println(cipherString);
-    Serial.println(cipherString.length());
-    Serial.print("decrypted: ");
-    strcpy(dec, decipheredString.c_str());
-    Serial.println(dec);
-    Serial.println(sizeof(dec));
-
-    for(int i = 0; i < decipheredString.length(); i++)
-        Serial.printf("0x%x ", decipheredString[i]);
 
     strcpy(my_packet.id, user_id);
     strcpy(my_packet.status, "ping");
@@ -1094,10 +1071,7 @@ void check_new_msg(void * param){
                 }
                 Serial.println(caller_msg[i].msg);
                 if(strcmp(caller_msg[i].status, "recv") != 0){
-                    if(caller_msg[i].me)
-                        btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
-                    else
-                        btn = lv_list_add_btn(frm_chat_list, NULL, decrypt(caller_msg[i].id, caller_msg[i].msg).c_str());
+                    btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
                     lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
                 }
                 lbl = lv_obj_get_child(btn, 0);
