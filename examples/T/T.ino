@@ -551,7 +551,6 @@ void listen(){
 }
 
 bool normalMode(){
-    Serial.println("normal mode");
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         radio.sleep(false);
         radio.reset();
@@ -612,6 +611,7 @@ bool normalMode(){
         }
         xSemaphoreGive(xSemaphore);
     }
+    return true;
 }
 
 bool DXMode()
@@ -627,7 +627,7 @@ bool DXMode()
     100km - 11/250
     125km - 12/250
     */
-    Serial.println("DX mode");
+    
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         radio.sleep(false);
         radio.reset();
@@ -1134,21 +1134,25 @@ void generateID(lv_event_t * e){
 }
 
 void DX(lv_event_t * e){
-    if(lv_obj_has_state(frm_settings_switch_dx, LV_STATE_CHECKED)){
-        if(DXMode()){
-            Serial.println("DX mode on");
-            notification_list.add(LV_SYMBOL_SETTINGS " DX mode");
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_VALUE_CHANGED){
+        if(lv_obj_has_state(frm_settings_switch_dx, LV_STATE_CHECKED)){
+            if(DXMode()){
+                Serial.println("DX mode on");
+                notification_list.add(LV_SYMBOL_SETTINGS " DX mode");
+            }else{
+                notification_list.add(LV_SYMBOL_SETTINGS " DX mode failed");
+                Serial.println("DX mode failed");
+            }
         }else{
-            notification_list.add(LV_SYMBOL_SETTINGS " DX mode failed");
-            lv_obj_clear_state(frm_settings_switch_dx, LV_STATE_CHECKED);
-        }
-    }else{
-        if(normalMode()){
-            notification_list.add(LV_SYMBOL_SETTINGS " Normal mode");
-            Serial.println("DX mode off");
-        }else{
-            notification_list.add(LV_SYMBOL_SETTINGS " Normal mode failed");
-            lv_obj_add_state(frm_settings_switch_dx, LV_STATE_CHECKED);
+            if(normalMode()){
+                notification_list.add(LV_SYMBOL_SETTINGS " Normal mode");
+                Serial.println("DX mode off");
+            }else{
+                notification_list.add(LV_SYMBOL_SETTINGS " Normal mode failed");
+                Serial.println("Normal mode failed");
+            }
         }
     }
 }
