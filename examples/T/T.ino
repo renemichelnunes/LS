@@ -207,7 +207,10 @@ static void refresh_contact_list(){
         lv_label_set_text(lbl, contacts_list.getContact(i).getID().c_str());
         lv_obj_t * obj_status = lv_obj_create(btn);
         lv_obj_set_size(obj_status, 20, 20);
-        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
+        if(contacts_list.getContact(i).inrange)
+            lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+        else
+            lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_align(obj_status, LV_ALIGN_RIGHT_MID, 0, 0);
         lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_event_cb(btn, show_edit_contacts, LV_EVENT_LONG_PRESSED, btn);
@@ -1262,12 +1265,17 @@ void apply_color(lv_event_t * e){
 void update_frm_contacts_status(uint16_t index, bool in_range){
     if(index > contacts_list.size() - 1 || index < 0)
         return;
+    Serial.print("update_frm_contacts_status ");
+    Serial.println(in_range? "in range" : "ount of range");
     lv_obj_t * btn = lv_obj_get_child(frm_contacts_list, index);
-    lv_obj_t * obj_status = lv_obj_get_child(btn, 2);
+    lv_obj_t * obj_status = lv_obj_get_child(btn, 3);
+    
+    lv_task_handler();
     if(in_range)
         lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_ANY);
     else
         lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_ANY);
+    lv_task_handler();
 }
 
 void check_contacts_in_range(){
@@ -2750,7 +2758,10 @@ void setup(){
 
     if(wifi_connected_nets.list.size() > 0)
         xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 2, &task_wifi_auto, 0);
-    announce();
+    if(announce())
+        Serial.println("Hi everyone!");
+    else
+        Serial.println("Announcement failed");
 }
 
 void loop(){
