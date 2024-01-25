@@ -203,6 +203,9 @@ static void refresh_contact_list(){
     lv_obj_t * btn;
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         btn = lv_list_add_btn(frm_contacts_list, LV_SYMBOL_CALL, contacts_list.getContact(i).getName().c_str());
+        lv_obj_t * lbl = lv_label_create(btn);
+        lv_label_set_text(lbl, contacts_list.getContact(i).getID().c_str());
+        lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_event_cb(btn, show_edit_contacts, LV_EVENT_LONG_PRESSED, btn);
         lv_obj_add_event_cb(btn, show_chat, LV_EVENT_SHORT_CLICKED, btn);
     }
@@ -479,8 +482,8 @@ void processReceivedPacket(void * param){
                             strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                             strcpy(dec_msg, decrypt(p.id, p.msg).c_str());
                             strcpy(p.msg, dec_msg);
-                            messages_list.addMessage(p);
                             notify_snd();
+                            messages_list.addMessage(p);
                             
                             lv_task_handler();
                             strcpy(message, LV_SYMBOL_ENVELOPE);
@@ -971,8 +974,11 @@ void show_chat(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
     lv_obj_t * lbl = lv_obj_get_child(btn, 1);
+    lv_obj_t * lbl_id = lv_obj_get_child(btn, 2);
     const char * name = lv_label_get_text(lbl);
-    actual_contact = contacts_list.getContactByName(name);
+    const char * id = lv_label_get_text(lbl_id);
+
+    actual_contact = contacts_list.getContactByID(id);
 
     char title[31] = "Chat with ";
     strcat(title, name);
@@ -993,7 +999,6 @@ void show_chat(lv_event_t * e){
 
 void send_message(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
-    lora_packet dummy;
     String enc_msg;
     char msg[200] = {'\0'};
 
@@ -1455,8 +1460,9 @@ void wifi_scan(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     int n = 0;
     wifi_info wi;
-    char ssid[50] = {'\0'};
+    char ssid[100] = {'\0'};
     char rssi[5] = {'\0'};
+    char ch[3] = {'\0'};
     lv_obj_t * btn = NULL;
 
     if(code == LV_EVENT_SHORT_CLICKED){
@@ -1472,12 +1478,18 @@ void wifi_scan(lv_event_t * e){
             for(uint i = 0; i < n; i++){
                 wi.auth_type = WiFi.encryptionType(i);
                 wi.RSSI = WiFi.RSSI(i);
+                wi.ch = WiFi.channel();
                 strcpy(wi.SSID, WiFi.SSID(i).c_str());
                 wifi_list.push_back(wi);
                 strcpy(ssid, WiFi.SSID(i).c_str());
-                strcat(ssid, " ");
+                strcat(ssid, " rssi:");
                 itoa(WiFi.RSSI(i), rssi, 10);
                 strcat(ssid, rssi);
+                strcat(ssid, "\n");
+                strcat(ssid, wifi_auth_mode_to_str(WiFi.encryptionType(i)));
+                strcat(ssid, " ch:");
+                itoa(WiFi.channel(i), ch, 10);
+                strcat(ssid, ch);
                 btn = lv_list_add_btn(frm_wifi_list, LV_SYMBOL_WIFI, ssid);
                 lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_SHORT_CLICKED, (void *)i);
                 lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_LONG_PRESSED, (void *)i);

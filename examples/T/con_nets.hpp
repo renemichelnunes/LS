@@ -9,6 +9,7 @@ struct wifi_info{
     char SSID[50] = {'\0'};
     wifi_auth_mode_t auth_type = WIFI_AUTH_OPEN;
     int32_t RSSI = 0;
+    int32_t ch = 0;
     char login[100] = {'\0'};
     char pass[100] = {'\0'};
 };
