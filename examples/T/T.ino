@@ -480,6 +480,7 @@ void processReceivedPacket(void * param){
                             strcpy(dec_msg, decrypt(p.id, p.msg).c_str());
                             strcpy(p.msg, dec_msg);
                             messages_list.addMessage(p);
+                            notify_snd();
                             
                             lv_task_handler();
                             strcpy(message, LV_SYMBOL_ENVELOPE);
@@ -524,6 +525,7 @@ void processReceivedPacket(void * param){
                                 Serial.print("failed");
                         }
                         if(strcmp(p.status, "pong") == 0){
+                            notify_snd();
                             Serial.println("pong");
                             lv_task_handler();
                             notification_list.add("pong");
@@ -1578,6 +1580,40 @@ void wifi_toggle(lv_event_t * e){
     }
 }
 
+bool setupSD()
+{
+    digitalWrite(BOARD_SDCARD_CS, HIGH);
+    digitalWrite(RADIO_CS_PIN, HIGH);
+    digitalWrite(BOARD_TFT_CS, HIGH);
+
+    if (SD.begin(BOARD_SDCARD_CS, SPI, 800000U)) {
+        uint8_t cardType = SD.cardType();
+        if (cardType == CARD_NONE) {
+            Serial.println("No SD_MMC card attached");
+            return false;
+        } else {
+            Serial.print("SD_MMC Card Type: ");
+            if (cardType == CARD_MMC) {
+                Serial.println("MMC");
+            } else if (cardType == CARD_SD) {
+                Serial.println("SDSC");
+            } else if (cardType == CARD_SDHC) {
+                Serial.println("SDHC");
+            } else {
+                Serial.println("UNKNOWN");
+            }
+            uint32_t cardSize = SD.cardSize() / (1024 * 1024);
+            uint32_t cardTotal = SD.totalBytes() / (1024 * 1024);
+            uint32_t cardUsed = SD.usedBytes() / (1024 * 1024);
+            Serial.printf("SD Card Size: %lu MB\n", cardSize);
+            Serial.printf("Total space: %lu MB\n",  cardTotal);
+            Serial.printf("Used space: %lu MB\n",   cardUsed);
+            return true;
+        }
+    }
+    return false;
+}
+
 bool setupCoder() {
     uint32_t ret_val = ESP_OK;
 
@@ -1612,23 +1648,27 @@ bool setupCoder() {
 }
 
 void taskplaySong(void *p) {
-    while (1) {
+    //while (1) {
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
-            if (SD.exists("/key.mp3")) {
-                const char *path = "key.mp3";
+            if (SD.exists("/comp_up.mp3")) {
+                const char *path = "comp_up.mp3";
                 audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
-                audio.setVolume(12);
+                audio.setVolume(21);
                 audio.connecttoFS(SD, path);
                 Serial.printf("play %s\r\n", path);
                 while (audio.isRunning()) {
-                audio.loop();
+                    audio.loop();
                 }
                 audio.stopSong();
             }
             xSemaphoreGive(xSemaphore);
         }
         vTaskDelete(task_play);
-    }
+    //}
+}
+
+void notify_snd(){
+    xTaskCreatePinnedToCore(taskplaySong, "play_song", 10000, NULL, 2, &task_play, 0);
 }
 
 void ui(){
@@ -2612,8 +2652,11 @@ void setup(){
 
     ui();
 
-    //Audio setup
-    setupCoder();
+    //SD card
+    if(!setupSD())
+        Serial.println("cannot configure SD card");
+    else
+        Serial.println("SD card detected");
 
     //Load settings
     loadSettings();
