@@ -207,6 +207,7 @@ static void refresh_contact_list(){
         lv_label_set_text(lbl, contacts_list.getContact(i).getID().c_str());
         lv_obj_t * obj_status = lv_obj_create(btn);
         lv_obj_set_size(obj_status, 20, 20);
+        lv_obj_clear_flag(obj_status, LV_OBJ_FLAG_SCROLLABLE);
         if(contacts_list.getContact(i).inrange)
             lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
         else
@@ -511,6 +512,7 @@ void processReceivedPacket(void * param){
                             lv_task_handler();
 
                             strcpy(c.id, user_id);
+                            strcpy(c.status, "recv");
                             Serial.print("sending confirmation...");
                             if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                 Serial.println("done");
@@ -541,20 +543,12 @@ void processReceivedPacket(void * param){
                             notification_list.add("pong");
                             lv_task_handler();
                         }
-                        if(strcmp(p.status, "onli") == 0){
-                            contact->inrange = true;
-                            strcpy(message, LV_SYMBOL_CALL " ");
-                            strcat(message, contact->getName().c_str());
-                            strcat(message, " is in range");
-                            notification_list.add(message);
-                            contact->timeout = millis();
-                        }
                         if(strcmp(p.status, "show") == 0){
                             contact->inrange = true;
-                            strcpy(message, LV_SYMBOL_CALL " ");
-                            strcat(message, contact->getName().c_str());
-                            strcat(message, " hi!");
-                            notification_list.add(message);
+                            //strcpy(message, LV_SYMBOL_CALL " ");
+                            //strcat(message, contact->getName().c_str());
+                            //strcat(message, " hi!");
+                            //notification_list.add(message);
                             contact->timeout = millis();
                         }
                     }
@@ -1200,6 +1194,7 @@ void update_time(void *timeStruct) {
             lv_label_set_text(frm_home_date_lbl, date);
         }
         vTaskDelay(60000 / portTICK_RATE_MS);
+        announce();
     }
     vTaskDelete(task_date_time);
 }
@@ -1266,15 +1261,14 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
     if(index > contacts_list.size() - 1 || index < 0)
         return;
     Serial.print("update_frm_contacts_status ");
-    Serial.println(in_range? "in range" : "ount of range");
+    Serial.println(in_range? "in range" : "out of range");
     lv_obj_t * btn = lv_obj_get_child(frm_contacts_list, index);
     lv_obj_t * obj_status = lv_obj_get_child(btn, 3);
-    
     lv_task_handler();
     if(in_range)
-        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_ANY);
+        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
     else
-        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_ANY);
+        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_task_handler();
 }
 
@@ -2657,6 +2651,8 @@ void setup(){
     Serial.begin(115200);
     //delay(3000);
 
+    //time interval checking online contacts
+    contacts_list.setCheckPeriod(1);
     //Load contacts
     loadContacts();
 

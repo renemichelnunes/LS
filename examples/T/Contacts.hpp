@@ -24,8 +24,9 @@ class Contact{
 class Contact_list{
     private:
         vector <Contact> list;
+        uint64_t check_period = (1 * 60 * 1000L);
     public:
-        uint64_t check_period = (5 * 60 * 1000L);
+        
         bool add(Contact c);
         bool del(Contact c);
         bool find(Contact &c);
@@ -35,6 +36,7 @@ class Contact_list{
         vector <Contact> getList();
         uint32_t size();
         void check_inrange();
+        void setCheckPeriod(uint8_t min);
         Contact_list();
         ~Contact_list();
 };

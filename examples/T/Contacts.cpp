@@ -124,3 +124,8 @@ void Contact_list::check_inrange(){
         }
     }
 }
+
+void Contact_list::setCheckPeriod(uint8_t min){
+    if(min >= 1)
+        this->check_period = min * 60 * 1000L;
+}
