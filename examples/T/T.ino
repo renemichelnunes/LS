@@ -1648,23 +1648,21 @@ bool setupCoder() {
 }
 
 void taskplaySong(void *p) {
-    //while (1) {
-        if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
-            if (SD.exists("/comp_up.mp3")) {
-                const char *path = "comp_up.mp3";
-                audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
-                audio.setVolume(21);
-                audio.connecttoFS(SD, path);
-                Serial.printf("play %s\r\n", path);
-                while (audio.isRunning()) {
-                    audio.loop();
-                }
-                audio.stopSong();
+    if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
+        if (SD.exists("/comp_up.mp3")) {
+            const char *path = "comp_up.mp3";
+            audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
+            audio.setVolume(21);
+            audio.connecttoFS(SD, path);
+            Serial.printf("play %s\r\n", path);
+            while (audio.isRunning()) {
+                audio.loop();
             }
-            xSemaphoreGive(xSemaphore);
+            audio.stopSong();
         }
-        vTaskDelete(task_play);
-    //}
+        xSemaphoreGive(xSemaphore);
+    }
+    vTaskDelete(task_play);
 }
 
 void notify_snd(){
@@ -2462,6 +2460,7 @@ void wifi_auto_toggle(){
         }else{
             Serial.println("disconnected");
             lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " disconnected");
+            lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
         }
     }
 }
@@ -2670,7 +2669,7 @@ void setup(){
     xTaskCreatePinnedToCore(update_time, "update_time", 11000, (struct tm*)&timeinfo, 2, &task_date_time, 1);
 
     // Initial date
-    setDate(2024, 1, 13, 0, 0, 0, 0);
+    setDate(2024, 1, 1, 0, 0, 0, 0);
     
     // battery
     initBat();
