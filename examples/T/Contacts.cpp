@@ -113,3 +113,14 @@ bool Contact_list::find(Contact &c){
 vector <Contact> Contact_list::getList(){
     return list;
 }
+
+void Contact_list::check_inrange(){
+    if(this->list.size() > 0){
+        for(uint32_t index = 0; index < this->list.size(); index++){
+            if(millis() - this->list[index].timeout >= this->check_period){
+                this->list[index].inrange = false;
+                this->list[index].timeout += this->check_period;
+            }
+        }
+    }
+}

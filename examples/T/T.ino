@@ -205,6 +205,10 @@ static void refresh_contact_list(){
         btn = lv_list_add_btn(frm_contacts_list, LV_SYMBOL_CALL, contacts_list.getContact(i).getName().c_str());
         lv_obj_t * lbl = lv_label_create(btn);
         lv_label_set_text(lbl, contacts_list.getContact(i).getID().c_str());
+        lv_obj_t * obj_status = lv_obj_create(btn);
+        lv_obj_set_size(obj_status, 20, 20);
+        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_align(obj_status, LV_ALIGN_RIGHT_MID, 0, 0);
         lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_event_cb(btn, show_edit_contacts, LV_EVENT_LONG_PRESSED, btn);
         lv_obj_add_event_cb(btn, show_chat, LV_EVENT_SHORT_CLICKED, btn);
@@ -533,6 +537,22 @@ void processReceivedPacket(void * param){
                             lv_task_handler();
                             notification_list.add("pong");
                             lv_task_handler();
+                        }
+                        if(strcmp(p.status, "onli") == 0){
+                            contact->inrange = true;
+                            strcpy(message, LV_SYMBOL_CALL " ");
+                            strcat(message, contact->getName().c_str());
+                            strcat(message, " is in range");
+                            notification_list.add(message);
+                            contact->timeout = millis();
+                        }
+                        if(strcmp(p.status, "show") == 0){
+                            contact->inrange = true;
+                            strcpy(message, LV_SYMBOL_CALL " ");
+                            strcat(message, contact->getName().c_str());
+                            strcat(message, " hi!");
+                            notification_list.add(message);
+                            contact->timeout = millis();
                         }
                     }
                     else{
@@ -1239,6 +1259,28 @@ void apply_color(lv_event_t * e){
     lv_disp_set_theme(dispp, theme);
 }
 
+void update_frm_contacts_status(uint16_t index, bool in_range){
+    if(index > contacts_list.size() - 1 || index < 0)
+        return;
+    lv_obj_t * btn = lv_obj_get_child(frm_contacts_list, index);
+    lv_obj_t * obj_status = lv_obj_get_child(btn, 2);
+    if(in_range)
+        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_ANY);
+    else
+        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_ANY);
+}
+
+void check_contacts_in_range(){
+    Serial.println("check_contacts_in_range");
+    contacts_list.check_inrange();
+    for(uint32_t i = 0; i < contacts_list.size(); i++){
+        update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
+
+        Serial.print(contacts_list.getList()[i].getName());
+        Serial.println(contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
+    }
+}
+
 void initBat(){
     esp_adc_cal_characteristics_t adc_bat;
     esp_adc_cal_value_t type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_bat);
@@ -1289,6 +1331,7 @@ void update_bat(void * param){
         strcat(msg, "% ");
         strcat(msg, get_battery_icon(p));
         lv_label_set_text(frm_home_bat_lbl, msg);
+        check_contacts_in_range();
         vTaskDelay(30000 / portTICK_PERIOD_MS);
     }
 }
@@ -1493,6 +1536,7 @@ void wifi_scan(lv_event_t * e){
                 btn = lv_list_add_btn(frm_wifi_list, LV_SYMBOL_WIFI, ssid);
                 lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_SHORT_CLICKED, (void *)i);
                 lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_LONG_PRESSED, (void *)i);
+
             }
         }
         Serial.println("done");
@@ -2590,6 +2634,16 @@ void wifi_auto_connect(void * param){
     }
 }
 
+bool announce(){
+    lora_packet_status hi;
+
+    strcpy(hi.id, user_id);
+    strcpy(hi.status, "show");
+    if(radio.startTransmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0)
+        return true;
+    return false;
+}
+
 void setup(){
     bool ret = false;
     Serial.begin(115200);
@@ -2696,6 +2750,7 @@ void setup(){
 
     if(wifi_connected_nets.list.size() > 0)
         xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 2, &task_wifi_auto, 0);
+    announce();
 }
 
 void loop(){
