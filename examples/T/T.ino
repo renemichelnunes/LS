@@ -465,10 +465,11 @@ void processReceivedPacket(void * param){
     }
 
     while(true){
+
         if(gotPacket){
             processing = true;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                radio.standby();
+                //radio.standby();
                 Serial.println("packet received");
 
                 uint32_t size = radio.getPacketLength();
@@ -476,6 +477,7 @@ void processReceivedPacket(void * param){
                 Serial.println(size);
                 if(size > 0){
                     radio.readData((uint8_t *)&p, size);
+                    gotPacket = false;
                     Serial.print("id ");
                     Serial.println(p.id);
                     Serial.print("msg ");
@@ -493,6 +495,7 @@ void processReceivedPacket(void * param){
 
                     contact = contacts_list.getContactByID(p.id);
                     if(contact != NULL){
+                        Serial.println("found contact");
                         if(strcmp(p.status, "send") == 0){
                             strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                             strcpy(dec_msg, decrypt(p.id, p.msg).c_str());
@@ -500,7 +503,6 @@ void processReceivedPacket(void * param){
                             notify_snd();
                             messages_list.addMessage(p);
                             
-                            lv_task_handler();
                             strcpy(message, LV_SYMBOL_ENVELOPE);
                             strcat(message, " ");
                             strcat(message, contact->getName().c_str());
@@ -516,7 +518,6 @@ void processReceivedPacket(void * param){
                             message[32] = '.';
                             message[33] = '\0';
                             notification_list.add(message);
-                            lv_task_handler();
 
                             strcpy(c.id, user_id);
                             strcpy(c.status, "recv");
@@ -526,22 +527,24 @@ void processReceivedPacket(void * param){
                                 vTaskDelay(100 / portTICK_PERIOD_MS);
                             }
                             if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
-                                Serial.println("done");
+                                Serial.println("confirmation sent");
                             else
-                                Serial.print("failed");
+                                Serial.print("confirmation not sent");
                         }
 
                         if(strcmp(p.status, "recv") == 0){
                             messages_list.addMessage(p);
                         }
-
+                        Serial.println("???");
                         if(strcmp(p.status, "ping") == 0){
-                            lv_task_handler();
                             notification_list.add("ping");
-                            lv_task_handler();
                             Serial.print("sending pong...");
                             strcpy(pong.id, user_id);
                             strcpy(pong.status, "pong");
+                            while(announcing){
+                                Serial.println("waiting announcing to finnish before send confirmation..");
+                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                            }
                             if(radio.transmit((uint8_t*)&pong, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                 Serial.println("done");
                             else
@@ -2685,6 +2688,7 @@ bool announce(){
         Serial.print("gotPacket ");
         Serial.println(gotPacket?"true":"false");
         Serial.println("announce");
+        lv_task_handler();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
