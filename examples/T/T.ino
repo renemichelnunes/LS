@@ -46,6 +46,9 @@ bool touchDected = false;
 bool kbDected = false;
 bool hasRadio = false; 
 bool wifi_connected = false;
+volatile bool announcing = false;
+volatile bool transmiting = false;
+volatile bool processing = false;
 volatile bool gotPacket = false;
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
@@ -237,27 +240,17 @@ static void notify(void * param){
     while(true){
         update_wifi_icon();
         if(notification_list.size() > 0){
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            //vTaskDelay(1000 / portTICK_PERIOD_MS);
             notification_list.pop(n);
             lv_task_handler();
             lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
             lv_task_handler();
-            lv_obj_t * label = lv_label_create(frm_not);
-            lv_task_handler();
-            lv_label_set_text(label, n);
-            lv_task_handler();
-            lv_obj_align(label, LV_ALIGN_TOP_LEFT, -10, -10);
-            lv_task_handler();
-            lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
+            lv_label_set_text(frm_not_lbl, n);
             lv_task_handler();
             lv_label_set_text(frm_home_title_lbl, n);
-            lv_task_handler();
             vTaskDelay(1000 / portTICK_PERIOD_MS);
-            if(xSemaphoreTake(xSemaphore, 5000 / portTICK_PERIOD_MS) == pdTRUE){
-                lv_obj_clean(frm_not);
-                xSemaphoreGive(xSemaphore);
-            }
             lv_task_handler();
+            lv_label_set_text(frm_not_lbl, "");
             lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
             lv_task_handler();
             strcpy(n, "");
@@ -458,8 +451,22 @@ void processReceivedPacket(void * param){
     Contact * contact = NULL;
     char message[200] = {'\0'}, pmsg [200] = {'\0'}, dec_msg[200] = {'\0'};
 
+    while(announcing){
+        Serial.print("announcing ");
+        Serial.println(announcing?"true":"false");
+        Serial.println("processReceivedPacket");
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    while(transmiting){
+        Serial.print("transmiting ");
+        Serial.println(transmiting?"true":"false");
+        Serial.println("processReceivedPacket");
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+
     while(true){
         if(gotPacket){
+            processing = true;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 radio.standby();
                 Serial.println("packet received");
@@ -514,6 +521,10 @@ void processReceivedPacket(void * param){
                             strcpy(c.id, user_id);
                             strcpy(c.status, "recv");
                             Serial.print("sending confirmation...");
+                            while(announcing){
+                                Serial.println("waiting announcing to finnish before send confirmation..");
+                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                            }
                             if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                 Serial.println("done");
                             else
@@ -562,6 +573,7 @@ void processReceivedPacket(void * param){
                 gotPacket = false;
                 radio.startReceive();
                 xSemaphoreGive(xSemaphore);
+                processing = false;
             }
         }
         vTaskDelay(20 / portTICK_PERIOD_MS);
@@ -789,7 +801,7 @@ void setupRadio(lv_event_t * e)
         //return false;
     }
 
-    xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 10000, NULL, 1, &task_recv_pkt, 1);
+    xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 20000, NULL, 1, &task_recv_pkt, 1);
     radio.setPacketReceivedAction(listen);
     if(radio.startReceive() == RADIOLIB_ERR_NONE)
         hasRadio = true;
@@ -824,6 +836,10 @@ void test(lv_event_t * e){
     strcpy(my_packet.status, "ping");
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
+            while(transmiting || announcing || processing){
+                Serial.println("test");
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+            }
             int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet_status));
             
             if(state != RADIOLIB_ERR_NONE){
@@ -1031,8 +1047,17 @@ void send_message(lv_event_t * e){
                     strcpy(msg, lv_textarea_get_text(frm_chat_text_ans));
                     enc_msg = encrypt(lv_textarea_get_text(frm_chat_text_ans));
                     strcpy(pkt.msg, enc_msg.c_str());
-
+                    while(announcing){
+                        Serial.println("announcing");
+                        vTaskDelay(100 / portTICK_PERIOD_MS);
+                    }
+                    while(gotPacket){
+                        Serial.println("gotPacket");
+                        vTaskDelay(100 / portTICK_PERIOD_MS);
+                    }
+                    transmiting = true;
                     int state = radio.startTransmit((uint8_t *)&pkt, sizeof(lora_packet));
+                    transmiting = false;
                 
                     if(state != RADIOLIB_ERR_NONE){
                         Serial.print("transmission failed ");
@@ -1706,9 +1731,10 @@ bool setupCoder() {
 }
 
 void taskplaySong(void *p) {
-    if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
+    if (xSemaphoreTake(xSemaphore, 10000 / portTICK_PERIOD_MS) == pdTRUE) {
         if (SD.exists("/comp_up.mp3")) {
             const char *path = "comp_up.mp3";
+            digitalWrite(BOARD_POWERON, HIGH);
             audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
             audio.setVolume(21);
             audio.connecttoFS(SD, path);
@@ -2208,6 +2234,11 @@ void ui(){
     lv_obj_set_style_radius(frm_not, 0, 0 ) ;
     lv_obj_set_style_border_width(frm_not, 0, 0);
 
+    //Label
+    frm_not_lbl = lv_label_create(frm_not);
+    lv_obj_align(frm_not_lbl, LV_ALIGN_TOP_LEFT, -10, -10);
+    lv_label_set_long_mode(frm_not_lbl, LV_LABEL_LONG_SCROLL);
+
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
 
     /*form wifi********************************************************************/
@@ -2641,8 +2672,30 @@ bool announce(){
 
     strcpy(hi.id, user_id);
     strcpy(hi.status, "show");
-    if(radio.startTransmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0)
-        return true;
+    announcing = true;
+    while(transmiting){
+        Serial.print("transmiting ");
+        Serial.println(transmiting?"true":"false");
+        Serial.println("announce");
+        lv_task_handler();
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+
+    while(gotPacket){
+        Serial.print("gotPacket ");
+        Serial.println(gotPacket?"true":"false");
+        Serial.println("announce");
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+        if(radio.startTransmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
+            xSemaphoreGive(xSemaphore);
+            announcing = false;
+            return true;
+        }
+    }
+    xSemaphoreGive(xSemaphore);
+    announcing = false;
     return false;
 }
 

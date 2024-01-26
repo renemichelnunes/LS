@@ -91,6 +91,7 @@ lv_obj_t * frm_settings_btn_wifi_conf;
 lv_obj_t * frm_settings_btn_wifi_conf_lbl;
 /*notification form*/
 lv_obj_t * frm_not;
+lv_obj_t * frm_not_lbl;
 /*form wifi*/
 lv_obj_t * frm_wifi;
 lv_obj_t * frm_wifi_btn_title;
