@@ -19,6 +19,7 @@
 #include <driver/i2s.h>
 #include "es7210.h"
 #include "Cipher.h"
+#include "esp_wifi.h"
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
@@ -58,7 +59,8 @@ TaskHandle_t task_recv_pkt = NULL,
              task_date_time = NULL,
              task_bat = NULL,
              task_wifi_auto = NULL,
-             task_play = NULL;
+             task_play = NULL,
+             task_play_radio = NULL;
 
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
@@ -583,8 +585,12 @@ void processReceivedPacket(void * param){
     }
 }
 
-void listen(){
+void onListen(){
     gotPacket = true;
+}
+
+void onTransmit(){
+    transmiting = false;
 }
 
 bool normalMode(){
@@ -805,7 +811,8 @@ void setupRadio(lv_event_t * e)
     }
 
     xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 20000, NULL, 1, &task_recv_pkt, 1);
-    radio.setPacketReceivedAction(listen);
+    radio.setPacketReceivedAction(onListen);
+    radio.setPacketSentAction(onTransmit);
     if(radio.startReceive() == RADIOLIB_ERR_NONE)
         hasRadio = true;
     //return true;
@@ -834,17 +841,17 @@ String decrypt(char * contact_id, String msg){
 
 void test(lv_event_t * e){
     lora_packet_status my_packet;
-
+    xTaskCreatePinnedToCore(song, "play_song", 10000, NULL, 2 | portPRIVILEGE_BIT, &task_play_radio, 0);
     strcpy(my_packet.id, user_id);
     strcpy(my_packet.status, "ping");
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
-            while(transmiting || announcing || processing){
+            while(transmiting){
                 Serial.println("test");
                 vTaskDelay(100 / portTICK_PERIOD_MS);
             }
             int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet_status));
-            
+            transmiting = false;
             if(state != RADIOLIB_ERR_NONE){
                 Serial.print("transmission failed ");
                 Serial.println(state);
@@ -1733,6 +1740,27 @@ bool setupCoder() {
     return ret_val == ESP_OK;
 }
 
+void song(void * param) {
+    BaseType_t xHigherPriorityTaskWoken;
+    if(WiFi.isConnected()){
+        if (xSemaphoreTake(xSemaphore, 10000 / portTICK_PERIOD_MS) == pdTRUE) {
+            digitalWrite(BOARD_POWERON, HIGH);
+            audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
+            audio.setVolume(21);
+            audio.connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3");
+            //audio.connecttospeech("Notificação enviada com sucesso.", "pt");
+            while(true){
+                audio.loop();
+                if(!audio.isRunning())
+                    sleep(1);
+            }
+            audio.stopSong();
+            xSemaphoreGive(xSemaphore);
+        }
+    }
+    vTaskDelete(task_play_radio);
+}
+
 void taskplaySong(void *p) {
     if (xSemaphoreTake(xSemaphore, 10000 / portTICK_PERIOD_MS) == pdTRUE) {
         if (SD.exists("/comp_up.mp3")) {
@@ -1753,7 +1781,7 @@ void taskplaySong(void *p) {
 }
 
 void notify_snd(){
-    xTaskCreatePinnedToCore(taskplaySong, "play_song", 10000, NULL, 2, &task_play, 0);
+    xTaskCreatePinnedToCore(taskplaySong, "play_not_snd", 10000, NULL, 2, &task_play, 0);
 }
 
 void ui(){
@@ -2470,6 +2498,8 @@ void wifi_auto_toggle(){
     lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
     WiFi.disconnect(true);
     WiFi.mode(WIFI_STA);
+    esp_wifi_set_ps(WIFI_PS_NONE);
+    esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
     n = WiFi.scanNetworks();
     if(n > 0)
         for(int i = 0; i < n; i++){
@@ -2570,7 +2600,8 @@ void wifi_auto_connect(void * param){
         Serial.print("Searching for wifi connections...");
         lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
         WiFi.disconnect(true);
-        WiFi.mode(WIFI_STA);
+        //WiFi.mode(WIFI_STA);
+        
         n = WiFi.scanNetworks();
         if(n > 0)
             for(int i = 0; i < n; i++){
@@ -2601,7 +2632,9 @@ void wifi_auto_connect(void * param){
                             esp_wifi_sta_wpa2_ent_enable();
 
                             WiFi.disconnect(true);
-                            WiFi.mode(WIFI_STA);
+                            //WiFi.mode(WIFI_STA);
+                            esp_wifi_set_ps(WIFI_PS_NONE);
+                            esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
                             WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
                             
                             while(!WiFi.isConnected()){
@@ -2624,7 +2657,9 @@ void wifi_auto_connect(void * param){
                                 wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WEP){
 
                             WiFi.disconnect(true);
-                            WiFi.mode(WIFI_STA);
+                            //WiFi.mode(WIFI_STA);
+                            esp_wifi_set_ps(WIFI_PS_NONE);
+                            esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
                             WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
 
                             while(!WiFi.isConnected()){
@@ -2676,6 +2711,7 @@ bool announce(){
     strcpy(hi.id, user_id);
     strcpy(hi.status, "show");
     announcing = true;
+    
     while(transmiting){
         Serial.print("transmiting ");
         Serial.println(transmiting?"true":"false");
@@ -2695,6 +2731,7 @@ bool announce(){
         if(radio.startTransmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
             xSemaphoreGive(xSemaphore);
             announcing = false;
+            transmiting = false;
             return true;
         }
     }
