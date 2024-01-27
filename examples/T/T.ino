@@ -68,6 +68,7 @@ notification notification_list = notification();
 
 char user_name[50] = "";
 char user_id[7] = "";
+char connected_to[60] = "";
 
 struct tm timeinfo;
 
@@ -1485,10 +1486,9 @@ void wifi_apply(lv_event_t * e){
             Serial.println("wifi network saved");
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
             Serial.println(WiFi.localIP().toString());
-            strcat(msg, wifi_list[i].SSID);
-            strcat(msg, " ");
-            strcat(msg, WiFi.localIP().toString().c_str());
-            lv_label_set_text(frm_wifi_connected_to_lbl, msg);
+            strcat(connected_to, wifi_list[i].SSID);
+            strcat(connected_to, " ");
+            strcat(connected_to, WiFi.localIP().toString().c_str());
             lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN); 
             lv_obj_add_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
             datetime();
@@ -1548,56 +1548,65 @@ void wifi_select(lv_event_t * e){
     }
 }
 
-void wifi_scan(lv_event_t * e){
-    lv_event_code_t code = lv_event_get_code(e);
+void wifi_scan_task(void * param){
     int n = 0;
     wifi_info wi;
     char ssid[100] = {'\0'};
     char rssi[5] = {'\0'};
     char ch[3] = {'\0'};
     lv_obj_t * btn = NULL;
+    Serial.print("scanning...");
+    lv_task_handler();
+    lv_label_set_text(frm_wifi_connected_to_lbl, "Scanning...");
+    lv_task_handler();
+    WiFi.disconnect(true);
+    n = WiFi.scanNetworks();
+    if(n > 0){
+        lv_obj_clean(frm_wifi_list);
+        wifi_list.clear();
+        for(uint i = 0; i < n; i++){
+            wi.auth_type = WiFi.encryptionType(i);
+            wi.RSSI = WiFi.RSSI(i);
+            wi.ch = WiFi.channel();
+            strcpy(wi.SSID, WiFi.SSID(i).c_str());
+            wifi_list.push_back(wi);
+            strcpy(ssid, WiFi.SSID(i).c_str());
+            strcat(ssid, " rssi:");
+            itoa(WiFi.RSSI(i), rssi, 10);
+            strcat(ssid, rssi);
+            strcat(ssid, "\n");
+            strcat(ssid, wifi_auth_mode_to_str(WiFi.encryptionType(i)));
+            strcat(ssid, " ch:");
+            itoa(WiFi.channel(i), ch, 10);
+            strcat(ssid, ch);
+            btn = lv_list_add_btn(frm_wifi_list, LV_SYMBOL_WIFI, ssid);
+            lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_SHORT_CLICKED, (void *)i);
+            lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_LONG_PRESSED, (void *)i);
+
+        }
+    }
+    Serial.println("done");
+    lv_label_set_text(frm_wifi_connected_to_lbl, "Scan complete");
+    vTaskDelete(NULL);
+}
+
+void wifi_scan(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
-        Serial.print("scanning...");
-        lv_task_handler();
-        lv_label_set_text(frm_wifi_connected_to_lbl, "Scanning...");
-        lv_task_handler();
-        WiFi.disconnect(true);
-        n = WiFi.scanNetworks();
-        if(n > 0){
-            lv_obj_clean(frm_wifi_list);
-            wifi_list.clear();
-            for(uint i = 0; i < n; i++){
-                wi.auth_type = WiFi.encryptionType(i);
-                wi.RSSI = WiFi.RSSI(i);
-                wi.ch = WiFi.channel();
-                strcpy(wi.SSID, WiFi.SSID(i).c_str());
-                wifi_list.push_back(wi);
-                strcpy(ssid, WiFi.SSID(i).c_str());
-                strcat(ssid, " rssi:");
-                itoa(WiFi.RSSI(i), rssi, 10);
-                strcat(ssid, rssi);
-                strcat(ssid, "\n");
-                strcat(ssid, wifi_auth_mode_to_str(WiFi.encryptionType(i)));
-                strcat(ssid, " ch:");
-                itoa(WiFi.channel(i), ch, 10);
-                strcat(ssid, ch);
-                btn = lv_list_add_btn(frm_wifi_list, LV_SYMBOL_WIFI, ssid);
-                lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_SHORT_CLICKED, (void *)i);
-                lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_LONG_PRESSED, (void *)i);
-
-            }
-        }
-        Serial.println("done");
-        lv_label_set_text(frm_wifi_connected_to_lbl, "Scan complete");
+        xTaskCreatePinnedToCore(wifi_scan_task, "wifi_scan_task", 10000, NULL, 1, NULL, 1);
     }
 }
 
 void update_wifi_icon(){
-    if(WiFi.isConnected())
+    if(WiFi.isConnected()){
         lv_label_set_text(frm_home_wifi_lbl, LV_SYMBOL_WIFI);
-    else
+        lv_label_set_text(frm_wifi_connected_to_lbl, connected_to);
+    }
+    else{
         lv_label_set_text(frm_home_wifi_lbl, "");
+        lv_label_set_text(frm_wifi_connected_to_lbl, "");
+    }
 }
 
 void show_pass(lv_event_t * e){
@@ -2601,6 +2610,9 @@ void wifi_auto_toggle(){
         if(WiFi.isConnected()){
             lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+            strcpy(connected_to, wifi_connected_nets.list[last_wifi_con].SSID);
+            strcat(connected_to, " ");
+            strcat(connected_to, WiFi.localIP().toString().c_str());
             Serial.println(" connected");
             vTaskDelay(2000 / portTICK_PERIOD_MS);
             lv_label_set_text(frm_home_title_lbl, "");
@@ -2626,7 +2638,7 @@ void wifi_auto_connect(void * param){
         Serial.print("Searching for wifi connections...");
         lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
         WiFi.disconnect(true);
-        //WiFi.mode(WIFI_STA);
+        WiFi.mode(WIFI_STA);
         
         n = WiFi.scanNetworks();
         if(n > 0)
@@ -2658,9 +2670,9 @@ void wifi_auto_connect(void * param){
                             esp_wifi_sta_wpa2_ent_enable();
 
                             WiFi.disconnect(true);
-                            //WiFi.mode(WIFI_STA);
-                            esp_wifi_set_ps(WIFI_PS_NONE);
-                            esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
+                            WiFi.mode(WIFI_STA);
+                            //esp_wifi_set_ps(WIFI_PS_NONE);
+                            //esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
                             WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
                             
                             while(!WiFi.isConnected()){
@@ -2683,9 +2695,9 @@ void wifi_auto_connect(void * param){
                                 wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WEP){
 
                             WiFi.disconnect(true);
-                            //WiFi.mode(WIFI_STA);
-                            esp_wifi_set_ps(WIFI_PS_NONE);
-                            esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
+                            WiFi.mode(WIFI_STA);
+                            //esp_wifi_set_ps(WIFI_PS_NONE);
+                            //esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
                             WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
 
                             while(!WiFi.isConnected()){
@@ -2713,6 +2725,9 @@ void wifi_auto_connect(void * param){
             if(WiFi.isConnected()){
                 lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
                 lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+                strcpy(connected_to, wifi_connected_nets.list[last_wifi_con].SSID);
+                strcat(connected_to, " ");
+                strcat(connected_to, WiFi.localIP().toString().c_str());
                 Serial.println(" connected");
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
                 lv_label_set_text(frm_home_title_lbl, "");
