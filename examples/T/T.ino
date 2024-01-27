@@ -466,9 +466,8 @@ void processReceivedPacket(void * param){
         Serial.println("processReceivedPacket");
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-    Serial.println("processReceivedPacket");
-    while(true){
 
+    while(true){
         if(gotPacket){
             processing = true;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -529,10 +528,17 @@ void processReceivedPacket(void * param){
                                 Serial.println("waiting announcing to finnish before send confirmation..");
                                 vTaskDelay(100 / portTICK_PERIOD_MS);
                             }
+
+                            while(radio.scanChannel() == RADIOLIB_LORA_DETECTED){
+                                Serial.println("LoRa signal detected, wait...");
+                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                            }
+                            transmiting = true;
                             if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                 Serial.println("confirmation sent");
                             else
                                 Serial.print("confirmation not sent");
+                            transmiting = false;
                         }
 
                         if(strcmp(p.status, "recv") == 0){
@@ -1078,6 +1084,12 @@ void send_message(lv_event_t * e){
                         Serial.println("gotPacket");
                         vTaskDelay(100 / portTICK_PERIOD_MS);
                     }
+
+                    while(radio.scanChannel() == RADIOLIB_LORA_DETECTED){
+                        Serial.println("LoRa signal detected, wait...");
+                        vTaskDelay(100 / portTICK_PERIOD_MS);
+                    }
+
                     transmiting = true;
                     int state = radio.startTransmit((uint8_t *)&pkt, sizeof(lora_packet));
                     transmiting = false;
@@ -1559,7 +1571,7 @@ void wifi_scan_task(void * param){
     lv_task_handler();
     lv_label_set_text(frm_wifi_connected_to_lbl, "Scanning...");
     lv_task_handler();
-    WiFi.disconnect(true);
+    //WiFi.disconnect(true);
     n = WiFi.scanNetworks();
     if(n > 0){
         lv_obj_clean(frm_wifi_list);
@@ -2768,6 +2780,12 @@ bool announce(){
         lv_task_handler();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
+
+    while(radio.scanChannel() == RADIOLIB_LORA_DETECTED){
+        Serial.println("LoRa signal detected, wait...");
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(radio.startTransmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
             xSemaphoreGive(xSemaphore);
@@ -2889,6 +2907,7 @@ void setup(){
 
     if(wifi_connected_nets.list.size() > 0)
         xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 2, &task_wifi_auto, 0);
+
     if(announce())
         Serial.println("Hi everyone!");
     else
