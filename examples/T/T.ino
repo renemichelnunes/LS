@@ -465,7 +465,7 @@ void processReceivedPacket(void * param){
         Serial.println("processReceivedPacket");
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-
+    Serial.println("processReceivedPacket");
     while(true){
 
         if(gotPacket){
@@ -477,7 +477,7 @@ void processReceivedPacket(void * param){
                 uint32_t size = radio.getPacketLength();
                 Serial.print("size ");
                 Serial.println(size);
-                if(size > 0){
+                if(size > 0 and size <= sizeof(lora_packet)){
                     radio.readData((uint8_t *)&p, size);
                     gotPacket = false;
                     Serial.print("id ");
@@ -556,7 +556,13 @@ void processReceivedPacket(void * param){
                             notify_snd();
                             Serial.println("pong");
                             lv_task_handler();
-                            notification_list.add("pong");
+                            strcpy(message, LV_SYMBOL_DOWNLOAD " ");
+                            strcat(message, "pong ");
+                            sprintf(pmsg, "RSSI %.2f", radio.getRSSI());
+                            strcat(message, pmsg);
+                            sprintf(pmsg, " S/N %.2f", radio.getSNR());
+                            strcat(message, pmsg);
+                            notification_list.add(message);
                             lv_task_handler();
                         }
                         if(strcmp(p.status, "show") == 0){
@@ -575,6 +581,7 @@ void processReceivedPacket(void * param){
                         Serial.println("Packet ignored");
                     }
                 }
+                Serial.println("Unknown packet");
                 gotPacket = false;
                 radio.startReceive();
                 xSemaphoreGive(xSemaphore);
@@ -809,12 +816,16 @@ void setupRadio(lv_event_t * e)
         Serial.println(F("Selected CRC is invalid for this module!"));
         //return false;
     }
-
+    int32_t code = 0;
     xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 20000, NULL, 1, &task_recv_pkt, 1);
     radio.setPacketReceivedAction(onListen);
-    radio.setPacketSentAction(onTransmit);
-    if(radio.startReceive() == RADIOLIB_ERR_NONE)
+    //radio.setPacketSentAction(onTransmit);
+    code = radio.startReceive();
+    Serial.print("setup radio start receive code ");
+    Serial.println(code);
+    if(code == RADIOLIB_ERR_NONE){
         hasRadio = true;
+    }
     //return true;
 
 }
@@ -841,7 +852,7 @@ String decrypt(char * contact_id, String msg){
 
 void test(lv_event_t * e){
     lora_packet_status my_packet;
-    xTaskCreatePinnedToCore(song, "play_song", 10000, NULL, 2 | portPRIVILEGE_BIT, &task_play_radio, 0);
+    //xTaskCreatePinnedToCore(song, "play_song", 10000, NULL, 2 | portPRIVILEGE_BIT, &task_play_radio, 0);
     strcpy(my_packet.id, user_id);
     strcpy(my_packet.status, "ping");
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -850,6 +861,7 @@ void test(lv_event_t * e){
                 Serial.println("test");
                 vTaskDelay(100 / portTICK_PERIOD_MS);
             }
+            transmiting = true;
             int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet_status));
             transmiting = false;
             if(state != RADIOLIB_ERR_NONE){
@@ -1068,7 +1080,7 @@ void send_message(lv_event_t * e){
                     transmiting = true;
                     int state = radio.startTransmit((uint8_t *)&pkt, sizeof(lora_packet));
                     transmiting = false;
-                
+
                     if(state != RADIOLIB_ERR_NONE){
                         Serial.print("transmission failed ");
                         Serial.println(state);
@@ -1741,28 +1753,26 @@ bool setupCoder() {
 }
 
 void song(void * param) {
-    BaseType_t xHigherPriorityTaskWoken;
+    //BaseType_t xHigherPriorityTaskWoken;
     if(WiFi.isConnected()){
-        if (xSemaphoreTake(xSemaphore, 10000 / portTICK_PERIOD_MS) == pdTRUE) {
+        //if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
             digitalWrite(BOARD_POWERON, HIGH);
             audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
-            audio.setVolume(21);
+            audio.setVolume(10);
             audio.connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3");
             //audio.connecttospeech("Notificação enviada com sucesso.", "pt");
-            while(true){
+            while (audio.isRunning()) {
                 audio.loop();
-                if(!audio.isRunning())
-                    sleep(1);
             }
             audio.stopSong();
-            xSemaphoreGive(xSemaphore);
-        }
+        //    xSemaphoreGive(xSemaphore);
+        //}
     }
     vTaskDelete(task_play_radio);
 }
 
 void taskplaySong(void *p) {
-    if (xSemaphoreTake(xSemaphore, 10000 / portTICK_PERIOD_MS) == pdTRUE) {
+    //if (xSemaphoreTake(xSemaphore, 10000 / portTICK_PERIOD_MS) == pdTRUE) {
         if (SD.exists("/comp_up.mp3")) {
             const char *path = "comp_up.mp3";
             digitalWrite(BOARD_POWERON, HIGH);
@@ -1775,14 +1785,30 @@ void taskplaySong(void *p) {
             }
             audio.stopSong();
         }
-        xSemaphoreGive(xSemaphore);
-    }
+        //xSemaphoreGive(xSemaphore);
+    //}
     vTaskDelete(task_play);
 }
 
 void notify_snd(){
     xTaskCreatePinnedToCore(taskplaySong, "play_not_snd", 10000, NULL, 2, &task_play, 0);
 }
+
+/*
+static void slider_event_cb(lv_event_t *e)
+{
+    lv_obj_t *slider = lv_event_get_target(e);
+    if (slider == ui_brightnessSlider)
+    {
+        brightness = (int)lv_slider_get_value(slider);
+    }
+
+    if (slider == ui_musicVolume)
+    {
+        int vol = (int)lv_slider_get_value(slider);
+        setVolume(vol);
+    }
+}*/
 
 void ui(){
     //style**************************************************************
