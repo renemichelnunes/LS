@@ -471,109 +471,112 @@ void processReceivedPacket(void * param){
         if(gotPacket){
             processing = true;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                //radio.standby();
-                Serial.println("packet received");
+                Serial.println("Packet received");
 
                 uint32_t size = radio.getPacketLength();
-                Serial.print("size ");
+                Serial.print("Size ");
                 Serial.println(size);
                 if(size > 0 and size <= sizeof(lora_packet)){
                     radio.readData((uint8_t *)&p, size);
-                    gotPacket = false;
-                    Serial.print("id ");
-                    Serial.println(p.id);
-                    Serial.print("msg ");
-                    Serial.println(p.msg);
-                    Serial.print("status ");
-                    Serial.println(p.status);
-                    Serial.print("me ");
-                    Serial.println(p.me ? "true": "false");
-                    Serial.print(F(" RSSI:"));
-                    Serial.print(radio.getRSSI());
-                    Serial.print(F(" dBm"));
-                    Serial.print(F("  SNR:"));
-                    Serial.print(radio.getSNR());
-                    Serial.println(F(" dB"));
+                    if(strcmp(p.id, user_id) != 0){
+                        gotPacket = false;
+                        Serial.print("id ");
+                        Serial.println(p.id);
+                        Serial.print("msg ");
+                        Serial.println(p.msg);
+                        Serial.print("status ");
+                        Serial.println(p.status);
+                        Serial.print("me ");
+                        Serial.println(p.me ? "true": "false");
+                        Serial.print(F(" RSSI:"));
+                        Serial.print(radio.getRSSI());
+                        Serial.print(F(" dBm"));
+                        Serial.print(F("  SNR:"));
+                        Serial.print(radio.getSNR());
+                        Serial.println(F(" dB"));
 
-                    contact = contacts_list.getContactByID(p.id);
-                    if(contact != NULL){
-                        Serial.println("found contact");
-                        if(strcmp(p.status, "send") == 0){
-                            strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                            strcpy(dec_msg, decrypt(p.id, p.msg).c_str());
-                            strcpy(p.msg, dec_msg);
-                            notify_snd();
-                            messages_list.addMessage(p);
+                        contact = contacts_list.getContactByID(p.id);
+                    
+                        if(contact != NULL){
+                            Serial.println("Contact found");
+                            if(strcmp(p.status, "send") == 0){
+                                strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                                strcpy(dec_msg, decrypt(p.id, p.msg).c_str());
+                                strcpy(p.msg, dec_msg);
+                                notify_snd();
+                                messages_list.addMessage(p);
+                                
+                                strcpy(message, LV_SYMBOL_ENVELOPE);
+                                strcat(message, " ");
+                                strcat(message, contact->getName().c_str());
+                                strcat(message, ": ");
+                                if(sizeof(p.msg) > 199){
+                                    memcpy(pmsg, dec_msg, 199);
+                                    strcat(message, pmsg);
+                                }
+                                else
+                                    strcat(message, p.msg);
+                                message[30] = '.';
+                                message[31] = '.';
+                                message[32] = '.';
+                                message[33] = '\0';
+                                notification_list.add(message);
+
+                                strcpy(c.id, user_id);
+                                strcpy(c.status, "recv");
+                                Serial.print("Sending confirmation...");
+                                while(announcing){
+                                    Serial.println("Awaiting announcement to finnish before send confirmation..");
+                                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                                }
+                                transmiting = true;
+                                if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
+                                    Serial.println("Confirmation sent");
+                                else
+                                    Serial.print("Confirmation not sent");
+                                transmiting = false;
+                            }
+
+                            if(strcmp(p.status, "recv") == 0){
+                                messages_list.addMessage(p);
+                            }
                             
-                            strcpy(message, LV_SYMBOL_ENVELOPE);
-                            strcat(message, " ");
-                            strcat(message, contact->getName().c_str());
-                            strcat(message, ": ");
-                            if(sizeof(p.msg) > 199){
-                                memcpy(pmsg, dec_msg, 199);
+                            if(strcmp(p.status, "ping") == 0){
+                                notification_list.add("ping");
+                                Serial.print("Sending pong...");
+                                strcpy(pong.id, user_id);
+                                strcpy(pong.status, "pong");
+                                while(announcing){
+                                    Serial.println("Awaiting announcing to finnish before send confirmation..");
+                                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                                }
+                                if(radio.transmit((uint8_t*)&pong, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
+                                    Serial.println("done");
+                                else
+                                    Serial.print("failed");
+                            }
+                            if(strcmp(p.status, "pong") == 0){
+                                notify_snd();
+                                Serial.println("pong");
+                                lv_task_handler();
+                                strcpy(message, LV_SYMBOL_DOWNLOAD " ");
+                                strcat(message, "pong ");
+                                sprintf(pmsg, "RSSI %.2f", radio.getRSSI());
                                 strcat(message, pmsg);
+                                sprintf(pmsg, " S/N %.2f", radio.getSNR());
+                                strcat(message, pmsg);
+                                notification_list.add(message);
+                                lv_task_handler();
                             }
-                            else
-                                strcat(message, p.msg);
-                            message[30] = '.';
-                            message[31] = '.';
-                            message[32] = '.';
-                            message[33] = '\0';
-                            notification_list.add(message);
-
-                            strcpy(c.id, user_id);
-                            strcpy(c.status, "recv");
-                            Serial.print("sending confirmation...");
-                            while(announcing){
-                                Serial.println("waiting announcing to finnish before send confirmation..");
-                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                            if(strcmp(p.status, "show") == 0){
+                                contact->inrange = true;
+                                //strcpy(message, LV_SYMBOL_CALL " ");
+                                //strcat(message, contact->getName().c_str());
+                                //strcat(message, " hi!");
+                                //notification_list.add(message);
+                                contact->timeout = millis();
+                                Serial.println("Announcement packet");
                             }
-                            transmiting = true;
-                            if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
-                                Serial.println("confirmation sent");
-                            else
-                                Serial.print("confirmation not sent");
-                            transmiting = false;
-                        }
-
-                        if(strcmp(p.status, "recv") == 0){
-                            messages_list.addMessage(p);
-                        }
-                        
-                        if(strcmp(p.status, "ping") == 0){
-                            notification_list.add("ping");
-                            Serial.print("sending pong...");
-                            strcpy(pong.id, user_id);
-                            strcpy(pong.status, "pong");
-                            while(announcing){
-                                Serial.println("waiting announcing to finnish before send confirmation..");
-                                vTaskDelay(100 / portTICK_PERIOD_MS);
-                            }
-                            if(radio.transmit((uint8_t*)&pong, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
-                                Serial.println("done");
-                            else
-                                Serial.print("failed");
-                        }
-                        if(strcmp(p.status, "pong") == 0){
-                            notify_snd();
-                            Serial.println("pong");
-                            lv_task_handler();
-                            strcpy(message, LV_SYMBOL_DOWNLOAD " ");
-                            strcat(message, "pong ");
-                            sprintf(pmsg, "RSSI %.2f", radio.getRSSI());
-                            strcat(message, pmsg);
-                            sprintf(pmsg, " S/N %.2f", radio.getSNR());
-                            strcat(message, pmsg);
-                            notification_list.add(message);
-                            lv_task_handler();
-                        }
-                        if(strcmp(p.status, "show") == 0){
-                            contact->inrange = true;
-                            //strcpy(message, LV_SYMBOL_CALL " ");
-                            //strcat(message, contact->getName().c_str());
-                            //strcat(message, " hi!");
-                            //notification_list.add(message);
-                            contact->timeout = millis();
                         }
                     }
                     else{
@@ -582,8 +585,8 @@ void processReceivedPacket(void * param){
                         //lv_task_handler();
                         Serial.println("Packet ignored");
                     }
-                }
-                Serial.println("Unknown packet");
+                }else
+                    Serial.println("Unknown or malformed packet");
                 gotPacket = false;
                 radio.startReceive();
                 xSemaphoreGive(xSemaphore);
@@ -2768,7 +2771,7 @@ bool announce(){
         lv_task_handler();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-    
+    Serial.println("Hi!");
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(radio.startTransmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
             xSemaphoreGive(xSemaphore);
