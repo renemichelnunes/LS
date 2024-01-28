@@ -528,11 +528,6 @@ void processReceivedPacket(void * param){
                                 Serial.println("waiting announcing to finnish before send confirmation..");
                                 vTaskDelay(100 / portTICK_PERIOD_MS);
                             }
-
-                            while(radio.scanChannel() == RADIOLIB_LORA_DETECTED){
-                                Serial.println("LoRa signal detected, wait...");
-                                vTaskDelay(100 / portTICK_PERIOD_MS);
-                            }
                             transmiting = true;
                             if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                 Serial.println("confirmation sent");
@@ -868,6 +863,7 @@ void test(lv_event_t * e){
                 Serial.println("test");
                 vTaskDelay(100 / portTICK_PERIOD_MS);
             }
+            radio.startReceive();
             transmiting = true;
             int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet_status));
             transmiting = false;
@@ -1082,11 +1078,6 @@ void send_message(lv_event_t * e){
                     }
                     while(gotPacket){
                         Serial.println("gotPacket");
-                        vTaskDelay(100 / portTICK_PERIOD_MS);
-                    }
-
-                    while(radio.scanChannel() == RADIOLIB_LORA_DETECTED){
-                        Serial.println("LoRa signal detected, wait...");
                         vTaskDelay(100 / portTICK_PERIOD_MS);
                     }
 
@@ -1320,8 +1311,6 @@ void apply_color(lv_event_t * e){
 void update_frm_contacts_status(uint16_t index, bool in_range){
     if(index > contacts_list.size() - 1 || index < 0)
         return;
-    Serial.print("update_frm_contacts_status ");
-    Serial.println(in_range? "in range" : "out of range");
     lv_obj_t * btn = lv_obj_get_child(frm_contacts_list, index);
     lv_obj_t * obj_status = lv_obj_get_child(btn, 3);
     lv_task_handler();
@@ -1333,7 +1322,6 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
 }
 
 void check_contacts_in_range(){
-    Serial.println("check_contacts_in_range");
     contacts_list.check_inrange();
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
@@ -2780,12 +2768,7 @@ bool announce(){
         lv_task_handler();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-
-    while(radio.scanChannel() == RADIOLIB_LORA_DETECTED){
-        Serial.println("LoRa signal detected, wait...");
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
-
+    
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(radio.startTransmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
             xSemaphoreGive(xSemaphore);
