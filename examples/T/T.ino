@@ -469,7 +469,6 @@ void processReceivedPacket(void * param){
 
     while(true){
         if(gotPacket){
-            activity(lv_color_hex(0x00ff00));
             processing = true;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 Serial.println("Packet received");
@@ -480,6 +479,7 @@ void processReceivedPacket(void * param){
                 if(size > 0 and size <= sizeof(lora_packet)){
                     radio.readData((uint8_t *)&p, size);
                     if(strcmp(p.id, user_id) != 0){
+                        activity(lv_color_hex(0x00ff00));
                         gotPacket = false;
                         Serial.print("id ");
                         Serial.println(p.id);
@@ -531,6 +531,7 @@ void processReceivedPacket(void * param){
                                     vTaskDelay(100 / portTICK_PERIOD_MS);
                                 }
                                 activity(lv_color_hex(0xff0000));
+                                vTaskDelay(500 / portTICK_PERIOD_MS);
                                 transmiting = true;
                                 if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                     Serial.println("Confirmation sent");
@@ -552,6 +553,7 @@ void processReceivedPacket(void * param){
                                     Serial.println("Awaiting announcing to finnish before send confirmation..");
                                     vTaskDelay(100 / portTICK_PERIOD_MS);
                                 }
+                                activity(lv_color_hex(0xff0000));
                                 if(radio.transmit((uint8_t*)&pong, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                     Serial.println("done");
                                 else
@@ -1083,7 +1085,7 @@ void send_message(lv_event_t * e){
                         Serial.println("gotPacket");
                         vTaskDelay(100 / portTICK_PERIOD_MS);
                     }
-
+                    activity(lv_color_hex(0xff0000));
                     transmiting = true;
                     int state = radio.startTransmit((uint8_t *)&pkt, sizeof(lora_packet));
                     transmiting = false;
@@ -2786,6 +2788,7 @@ bool announce(){
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     Serial.println("Hi!");
+    
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(radio.startTransmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
             xSemaphoreGive(xSemaphore);
