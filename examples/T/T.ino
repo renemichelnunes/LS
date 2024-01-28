@@ -1327,7 +1327,7 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
 }
 
 void check_contacts_in_range(){
-    activity(lv_color_hex(0xff00ff));
+    activity(lv_color_hex(0xff66ff));
     contacts_list.check_inrange();
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
@@ -2797,6 +2797,7 @@ bool announce(){
             return true;
         }
     }
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     xSemaphoreGive(xSemaphore);
     announcing = false;
     return false;
