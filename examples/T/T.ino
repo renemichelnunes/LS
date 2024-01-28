@@ -539,7 +539,7 @@ void processReceivedPacket(void * param){
                         if(strcmp(p.status, "recv") == 0){
                             messages_list.addMessage(p);
                         }
-                        Serial.println("???");
+                        
                         if(strcmp(p.status, "ping") == 0){
                             notification_list.add("ping");
                             Serial.print("sending pong...");
