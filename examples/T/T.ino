@@ -453,7 +453,7 @@ void processReceivedPacket(void * param){
     lora_packet_status pong;
     Contact * contact = NULL;
     char message[200] = {'\0'}, pmsg [200] = {'\0'}, dec_msg[200] = {'\0'};
-
+    
     while(announcing){
         Serial.print("announcing ");
         Serial.println(announcing?"true":"false");
@@ -469,6 +469,7 @@ void processReceivedPacket(void * param){
 
     while(true){
         if(gotPacket){
+            activity(lv_color_hex(0x00ff00));
             processing = true;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 Serial.println("Packet received");
@@ -529,6 +530,7 @@ void processReceivedPacket(void * param){
                                     Serial.println("Awaiting announcement to finnish before send confirmation..");
                                     vTaskDelay(100 / portTICK_PERIOD_MS);
                                 }
+                                activity(lv_color_hex(0xff0000));
                                 transmiting = true;
                                 if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                     Serial.println("Confirmation sent");
@@ -558,7 +560,6 @@ void processReceivedPacket(void * param){
                             if(strcmp(p.status, "pong") == 0){
                                 notify_snd();
                                 Serial.println("pong");
-                                lv_task_handler();
                                 strcpy(message, LV_SYMBOL_DOWNLOAD " ");
                                 strcat(message, "pong ");
                                 sprintf(pmsg, "RSSI %.2f", radio.getRSSI());
@@ -566,7 +567,6 @@ void processReceivedPacket(void * param){
                                 sprintf(pmsg, " S/N %.2f", radio.getSNR());
                                 strcat(message, pmsg);
                                 notification_list.add(message);
-                                lv_task_handler();
                             }
                             if(strcmp(p.status, "show") == 0){
                                 contact->inrange = true;
@@ -1062,7 +1062,7 @@ void send_message(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     String enc_msg;
     char msg[200] = {'\0'};
-
+    activity(lv_color_hex(0xff0000));
     if(code == LV_EVENT_SHORT_CLICKED){
         lora_packet pkt;
         strcpy(pkt.id, user_id);
@@ -1325,6 +1325,7 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
 }
 
 void check_contacts_in_range(){
+    activity(lv_color_hex(0xff00ff));
     contacts_list.check_inrange();
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
@@ -1822,6 +1823,10 @@ static void slider_event_cb(lv_event_t *e)
     }
 }*/
 
+void activity(lv_color_t color){
+    lv_obj_set_style_bg_color(frm_home_activity_led, color, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
+
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
@@ -1921,6 +1926,14 @@ void ui(){
     lv_label_set_text(lbl_btn_test, "Ping");
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
+
+    // Activity led 
+    frm_home_activity_led = lv_obj_create(frm_home);
+    lv_obj_set_size(frm_home_activity_led, 10, 15);
+    lv_obj_align(frm_home_activity_led, LV_ALIGN_TOP_RIGHT, -75, -10);
+    lv_obj_clear_flag(frm_home_activity_led, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_border_width(frm_home_activity_led, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(frm_home_activity_led, lv_color_hex(0x666666), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // Contacts form**************************************************************
     frm_contacts = lv_obj_create(lv_scr_act());
@@ -2752,6 +2765,7 @@ void wifi_auto_connect(void * param){
 bool announce(){
     lora_packet_status hi;
 
+    activity(lv_color_hex(0xffff00));
     strcpy(hi.id, user_id);
     strcpy(hi.status, "show");
     announcing = true;
