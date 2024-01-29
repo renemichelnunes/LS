@@ -1155,8 +1155,10 @@ void check_new_msg(void * param){
                     lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
                 }
                 lbl = lv_obj_get_child(btn, 0);
-                if(strcmp(caller_msg[i].status, "recv") != 0)
+                if(strcmp(caller_msg[i].status, "recv") != 0){
+                    lv_obj_set_style_text_font(lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
                     lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
+                }
                 lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
             }
             msg_count = actual_count;
@@ -1825,9 +1827,27 @@ static void slider_event_cb(lv_event_t *e)
     }
 }*/
 
+void show_especial(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(lv_obj_has_flag(kb, LV_OBJ_FLAG_HIDDEN))
+            lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+        else
+            lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
 void activity(lv_color_t color){
     lv_obj_set_style_bg_color(frm_home_activity_led, color, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
+
+const char * kbmap[] = {"á", "à", "ã", "â", "\n",
+                        "é", "ê", "í", "ó", "\n",
+                        "ô", "õ", "ú", "ç",""};
+const lv_btnmatrix_ctrl_t kbctrl[] = {LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, 
+LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT,
+LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT};
 
 void ui(){
     //style**************************************************************
@@ -2118,6 +2138,7 @@ void ui(){
     lv_obj_align(frm_chat_text_ans, LV_ALIGN_BOTTOM_LEFT, -15, 15);
     lv_textarea_set_max_length(frm_chat_text_ans, 199);
     lv_textarea_set_placeholder_text(frm_chat_text_ans, "Answer");
+    lv_obj_set_style_text_font(frm_chat_text_ans, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     //send button
     frm_chat_btn_send = lv_btn_create(frm_chat);
@@ -2138,6 +2159,27 @@ void ui(){
     lv_group_add_obj(frm_chat_group, frm_chat_btn_title);
     lv_group_add_obj(frm_chat_group, frm_chat_btn_title_lbl);
     lv_group_add_obj(frm_chat_group, frm_chat_list);
+
+    //keyboard with special chars
+    kb = lv_keyboard_create(frm_chat);
+    lv_obj_set_style_text_font(kb, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_keyboard_set_mode(kb, LV_KEYBOARD_MODE_SPECIAL);
+    lv_keyboard_set_map(kb, LV_KEYBOARD_MODE_SPECIAL, kbmap, kbctrl);
+    lv_keyboard_set_textarea(kb, frm_chat_text_ans);
+    lv_obj_set_size(kb, 100, 100);
+    lv_obj_align(kb, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+
+    //special chars keyboard button
+    frm_chat_btn_kb = lv_btn_create(frm_chat);
+    lv_obj_set_size(frm_chat_btn_kb, 50, 20);
+    lv_obj_align(frm_chat_btn_kb, LV_ALIGN_TOP_RIGHT, -50, -15);
+    lv_obj_add_event_cb(frm_chat_btn_kb, show_especial, LV_EVENT_SHORT_CLICKED, NULL);
+
+    frm_chat_btn_kb_lbl = lv_label_create(frm_chat_btn_kb);
+    lv_obj_set_style_text_font(frm_chat_btn_kb_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(frm_chat_btn_kb_lbl, "ÁÉÇ");
+    lv_obj_set_align(frm_chat_btn_kb_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
 

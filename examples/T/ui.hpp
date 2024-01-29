@@ -60,6 +60,9 @@ lv_obj_t * frm_chat_btn_send;
 lv_obj_t * frm_chat_btn_send_lbl;
 lv_obj_t * frm_chat_btn_back;
 lv_obj_t * frm_chat_btn_back_lbl;
+lv_obj_t * frm_chat_btn_kb;
+lv_obj_t * frm_chat_btn_kb_lbl;
+lv_obj_t * kb;
 /*settings form*/
 lv_obj_t * frm_settings;
 lv_obj_t * frm_settings_dialog;
