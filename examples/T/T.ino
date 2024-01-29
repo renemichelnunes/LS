@@ -2797,7 +2797,7 @@ bool announce(){
             return true;
         }
     }
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    
     xSemaphoreGive(xSemaphore);
     announcing = false;
     return false;
