@@ -2797,7 +2797,6 @@ bool announce(){
             return true;
         }
     }
-    
     xSemaphoreGive(xSemaphore);
     announcing = false;
     return false;
