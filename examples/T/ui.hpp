@@ -95,6 +95,8 @@ lv_obj_t * frm_settings_btn_wifi;
 lv_obj_t * frm_settings_btn_wifi_lbl;
 lv_obj_t * frm_settings_btn_wifi_conf;
 lv_obj_t * frm_settings_btn_wifi_conf_lbl;
+lv_obj_t * frm_settings_brightness_roller;
+lv_obj_t * frm_settings_brightness_lbl;
 /*notification form*/
 lv_obj_t * frm_not;
 lv_obj_t * frm_not_lbl;

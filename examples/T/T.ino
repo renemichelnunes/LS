@@ -23,10 +23,11 @@
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
-//LV_IMG_DECLARE(bg);
+LV_IMG_DECLARE(icon_brightness);
 LV_IMG_DECLARE(bg2);
 LV_IMG_DECLARE(icon_lora2);
 LV_IMG_DECLARE(icon_mail);
+
 
 vector <wifi_info> wifi_list;
 Wifi_connected_nets wifi_connected_nets = Wifi_connected_nets();
@@ -1862,6 +1863,19 @@ LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_R
 LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT,
 LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT};
 
+const char * brightness_levels = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10";
+
+void setBrightness(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * roller = (lv_obj_t *)lv_event_get_target(e);
+    int val = 0;
+
+    if(code == LV_EVENT_VALUE_CHANGED){
+        val = lv_roller_get_selected(roller);
+        analogWrite(BOARD_BL_PIN, map(val, 0, 9, 100, 255));
+    }
+}
+
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
@@ -2188,6 +2202,7 @@ void ui(){
     lv_keyboard_set_textarea(kb, frm_chat_text_ans);
     lv_obj_set_size(kb, 200, 100);
     lv_obj_align(kb, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_set_style_bg_color(kb, lv_color_hex(0xcccccc), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
 
     //special chars keyboard button
@@ -2278,8 +2293,8 @@ void ui(){
 
     // wifi config button
     frm_settings_btn_wifi_conf = lv_btn_create(frm_settings_dialog);
-    lv_obj_set_size(frm_settings_btn_wifi_conf, 100, 30);
-    lv_obj_align(frm_settings_btn_wifi_conf, LV_ALIGN_TOP_LEFT, 130, 55);
+    lv_obj_set_size(frm_settings_btn_wifi_conf, 80, 30);
+    lv_obj_align(frm_settings_btn_wifi_conf, LV_ALIGN_TOP_LEFT, 115, 55);
     lv_obj_add_event_cb(frm_settings_btn_wifi_conf, show_wifi, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_settings_btn_wifi_conf_lbl = lv_label_create(frm_settings_btn_wifi_conf);
@@ -2369,6 +2384,26 @@ void ui(){
     frm_settings_btn_applycolor_lbl = lv_label_create(frm_settings_btn_applycolor);
     lv_label_set_text(frm_settings_btn_applycolor_lbl, "Apply");
     lv_obj_set_align(frm_settings_btn_applycolor_lbl, LV_ALIGN_CENTER);
+
+    // Brightness adjustment
+
+    static lv_style_t style_sel;
+    lv_style_init(&style_sel);
+    lv_style_set_text_font(&style_sel, &lv_font_montserrat_20);
+    lv_style_set_text_color(&style_sel, lv_color_hex(0xffffff));
+
+    frm_settings_brightness_roller = lv_roller_create(frm_settings_dialog);
+    lv_roller_set_options(frm_settings_brightness_roller, brightness_levels, LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_visible_row_count(frm_settings_brightness_roller, 3);
+    lv_obj_set_style_text_align(frm_settings_brightness_roller, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_add_style(frm_settings_brightness_roller, &style_sel, LV_PART_SELECTED);
+    lv_obj_set_width(frm_settings_brightness_roller, 40);
+    lv_obj_align(frm_settings_brightness_roller, LV_ALIGN_TOP_RIGHT, -10, 60);
+    lv_obj_add_event_cb(frm_settings_brightness_roller, setBrightness, LV_EVENT_VALUE_CHANGED, NULL);
+
+    frm_settings_brightness_lbl = lv_img_create(frm_settings_dialog);
+    lv_img_set_src(frm_settings_brightness_lbl, &icon_brightness);
+    lv_obj_align(frm_settings_brightness_lbl, LV_ALIGN_TOP_RIGHT, -23, 43);
 
     lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
     
