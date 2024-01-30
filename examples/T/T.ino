@@ -240,14 +240,17 @@ std::string generate_ID(){
 
 static void notify(void * param){
     char n[30] = {'\0'};
+    char b[13] = {'\0'};
     while(true){
         update_wifi_icon();
         if(notification_list.size() > 0){
             //vTaskDelay(1000 / portTICK_PERIOD_MS);
-            notification_list.pop(n);
+            notification_list.pop(n, b);
             lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
             lv_label_set_text(frm_not_lbl, n);
+            lv_label_set_text(frm_not_symbol_lbl, b);
             lv_label_set_text(frm_home_title_lbl, n);
+            lv_label_set_text(frm_home_symbol_lbl, b);
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             lv_label_set_text(frm_not_lbl, "");
             lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
@@ -504,8 +507,6 @@ void processReceivedPacket(void * param){
                             notify_snd();
                             messages_list.addMessage(p);
                             
-                            strcpy(message, LV_SYMBOL_ENVELOPE);
-                            strcat(message, " ");
                             strcat(message, contact->getName().c_str());
                             strcat(message, ": ");
                             if(sizeof(p.msg) > 199){
@@ -518,7 +519,7 @@ void processReceivedPacket(void * param){
                             message[31] = '.';
                             message[32] = '.';
                             message[33] = '\0';
-                            notification_list.add(message);
+                            notification_list.add(message, LV_SYMBOL_ENVELOPE);
 
                             strcpy(c.id, user_id);
                             strcpy(c.status, "recv");
@@ -545,7 +546,7 @@ void processReceivedPacket(void * param){
                         }
                         
                         if(strcmp(p.status, "ping") == 0){
-                            notification_list.add("ping");
+                            notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
                             Serial.print("Sending pong...");
                             strcpy(pong.id, user_id);
                             strcpy(pong.status, "pong");
@@ -567,13 +568,12 @@ void processReceivedPacket(void * param){
                         if(strcmp(p.status, "pong") == 0){
                             notify_snd();
                             Serial.println("pong");
-                            strcpy(message, LV_SYMBOL_DOWNLOAD " ");
                             strcat(message, "pong ");
                             sprintf(pmsg, "RSSI %.2f", radio.getRSSI());
                             strcat(message, pmsg);
                             sprintf(pmsg, " S/N %.2f", radio.getSNR());
                             strcat(message, pmsg);
-                            notification_list.add(message);
+                            notification_list.add(message, LV_SYMBOL_DOWNLOAD);
                         }
                         if(strcmp(p.status, "show") == 0){
                             contact->inrange = true;
@@ -883,7 +883,7 @@ void test(lv_event_t * e){
             }else{
                 Serial.println("transmitted");
                 lv_task_handler();
-                notification_list.add(LV_SYMBOL_UPLOAD " ping sent");
+                notification_list.add("ping sent", LV_SYMBOL_UPLOAD);
                 lv_task_handler();
             }
         }
@@ -1231,17 +1231,17 @@ void DX(lv_event_t * e){
         if(lv_obj_has_state(frm_settings_switch_dx, LV_STATE_CHECKED)){
             if(DXMode()){
                 Serial.println("DX mode on");
-                notification_list.add(LV_SYMBOL_SETTINGS " DX mode");
+                notification_list.add("DX mode", LV_SYMBOL_SETTINGS);
             }else{
-                notification_list.add(LV_SYMBOL_SETTINGS " DX mode failed");
+                notification_list.add("DX mode failed", LV_SYMBOL_SETTINGS);
                 Serial.println("DX mode failed");
             }
         }else{
             if(normalMode()){
-                notification_list.add(LV_SYMBOL_SETTINGS " Normal mode");
+                notification_list.add( "Normal mode", LV_SYMBOL_SETTINGS);
                 Serial.println("DX mode off");
             }else{
-                notification_list.add(LV_SYMBOL_SETTINGS " Normal mode failed");
+                notification_list.add("Normal mode failed",LV_SYMBOL_SETTINGS);
                 Serial.println("Normal mode failed");
             }
         }
@@ -1278,7 +1278,7 @@ void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst
     Serial.printf("Setting time: %s", asctime(&timeinfo));
     struct timeval now = { .tv_sec = t };
     settimeofday(&now, NULL);
-    notification_list.add(LV_SYMBOL_SETTINGS " date & time updated");
+    notification_list.add("date & time updated", LV_SYMBOL_SETTINGS);
 }
 
 void setDateTime(){
@@ -1886,7 +1886,7 @@ void ui(){
 
     //Notification icon
     frm_home_symbol_lbl = lv_label_create(frm_home);
-    lv_obj_align(frm_home_symbol_lbl, LV_ALIGN_TOP_LEFT, -15, -10);
+    lv_obj_align(frm_home_symbol_lbl, LV_ALIGN_TOP_LEFT, -10, -10);
     lv_obj_set_style_text_color(frm_home_symbol_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     frm_home_title_lbl = lv_label_create(frm_home);
@@ -2383,7 +2383,7 @@ void ui(){
     //Label
     frm_not_lbl = lv_label_create(frm_not);
     lv_obj_set_style_text_font(frm_not_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_align(frm_not_lbl, LV_ALIGN_TOP_LEFT, 0, -10);
+    lv_obj_align(frm_not_lbl, LV_ALIGN_TOP_LEFT, 5, -10);
     lv_label_set_long_mode(frm_not_lbl, LV_LABEL_LONG_SCROLL);
 
     //symbol label
@@ -2616,7 +2616,8 @@ void wifi_auto_toggle(){
     char a[50] = {'\0'};
     
     Serial.print("Searching for wifi connections...");
-    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
+    lv_label_set_text(frm_home_title_lbl, "Searching for wifi connections...");
+    lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
     WiFi.disconnect(true);
     WiFi.mode(WIFI_STA);
     esp_wifi_set_ps(WIFI_PS_NONE);
@@ -2629,10 +2630,12 @@ void wifi_auto_toggle(){
         }
     else{
         Serial.println("No wifi networks found");
-        lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI "No wifi networks found");
+        lv_label_set_text(frm_home_title_lbl, "No wifi networks found");
+        lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
     }
     Serial.println("done");
-    lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI "done");
+    lv_label_set_text(frm_home_title_lbl, "done");
+    lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
     if(wifi_connected_nets.list.size() > 0){
         for(uint32_t i = 0; i < wifi_connected_nets.list.size(); i++){
             for(uint32_t j = 0; j < list.size(); j++){
@@ -2694,7 +2697,8 @@ void wifi_auto_toggle(){
             }
         }
         if(WiFi.isConnected()){
-            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
+            lv_label_set_text(frm_home_title_lbl, "connected");
+            lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
             strcpy(connected_to, wifi_connected_nets.list[last_wifi_con].SSID);
             strcat(connected_to, " ");
@@ -2705,7 +2709,8 @@ void wifi_auto_toggle(){
             datetime();
         }else{
             Serial.println("disconnected");
-            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " disconnected");
+            lv_label_set_text(frm_home_title_lbl, "disconnected");
+            lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
         }
     }
@@ -2722,7 +2727,8 @@ void wifi_auto_connect(void * param){
     if(wifi_connected_nets.list.size() != 0){
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         Serial.print("Searching for wifi connections...");
-        lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " Searching for wifi connections...");
+        lv_label_set_text(frm_home_title_lbl, "Searching for wifi connections...");
+        lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
         WiFi.disconnect(true);
         WiFi.mode(WIFI_STA);
         
@@ -2734,10 +2740,12 @@ void wifi_auto_connect(void * param){
             }
         else{
             Serial.println("No wifi networks found");
-            lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI "No wifi networks found");
+            lv_label_set_text(frm_home_title_lbl, "No wifi networks found");
+            lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
         }
         Serial.println("done");
-        lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI "done");
+        lv_label_set_text(frm_home_title_lbl, "done");
+        lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
         if(wifi_connected_nets.list.size() > 0){
             for(uint32_t i = 0; i < wifi_connected_nets.list.size(); i++){
                 for(uint32_t j = 0; j < list.size(); j++){
@@ -2809,7 +2817,8 @@ void wifi_auto_connect(void * param){
             }
 
             if(WiFi.isConnected()){
-                lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " connected");
+                lv_label_set_text(frm_home_title_lbl, "connected");
+                lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
                 lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
                 strcpy(connected_to, wifi_connected_nets.list[last_wifi_con].SSID);
                 strcat(connected_to, " ");
@@ -2820,7 +2829,8 @@ void wifi_auto_connect(void * param){
                 datetime();
             }else{
                 Serial.println("disconnected");
-                lv_label_set_text(frm_home_title_lbl, LV_SYMBOL_WIFI " disconnected");
+                lv_label_set_text(frm_home_title_lbl, "disconnected");
+                lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
                 WiFi.disconnect();
                 WiFi.mode(WIFI_OFF);
             }
