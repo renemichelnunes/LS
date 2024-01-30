@@ -1817,7 +1817,7 @@ void taskplaySong(void *p) {
 }
 
 void notify_snd(){
-    xTaskCreatePinnedToCore(taskplaySong, "play_not_snd", 10000, NULL, 2, &task_play, 0);
+    //xTaskCreatePinnedToCore(taskplaySong, "play_not_snd", 10000, NULL, 2, &task_play, 0);
 }
 
 /*
@@ -1886,12 +1886,13 @@ void ui(){
 
     //Notification icon
     frm_home_symbol_lbl = lv_label_create(frm_home);
-    lv_obj_align(frm_home_title_lbl, LV_ALIGN_TOP_LEFT, 0, -10);
+    lv_obj_align(frm_home_symbol_lbl, LV_ALIGN_TOP_LEFT, -15, -10);
+    lv_obj_set_style_text_color(frm_home_symbol_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     frm_home_title_lbl = lv_label_create(frm_home);
     lv_obj_set_style_text_font(frm_home_title_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(frm_home_title_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_align(frm_home_title_lbl, LV_ALIGN_TOP_LEFT, 0, -10);
+    lv_obj_align(frm_home_title_lbl, LV_ALIGN_TOP_LEFT, 7, -10);
     lv_obj_set_size(frm_home_title_lbl, 200, 30);
     lv_label_set_long_mode(frm_home_title_lbl, LV_LABEL_LONG_SCROLL);
 
@@ -1973,6 +1974,7 @@ void ui(){
     lv_obj_align(frm_home_activity_led, LV_ALIGN_TOP_RIGHT, -75, -10);
     lv_obj_clear_flag(frm_home_activity_led, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_border_width(frm_home_activity_led, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(frm_home_activity_led, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(frm_home_activity_led, lv_color_hex(0x666666), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // Contacts form**************************************************************
@@ -2386,7 +2388,7 @@ void ui(){
 
     //symbol label
     frm_not_symbol_lbl = lv_label_create(frm_not);
-    lv_obj_align(frm_not_lbl, LV_ALIGN_TOP_LEFT, -10, -10);
+    lv_obj_align(frm_not_symbol_lbl, LV_ALIGN_TOP_LEFT, -10, -10);
 
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
 
@@ -2603,6 +2605,7 @@ const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
         case WIFI_AUTH_MAX:
             return "MAX";
     }
+    return NULL;
 }
 
 void wifi_auto_toggle(){
@@ -2943,11 +2946,12 @@ void setup(){
     ui();
 
     //SD card
+    /*
     if(!setupSD())
         Serial.println("cannot configure SD card");
     else
         Serial.println("SD card detected");
-
+    */
     //Load settings
     loadSettings();
     
