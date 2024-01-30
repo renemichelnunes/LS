@@ -1884,10 +1884,14 @@ void ui(){
     lv_obj_set_size(frm_home_title, 310, 20);
     lv_obj_align(frm_home_title, LV_ALIGN_TOP_MID, 0, -10);*/
 
+    //Notification icon
+    frm_home_symbol_lbl = lv_label_create(frm_home);
+    lv_obj_align(frm_home_title_lbl, LV_ALIGN_TOP_LEFT, 0, -10);
+
     frm_home_title_lbl = lv_label_create(frm_home);
     lv_obj_set_style_text_font(frm_home_title_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(frm_home_title_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_align(frm_home_title_lbl, LV_ALIGN_TOP_LEFT, -5, -10);
+    lv_obj_align(frm_home_title_lbl, LV_ALIGN_TOP_LEFT, 0, -10);
     lv_obj_set_size(frm_home_title_lbl, 200, 30);
     lv_label_set_long_mode(frm_home_title_lbl, LV_LABEL_LONG_SCROLL);
 
@@ -2376,8 +2380,13 @@ void ui(){
 
     //Label
     frm_not_lbl = lv_label_create(frm_not);
-    lv_obj_align(frm_not_lbl, LV_ALIGN_TOP_LEFT, -10, -10);
+    lv_obj_set_style_text_font(frm_not_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(frm_not_lbl, LV_ALIGN_TOP_LEFT, 0, -10);
     lv_label_set_long_mode(frm_not_lbl, LV_LABEL_LONG_SCROLL);
+
+    //symbol label
+    frm_not_symbol_lbl = lv_label_create(frm_not);
+    lv_obj_align(frm_not_lbl, LV_ALIGN_TOP_LEFT, -10, -10);
 
     lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
 

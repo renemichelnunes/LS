@@ -3,6 +3,7 @@
 
 /*home screen*/
 lv_obj_t * frm_home;
+lv_obj_t * frm_home_symbol_lbl;
 lv_obj_t * frm_home_title;
 lv_obj_t * frm_home_title_lbl;
 lv_obj_t * frm_home_btn_contacts;
@@ -18,6 +19,7 @@ lv_obj_t * frm_home_date_lbl;
 lv_obj_t * frm_home_bat_lbl;
 lv_obj_t * frm_home_wifi_lbl;
 lv_obj_t * frm_home_activity_led;
+
 /*contacts form*/
 lv_obj_t * frm_contacts;
 lv_obj_t * frm_contacts_btn_back;
@@ -96,6 +98,7 @@ lv_obj_t * frm_settings_btn_wifi_conf_lbl;
 /*notification form*/
 lv_obj_t * frm_not;
 lv_obj_t * frm_not_lbl;
+lv_obj_t * frm_not_symbol_lbl;
 /*form wifi*/
 lv_obj_t * frm_wifi;
 lv_obj_t * frm_wifi_btn_title;
