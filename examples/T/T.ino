@@ -455,15 +455,11 @@ void processReceivedPacket(void * param){
 
     while(true){
         while(announcing){
-            Serial.print("announcing ");
-            Serial.println(announcing?"true":"false");
-            Serial.println("processReceivedPacket");
+            Serial.println("waiting announcing to finish");
             vTaskDelay(100 / portTICK_PERIOD_MS);
         }
         while(transmiting){
-            Serial.print("transmiting ");
-            Serial.println(transmiting?"true":"false");
-            Serial.println("processReceivedPacket");
+            Serial.println("waiting transmission to finish");
             vTaskDelay(100 / portTICK_PERIOD_MS);
         }
         if(gotPacket){
@@ -539,6 +535,7 @@ void processReceivedPacket(void * param){
                                     Serial.print("Confirmation not sent");
                                     xSemaphoreGive(xSemaphore);
                             }
+                            activity(lv_color_hex(0x00ff00));
                             transmiting = false;
                         }
 
@@ -564,12 +561,13 @@ void processReceivedPacket(void * param){
                                     Serial.print("failed");
                                 xSemaphoreGive(xSemaphore);
                             }
+                            activity(lv_color_hex(0xcccccc));
                             transmiting = false;
                         }
                         if(strcmp(p.status, "pong") == 0){
                             notify_snd();
                             Serial.println("pong");
-                            strcat(message, "pong ");
+                            strcpy(message, "pong ");
                             sprintf(pmsg, "RSSI %.2f", radio.getRSSI());
                             strcat(message, pmsg);
                             sprintf(pmsg, " S/N %.2f", radio.getSNR());
@@ -599,6 +597,7 @@ void processReceivedPacket(void * param){
             radio.startReceive();
             //xSemaphoreGive(xSemaphore);
             processing = false;
+            activity(lv_color_hex(0xcccccc));
             //}
         }
         vTaskDelay(20 / portTICK_PERIOD_MS);
@@ -868,27 +867,36 @@ void test(lv_event_t * e){
     //xTaskCreatePinnedToCore(song, "play_song", 10000, NULL, 2 | portPRIVILEGE_BIT, &task_play_radio, 0);
     strcpy(my_packet.id, user_id);
     strcpy(my_packet.status, "ping");
-    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        if(hasRadio){
-            while(transmiting){
-                Serial.println("test");
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-            }
-            radio.startReceive();
-            transmiting = true;
-            int state = radio.startTransmit((uint8_t *)&my_packet, sizeof(lora_packet_status));
-            transmiting = false;
-            if(state != RADIOLIB_ERR_NONE){
-                Serial.print("transmission failed ");
-                Serial.println(state);
-            }else{
-                Serial.println("transmitted");
-                lv_task_handler();
-                notification_list.add("ping sent", LV_SYMBOL_UPLOAD);
-                lv_task_handler();
-            }
+    
+    if(hasRadio){
+        while(transmiting){
+            Serial.println("waiting transmition to finish");
+            vTaskDelay(100 / portTICK_PERIOD_MS);
         }
-        xSemaphoreGive(xSemaphore);
+        while(announcing){
+            Serial.println("waiting announcing to finish");
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
+        while(processing){
+            Serial.println("waiting processing to finish");
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
+        transmiting = true;
+        int state = 0;
+        activity(lv_color_hex(0xff0000));
+        if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+            state = radio.transmit((uint8_t *)&my_packet, sizeof(lora_packet_status));
+            xSemaphoreGive(xSemaphore);
+        }
+        transmiting = false;
+        activity(lv_color_hex(0xcccccc));
+        if(state != RADIOLIB_ERR_NONE){
+            Serial.print("transmission failed ");
+            Serial.println(state);
+        }else{
+            Serial.println("transmitted");
+            notification_list.add("ping sent", LV_SYMBOL_UPLOAD);
+        }
     }
 }
 
@@ -1070,7 +1078,7 @@ void send_message(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     String enc_msg;
     char msg[200] = {'\0'};
-    activity(lv_color_hex(0xff0000));
+    
     if(code == LV_EVENT_SHORT_CLICKED){
         lora_packet pkt;
         strcpy(pkt.id, user_id);
@@ -1095,9 +1103,10 @@ void send_message(lv_event_t * e){
                 transmiting = true;
                 int state = 0;
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                    state = radio.startTransmit((uint8_t *)&pkt, sizeof(lora_packet));
+                    state = radio.transmit((uint8_t *)&pkt, sizeof(lora_packet));
                     xSemaphoreGive(xSemaphore);
                 }
+                activity(lv_color_hex(0xcccccc));
                 transmiting = false;
 
                 if(state != RADIOLIB_ERR_NONE){
@@ -1347,6 +1356,7 @@ void check_contacts_in_range(){
         Serial.print(contacts_list.getList()[i].getName());
         Serial.println(contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
     }
+    activity(lv_color_hex(0xcccccc));
 }
 
 void initBat(){
@@ -2741,11 +2751,15 @@ void wifi_auto_toggle(){
             Serial.println(" connected");
             vTaskDelay(2000 / portTICK_PERIOD_MS);
             lv_label_set_text(frm_home_title_lbl, "");
+            lv_label_set_text(frm_home_symbol_lbl, "");
             datetime();
         }else{
             Serial.println("disconnected");
             lv_label_set_text(frm_home_title_lbl, "disconnected");
             lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
+            vTaskDelay(2000 / portTICK_PERIOD_MS);
+            lv_label_set_text(frm_home_title_lbl, "");
+            lv_label_set_text(frm_home_symbol_lbl, "");
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
         }
     }
@@ -2861,11 +2875,15 @@ void wifi_auto_connect(void * param){
                 Serial.println(" connected");
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
                 lv_label_set_text(frm_home_title_lbl, "");
+                lv_label_set_text(frm_home_symbol_lbl, "");
                 datetime();
             }else{
                 Serial.println("disconnected");
                 lv_label_set_text(frm_home_title_lbl, "disconnected");
                 lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
+                vTaskDelay(2000 / portTICK_PERIOD_MS);
+                lv_label_set_text(frm_home_title_lbl, "");
+                lv_label_set_text(frm_home_symbol_lbl, "");
                 WiFi.disconnect();
                 WiFi.mode(WIFI_OFF);
             }
@@ -2877,13 +2895,11 @@ void wifi_auto_connect(void * param){
     }
 }
 
-bool announce(){
+void announce(){
     lora_packet_status hi;
 
-    activity(lv_color_hex(0xffff00));
     strcpy(hi.id, user_id);
     strcpy(hi.status, "show");
-    announcing = true;
     
     while(transmiting){
         Serial.print("transmiting ");
@@ -2893,7 +2909,7 @@ bool announce(){
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 
-    while(gotPacket){
+    while(processing){
         Serial.print("gotPacket ");
         Serial.println(gotPacket?"true":"false");
         Serial.println("announce");
@@ -2901,18 +2917,16 @@ bool announce(){
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     Serial.println("Hi!");
-    
+    activity(lv_color_hex(0xffff00));
+    announcing = true;
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        if(radio.startTransmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
+        if(radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
             xSemaphoreGive(xSemaphore);
-            announcing = false;
-            transmiting = false;
-            return true;
         }
     }
     xSemaphoreGive(xSemaphore);
+    activity(lv_color_hex(0xcccccc));
     announcing = false;
-    return false;
 }
 
 void setup(){
@@ -3025,10 +3039,7 @@ void setup(){
     if(wifi_connected_nets.list.size() > 0)
         xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 2, &task_wifi_auto, 0);
 
-    if(announce())
-        Serial.println("Hi everyone!");
-    else
-        Serial.println("Announcement failed");
+    announce();
 }
 
 void loop(){
