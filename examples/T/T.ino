@@ -504,7 +504,7 @@ void processReceivedPacket(void * param){
                             notify_snd();
                             messages_list.addMessage(p);
                             
-                            strcat(message, contact->getName().c_str());
+                            strcpy(message, contact->getName().c_str());
                             strcat(message, ": ");
                             if(sizeof(p.msg) > 199){
                                 memcpy(pmsg, dec_msg, 199);
