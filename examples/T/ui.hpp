@@ -67,7 +67,7 @@ lv_obj_t * frm_chat_btn_kb_lbl;
 lv_obj_t * kb;
 /*settings form*/
 lv_obj_t * frm_settings;
-lv_obj_t * frm_settings_dialog;
+//lv_obj_t * frm_settings_dialog;
 lv_obj_t * frm_settings_btn_title;
 lv_obj_t * frm_settings_btn_title_lbl;
 lv_obj_t * frm_settings_btn_back;
@@ -97,6 +97,13 @@ lv_obj_t * frm_settings_btn_wifi_conf;
 lv_obj_t * frm_settings_btn_wifi_conf_lbl;
 lv_obj_t * frm_settings_brightness_roller;
 lv_obj_t * frm_settings_brightness_lbl;
+lv_obj_t * frm_settings_menu;
+lv_obj_t * frm_settings_menu_tab_id;
+lv_obj_t * frm_settings_menu_tab_radio;
+lv_obj_t * frm_settings_menu_tab_wifi;
+lv_obj_t * frm_settings_menu_tab_date;
+lv_obj_t * frm_settings_menu_tab_ui;
+lv_obj_t * frm_settings_menu_tab_audio_brightness;
 /*notification form*/
 lv_obj_t * frm_not;
 lv_obj_t * frm_not_lbl;

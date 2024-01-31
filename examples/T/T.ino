@@ -1885,6 +1885,40 @@ void setBrightness(lv_event_t * e){
     }
 }
 
+enum {
+    LV_MENU_ITEM_BUILDER_VARIANT_1,
+    LV_MENU_ITEM_BUILDER_VARIANT_2
+};
+typedef uint8_t lv_menu_builder_variant_t;
+
+static lv_obj_t * create_text(lv_obj_t * parent, const char * icon, const char * txt,
+                              lv_menu_builder_variant_t builder_variant)
+{
+    lv_obj_t * obj = lv_menu_cont_create(parent);
+
+    lv_obj_t * img = NULL;
+    lv_obj_t * label = NULL;
+
+    if(icon) {
+        img = lv_img_create(obj);
+        lv_img_set_src(img, icon);
+    }
+
+    if(txt) {
+        label = lv_label_create(obj);
+        lv_label_set_text(label, txt);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+        lv_obj_set_flex_grow(label, 1);
+    }
+
+    if(builder_variant == LV_MENU_ITEM_BUILDER_VARIANT_2 && icon && txt) {
+        lv_obj_add_flag(img, LV_OBJ_FLAG_FLEX_IN_NEW_TRACK);
+        lv_obj_swap(img, label);
+    }
+
+    return obj;
+}
+
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
@@ -2228,10 +2262,11 @@ void ui(){
     lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
 
     // Settings form**************************************************************
+    
     frm_settings = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_settings, LV_HOR_RES, LV_VER_RES);
     lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_SCROLLABLE);
-
+    /*
     // Title
     frm_settings_btn_title = lv_btn_create(frm_settings);
     lv_obj_set_size(frm_settings_btn_title, 200, 20);
@@ -2250,28 +2285,55 @@ void ui(){
     frm_settings_btn_back_lbl = lv_label_create(frm_settings_btn_back);
     lv_label_set_text(frm_settings_btn_back_lbl, "Back");
     lv_obj_set_align(frm_settings_btn_back_lbl, LV_ALIGN_CENTER);
-
+*/
     //base form
+    /*
     frm_settings_dialog = lv_obj_create(frm_settings);
     lv_obj_set_size(frm_settings_dialog, LV_HOR_RES, 220);
     lv_obj_align(frm_settings_dialog, LV_ALIGN_TOP_MID, 0, 10);
+    */
 
-    // Name
-    frm_settings_name = lv_textarea_create(frm_settings_dialog);
+    //Menu
+    frm_settings_menu = lv_menu_create(frm_settings);
+    lv_color_t bg_color = lv_obj_get_style_bg_color(frm_settings_menu, 0);
+    if(lv_color_brightness(bg_color) > 127) {
+        lv_obj_set_style_bg_color(frm_settings_menu, lv_color_darken(lv_obj_get_style_bg_color(frm_settings_menu, 0), 10), 0);
+    }
+    else {
+        lv_obj_set_style_bg_color(frm_settings_menu, lv_color_darken(lv_obj_get_style_bg_color(frm_settings_menu, 0), 50), 0);
+    }
+
+    lv_menu_set_mode_root_back_btn(frm_settings_menu, LV_MENU_ROOT_BACK_BTN_ENABLED);
+    lv_obj_add_event_cb(frm_settings_menu, hide_settings, LV_EVENT_CLICKED, frm_settings_menu);
+    lv_obj_set_size(frm_settings_menu, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
+    lv_obj_center(frm_settings_menu);
+
+    // id section
+    lv_obj_t * frm_settings_id_section;
+    lv_obj_t * frm_settings_id_cont;
+    lv_obj_t * frm_settings_id_page = lv_menu_page_create(frm_settings_menu, NULL);
+    lv_obj_set_style_pad_hor(frm_settings_id_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(frm_settings_menu), 0), 0);
+    lv_menu_separator_create(frm_settings_id_page);
+    frm_settings_id_section = lv_menu_section_create(frm_settings_id_page);
+    frm_settings_id_cont = create_text(frm_settings_id_section, LV_SYMBOL_SETTINGS, "ID", LV_MENU_ITEM_BUILDER_VARIANT_1);
+    lv_menu_set_load_page_event(frm_settings_menu, frm_settings_id_cont, frm_settings_id_page);
+
+    //name
+    frm_settings_name = lv_textarea_create(frm_settings_id_section);
     lv_textarea_set_one_line(frm_settings_name, true);
-    lv_obj_set_size(frm_settings_name, 280, 30);
+    lv_obj_set_size(frm_settings_name, 180, 30);
     lv_textarea_set_placeholder_text(frm_settings_name, "Name");
     lv_obj_align(frm_settings_name, LV_ALIGN_OUT_TOP_LEFT, 0, -10);
 
     // ID
-    frm_settings_id = lv_textarea_create(frm_settings_dialog);
+    frm_settings_id = lv_textarea_create(frm_settings_id_section);
     lv_textarea_set_one_line(frm_settings_id, true);
     lv_obj_set_size(frm_settings_id, 90, 30);
     lv_textarea_set_placeholder_text(frm_settings_id, "ID");
     lv_obj_align(frm_settings_id, LV_ALIGN_TOP_LEFT, 0, 20);
 
     //Generate button
-    frm_settings_btn_generate = lv_btn_create(frm_settings_dialog);
+    frm_settings_btn_generate = lv_btn_create(frm_settings_id_section);
     lv_obj_set_size(frm_settings_btn_generate, 80, 20);
     lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 100, 25);
     lv_textarea_set_max_length(frm_settings_id, 6);
@@ -2281,19 +2343,33 @@ void ui(){
     lv_label_set_text(frm_settings_btn_generate_lbl, "Generate");
     lv_obj_set_align(frm_settings_btn_generate_lbl, LV_ALIGN_CENTER);
 
+    //dx section
+    lv_obj_t * frm_settings_dx_section;
+    lv_obj_t * frm_settings_dx_page = lv_menu_page_create(frm_settings_menu, "DX");
+    lv_obj_set_style_pad_hor(frm_settings_dx_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(frm_settings_menu), 0), 0);
+    lv_menu_separator_create(frm_settings_dx_page);
+    frm_settings_dx_section = lv_menu_section_create(frm_settings_dx_page);
+
     // dx switch
-    frm_settings_switch_dx = lv_switch_create(frm_settings_dialog);
-    lv_obj_align(frm_settings_switch_dx, LV_ALIGN_OUT_TOP_LEFT, 30, 55);
+    frm_settings_switch_dx = lv_switch_create(frm_settings_dx_section);
+    lv_obj_align(frm_settings_switch_dx, LV_ALIGN_OUT_TOP_LEFT, 30, -10);
     lv_obj_add_event_cb(frm_settings_switch_dx, DX, LV_EVENT_VALUE_CHANGED, NULL);
 
-    frm_settings_switch_dx_lbl = lv_label_create(frm_settings_dialog);
+    frm_settings_switch_dx_lbl = lv_label_create(frm_settings_dx_section);
     lv_label_set_text(frm_settings_switch_dx_lbl, "DX");
-    lv_obj_align(frm_settings_switch_dx_lbl, LV_ALIGN_TOP_LEFT, 0, 60);
+    lv_obj_align(frm_settings_switch_dx_lbl, LV_ALIGN_TOP_LEFT, 0, -5);
+
+    //wifi section
+    lv_obj_t * frm_settings_wifi_section;
+    lv_obj_t * frm_settings_wifi_page = lv_menu_page_create(frm_settings_menu, "WiFi");
+    lv_obj_set_style_pad_hor(frm_settings_wifi_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(frm_settings_menu), 0), 0);
+    lv_menu_separator_create(frm_settings_wifi_page);
+    frm_settings_id_section = lv_menu_section_create(frm_settings_wifi_page);
 
     //wifi toggle button
-    frm_settings_btn_wifi = lv_btn_create(frm_settings_dialog);
+    frm_settings_btn_wifi = lv_btn_create(frm_settings_wifi_section);
     lv_obj_set_size(frm_settings_btn_wifi, 30, 30);
-    lv_obj_align(frm_settings_btn_wifi, LV_ALIGN_TOP_LEFT, 90, 55);
+    lv_obj_align(frm_settings_btn_wifi, LV_ALIGN_TOP_LEFT, 0, -10);
     lv_obj_add_event_cb(frm_settings_btn_wifi, wifi_toggle, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_settings_btn_wifi_lbl = lv_label_create(frm_settings_btn_wifi);
@@ -2301,69 +2377,76 @@ void ui(){
     lv_obj_set_align(frm_settings_btn_wifi_lbl, LV_ALIGN_CENTER);
 
     // wifi config button
-    frm_settings_btn_wifi_conf = lv_btn_create(frm_settings_dialog);
+    frm_settings_btn_wifi_conf = lv_btn_create(frm_settings_wifi_section);
     lv_obj_set_size(frm_settings_btn_wifi_conf, 80, 30);
-    lv_obj_align(frm_settings_btn_wifi_conf, LV_ALIGN_TOP_LEFT, 115, 55);
+    lv_obj_align(frm_settings_btn_wifi_conf, LV_ALIGN_TOP_LEFT, 40, -10);
     lv_obj_add_event_cb(frm_settings_btn_wifi_conf, show_wifi, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_settings_btn_wifi_conf_lbl = lv_label_create(frm_settings_btn_wifi_conf);
     lv_label_set_text(frm_settings_btn_wifi_conf_lbl, "Configure");
     lv_obj_set_align(frm_settings_btn_wifi_conf_lbl, LV_ALIGN_CENTER);
 
+    //date section
+    lv_obj_t * frm_settings_date_section;
+    lv_obj_t * frm_settings_date_page = lv_menu_page_create(frm_settings_menu, "Date");
+    lv_obj_set_style_pad_hor(frm_settings_date_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(frm_settings_menu), 0), 0);
+    lv_menu_separator_create(frm_settings_date_page);
+    frm_settings_date_section = lv_menu_section_create(frm_settings_date_page);
+
     //date label
-    frm_settings_date_lbl = lv_label_create(frm_settings_dialog);
+    frm_settings_date_lbl = lv_label_create(frm_settings_date_section);
     lv_label_set_text(frm_settings_date_lbl, "Date");
-    lv_obj_align(frm_settings_date_lbl, LV_ALIGN_TOP_LEFT, 0, 100);
+    lv_obj_align(frm_settings_date_lbl, LV_ALIGN_TOP_LEFT, 0, -5);
 
     //day
-    frm_settings_day = lv_textarea_create(frm_settings_dialog);
+    frm_settings_day = lv_textarea_create(frm_settings_date_section);
     lv_obj_set_size(frm_settings_day, 60, 30);
-    lv_obj_align(frm_settings_day, LV_ALIGN_TOP_LEFT, 40, 95);
+    lv_obj_align(frm_settings_day, LV_ALIGN_TOP_LEFT, 40, -10);
     lv_textarea_set_accepted_chars(frm_settings_day, "1234567890");
     lv_textarea_set_max_length(frm_settings_day, 2);
     lv_textarea_set_placeholder_text(frm_settings_day, "dd");
 
     //month
-    frm_settings_month = lv_textarea_create(frm_settings_dialog);
+    frm_settings_month = lv_textarea_create(frm_settings_date_section);
     lv_obj_set_size(frm_settings_month, 60, 30);
-    lv_obj_align(frm_settings_month, LV_ALIGN_TOP_LEFT, 100, 95);
+    lv_obj_align(frm_settings_month, LV_ALIGN_TOP_LEFT, 100, -10);
     lv_textarea_set_accepted_chars(frm_settings_month, "1234567890");
     lv_textarea_set_max_length(frm_settings_month, 2);
     lv_textarea_set_placeholder_text(frm_settings_month, "mm");
 
     //year
-    frm_settings_year = lv_textarea_create(frm_settings_dialog);
+    frm_settings_year = lv_textarea_create(frm_settings_date_section);
     lv_obj_set_size(frm_settings_year, 60, 30);
-    lv_obj_align(frm_settings_year, LV_ALIGN_TOP_LEFT, 160, 95);
+    lv_obj_align(frm_settings_year, LV_ALIGN_TOP_LEFT, 160, -10);
     lv_textarea_set_accepted_chars(frm_settings_year, "1234567890");
     lv_textarea_set_max_length(frm_settings_year, 4);
     lv_textarea_set_placeholder_text(frm_settings_year, "yyyy");
 
     //time label
-    frm_settings_time_lbl = lv_label_create(frm_settings_dialog);
+    frm_settings_time_lbl = lv_label_create(frm_settings_date_section);
     lv_label_set_text(frm_settings_time_lbl, "Time");
-    lv_obj_align(frm_settings_time_lbl, LV_ALIGN_TOP_LEFT, 0, 135);
+    lv_obj_align(frm_settings_time_lbl, LV_ALIGN_TOP_LEFT, 0, 35);
 
     //hour
-    frm_settings_hour = lv_textarea_create(frm_settings_dialog);
+    frm_settings_hour = lv_textarea_create(frm_settings_date_section);
     lv_obj_set_size(frm_settings_hour, 60, 30);
-    lv_obj_align(frm_settings_hour, LV_ALIGN_TOP_LEFT, 40, 130);
+    lv_obj_align(frm_settings_hour, LV_ALIGN_TOP_LEFT, 40, 30);
     lv_textarea_set_accepted_chars(frm_settings_hour, "1234567890");
     lv_textarea_set_max_length(frm_settings_hour, 2);
     lv_textarea_set_placeholder_text(frm_settings_hour, "hh");
 
     //minute
-    frm_settings_minute = lv_textarea_create(frm_settings_dialog);
+    frm_settings_minute = lv_textarea_create(frm_settings_date_section);
     lv_obj_set_size(frm_settings_minute, 60, 30);
-    lv_obj_align(frm_settings_minute, LV_ALIGN_TOP_LEFT, 100, 130);
+    lv_obj_align(frm_settings_minute, LV_ALIGN_TOP_LEFT, 100, 30);
     lv_textarea_set_accepted_chars(frm_settings_minute, "1234567890");
     lv_textarea_set_max_length(frm_settings_minute, 2);
     lv_textarea_set_placeholder_text(frm_settings_minute, "mm");
 
     // setDate button
-    frm_settings_btn_setDate = lv_btn_create(frm_settings_dialog);
+    frm_settings_btn_setDate = lv_btn_create(frm_settings_date_section);
     lv_obj_set_size(frm_settings_btn_setDate, 50, 20);
-    lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_LEFT, 170, 135);
+    lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_LEFT, 170, 35);
     lv_obj_add_event_cb(frm_settings_btn_setDate, applyDate, LV_EVENT_SHORT_CLICKED, NULL);
 
     //setDate label
@@ -2371,20 +2454,27 @@ void ui(){
     lv_label_set_text(frm_settings_btn_setDate_lbl, "Set");
     lv_obj_set_align(frm_settings_btn_setDate_lbl, LV_ALIGN_CENTER);
 
+    //ui custom section
+    lv_obj_t * frm_settings_ui_section;
+    lv_obj_t * frm_settings_ui_page = lv_menu_page_create(frm_settings_menu, "UI");
+    lv_obj_set_style_pad_hor(frm_settings_ui_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(frm_settings_menu), 0), 0);
+    lv_menu_separator_create(frm_settings_ui_page);
+    frm_settings_ui_section = lv_menu_section_create(frm_settings_ui_page);
+
     // color label
-    frm_settings_btn_color_lbl = lv_label_create(frm_settings_dialog);
+    frm_settings_btn_color_lbl = lv_label_create(frm_settings_ui_section);
     lv_label_set_text(frm_settings_btn_color_lbl, "UI color");
     lv_obj_align(frm_settings_btn_color_lbl, LV_ALIGN_TOP_LEFT, 0, 170);
     
     //color 
-    frm_settings_color = lv_textarea_create(frm_settings_dialog);
+    frm_settings_color = lv_textarea_create(frm_settings_ui_section);
     lv_obj_set_size(frm_settings_color , 100, 30);
     lv_obj_align(frm_settings_color, LV_ALIGN_TOP_LEFT, 60, 165);
     lv_textarea_set_max_length(frm_settings_color, 6);
     lv_textarea_set_accepted_chars(frm_settings_color, "abcdefABCDEF1234567890");
 
     //apply color button
-    frm_settings_btn_applycolor = lv_btn_create(frm_settings_dialog);
+    frm_settings_btn_applycolor = lv_btn_create(frm_settings_ui_section);
     lv_obj_set_size(frm_settings_btn_applycolor, 50, 20);
     lv_obj_align(frm_settings_btn_applycolor, LV_ALIGN_TOP_LEFT, 170, 170);
     lv_obj_add_event_cb(frm_settings_btn_applycolor, apply_color, LV_EVENT_SHORT_CLICKED, NULL);
@@ -2394,27 +2484,43 @@ void ui(){
     lv_label_set_text(frm_settings_btn_applycolor_lbl, "Apply");
     lv_obj_set_align(frm_settings_btn_applycolor_lbl, LV_ALIGN_CENTER);
 
-    // Brightness adjustment
+    //brightness section
+    lv_obj_t * frm_settings_brightness_section;
+    lv_obj_t * frm_settings_brightness_page = lv_menu_page_create(frm_settings_menu, "Brightness");
+    lv_obj_set_style_pad_hor(frm_settings_brightness_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(frm_settings_menu), 0), 0);
+    lv_menu_separator_create(frm_settings_brightness_page);
+    frm_settings_brightness_section = lv_menu_section_create(frm_settings_brightness_page);
 
+    // Brightness adjustment
     static lv_style_t style_sel;
     lv_style_init(&style_sel);
     lv_style_set_text_font(&style_sel, &lv_font_montserrat_20);
     lv_style_set_text_color(&style_sel, lv_color_hex(0xffffff));
 
-    frm_settings_brightness_roller = lv_roller_create(frm_settings_dialog);
+    frm_settings_brightness_roller = lv_roller_create(frm_settings_brightness_section);
     lv_roller_set_options(frm_settings_brightness_roller, brightness_levels, LV_ROLLER_MODE_NORMAL);
     lv_roller_set_visible_row_count(frm_settings_brightness_roller, 3);
     lv_obj_set_style_text_align(frm_settings_brightness_roller, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_add_style(frm_settings_brightness_roller, &style_sel, LV_PART_SELECTED);
     lv_obj_set_width(frm_settings_brightness_roller, 40);
-    lv_obj_align(frm_settings_brightness_roller, LV_ALIGN_TOP_RIGHT, -10, 60);
+    lv_obj_align(frm_settings_brightness_roller, LV_ALIGN_TOP_MID, -10, 5);
     lv_obj_add_event_cb(frm_settings_brightness_roller, setBrightness, LV_EVENT_VALUE_CHANGED, NULL);
 
-    frm_settings_brightness_lbl = lv_img_create(frm_settings_dialog);
+    frm_settings_brightness_lbl = lv_img_create(frm_settings_brightness_section);
     lv_img_set_src(frm_settings_brightness_lbl, &icon_brightness);
-    lv_obj_align(frm_settings_brightness_lbl, LV_ALIGN_TOP_RIGHT, -23, 43);
+    lv_obj_align(frm_settings_brightness_lbl, LV_ALIGN_TOP_MID, -13, -10);
 
-    lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
+    //root page
+    lv_obj_t * frm_settings_root_section;
+    lv_obj_t * frm_settings_root_page = lv_menu_page_create(frm_settings_menu, "Settings");
+    lv_obj_set_style_pad_hor(frm_settings_root_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(frm_settings_menu), 0), 0);
+    frm_settings_root_section = lv_menu_section_create(frm_settings_root_page);
+    lv_menu_set_sidebar_page(frm_settings_menu, frm_settings_root_page);
+    lv_event_send(lv_obj_get_child(lv_obj_get_child(lv_menu_get_cur_sidebar_page(frm_settings_menu), 0), 0), LV_EVENT_CLICKED, NULL);
+
+
+
+    //lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
     
     // notification form************************************************************
     frm_not = lv_obj_create(lv_scr_act());
@@ -2423,7 +2529,7 @@ void ui(){
     lv_obj_set_style_border_color(frm_not, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_radius(frm_not, 0, 0 ) ;
     lv_obj_set_style_border_width(frm_not, 0, 0);
-
+    
     //Label
     frm_not_lbl = lv_label_create(frm_not);
     lv_obj_set_style_text_font(frm_not_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
