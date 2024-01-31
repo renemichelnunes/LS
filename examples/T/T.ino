@@ -561,7 +561,7 @@ void processReceivedPacket(void * param){
                                     Serial.print("failed");
                                 xSemaphoreGive(xSemaphore);
                             }
-                            activity(lv_color_hex(0xcccccc));
+                            //activity(lv_color_hex(0xcccccc));
                             transmiting = false;
                         }
                         if(strcmp(p.status, "pong") == 0){
@@ -597,7 +597,7 @@ void processReceivedPacket(void * param){
             radio.startReceive();
             //xSemaphoreGive(xSemaphore);
             processing = false;
-            activity(lv_color_hex(0xcccccc));
+            //activity(lv_color_hex(0xcccccc));
             //}
         }
         vTaskDelay(20 / portTICK_PERIOD_MS);
@@ -889,7 +889,7 @@ void test(lv_event_t * e){
             xSemaphoreGive(xSemaphore);
         }
         transmiting = false;
-        activity(lv_color_hex(0xcccccc));
+        //activity(lv_color_hex(0xcccccc));
         if(state != RADIOLIB_ERR_NONE){
             Serial.print("transmission failed ");
             Serial.println(state);
@@ -1106,7 +1106,7 @@ void send_message(lv_event_t * e){
                     state = radio.transmit((uint8_t *)&pkt, sizeof(lora_packet));
                     xSemaphoreGive(xSemaphore);
                 }
-                activity(lv_color_hex(0xcccccc));
+                //activity(lv_color_hex(0xcccccc));
                 transmiting = false;
 
                 if(state != RADIOLIB_ERR_NONE){
@@ -1339,12 +1339,11 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
         return;
     lv_obj_t * btn = lv_obj_get_child(frm_contacts_list, index);
     lv_obj_t * obj_status = lv_obj_get_child(btn, 3);
-    lv_task_handler();
+    
     if(in_range)
         lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
     else
         lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_task_handler();
 }
 
 void check_contacts_in_range(){
@@ -1356,7 +1355,7 @@ void check_contacts_in_range(){
         Serial.print(contacts_list.getList()[i].getName());
         Serial.println(contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
     }
-    activity(lv_color_hex(0xcccccc));
+    //activity(lv_color_hex(0xcccccc));
 }
 
 void initBat(){
@@ -2901,6 +2900,7 @@ void announce(){
     strcpy(hi.id, user_id);
     strcpy(hi.status, "show");
     
+    activity(lv_color_hex(0xffff00));
     while(transmiting){
         Serial.print("transmiting ");
         Serial.println(transmiting?"true":"false");
@@ -2917,7 +2917,6 @@ void announce(){
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     Serial.println("Hi!");
-    activity(lv_color_hex(0xffff00));
     announcing = true;
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
@@ -2925,7 +2924,7 @@ void announce(){
         }
     }
     xSemaphoreGive(xSemaphore);
-    activity(lv_color_hex(0xcccccc));
+    //activity(lv_color_hex(0xcccccc));
     announcing = false;
 }
 
