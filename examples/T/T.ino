@@ -1975,7 +1975,7 @@ void wifi_con_info(){
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
-    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
+    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &ubuntu);
     lv_disp_set_theme(dispp, theme);
 
     // Home screen**************************************************************
