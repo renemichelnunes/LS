@@ -26,7 +26,6 @@ LV_FONT_DECLARE(ubuntu);
 LV_IMG_DECLARE(icon_brightness);
 LV_IMG_DECLARE(bg2);
 LV_IMG_DECLARE(icon_lora2);
-LV_IMG_DECLARE(icon_mail);
 
 
 vector <wifi_info> wifi_list;
