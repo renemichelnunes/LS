@@ -1509,7 +1509,7 @@ void wifi_apply(lv_event_t * e){
             Serial.println("wifi network saved");
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
             Serial.println(WiFi.localIP().toString());
-            strcat(connected_to, wifi_list[i].SSID);
+            strcpy(connected_to, wifi_list[i].SSID);
             strcat(connected_to, " ");
             strcat(connected_to, WiFi.localIP().toString().c_str());
             lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN); 
@@ -1579,9 +1579,7 @@ void wifi_scan_task(void * param){
     char ch[3] = {'\0'};
     lv_obj_t * btn = NULL;
     Serial.print("scanning...");
-    lv_task_handler();
     lv_label_set_text(frm_wifi_connected_to_lbl, "Scanning...");
-    lv_task_handler();
     //WiFi.disconnect(true);
     n = WiFi.scanNetworks();
     if(n > 0){
@@ -2434,7 +2432,7 @@ void ui(){
     lv_obj_align(frm_settings_wifi_ip, LV_ALIGN_TOP_LEFT, 0, 130);
 
     frm_settings_wifi_mask = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_mask, "Mask: ");
+     lv_label_set_text(frm_settings_wifi_mask, "Mask: ");
     lv_obj_align(frm_settings_wifi_mask, LV_ALIGN_TOP_LEFT, 0, 150);
 
     frm_settings_wifi_gateway = lv_label_create(frm_settings_obj_wifi);
