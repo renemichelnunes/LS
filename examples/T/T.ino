@@ -68,7 +68,7 @@ notification notification_list = notification();
 
 char user_name[50] = "";
 char user_id[7] = "";
-char connected_to[60] = "";
+char connected_to[200] = "";
 
 struct tm timeinfo;
 
@@ -1343,7 +1343,7 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
 }
 
 void check_contacts_in_range(){
-    activity(lv_color_hex(0xff66ff));
+    activity(lv_color_hex(0x0FFBFF));
     contacts_list.check_inrange();
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
@@ -1464,9 +1464,7 @@ void wifi_apply(lv_event_t * e){
                 Serial.println("Provide a login and passwod");
                 return;
             }
-            lv_task_handler();
             lv_label_set_text(frm_wifi_login_title_lbl, "Connecting...");
-            lv_task_handler();
             WiFi.disconnect(true);
             WiFi.mode(WIFI_STA);
             
@@ -1922,37 +1920,29 @@ void wifi_con_info(){
         strcpy(buf, "SSID: ");
         strcat(buf, wifi_connected_nets.list[last_wifi_con].SSID);
         lv_label_set_text(frm_settings_wifi_ssid, buf);
-
         strcpy(buf, "Auth: ");
         strcat(buf, wifi_auth_mode_to_str(wifi_connected_nets.list[last_wifi_con].auth_type));
         lv_label_set_text(frm_settings_wifi_auth, buf);
-
         itoa(wifi_connected_nets.list[last_wifi_con].ch, num, 10);
         strcpy(buf, "Channel: ");
         strcat(buf, num);
         lv_label_set_text(frm_settings_wifi_ch, buf);
-
         itoa(WiFi.RSSI(last_wifi_con), num, 10);
         strcpy(buf, "RSSI: ");
         strcat(buf, num);
         lv_label_set_text(frm_settings_wifi_rssi, buf);
-
         strcpy(buf, "MAC: ");
         strcat(buf, WiFi.macAddress().c_str());
         lv_label_set_text(frm_settings_wifi_mac, buf);
-
         strcpy(buf, "IP: ");
         strcat(buf, WiFi.localIP().toString().c_str());
         lv_label_set_text(frm_settings_wifi_ip, buf);
-
         strcpy(buf, "Subnet: ");
         strcat(buf, WiFi.subnetMask().toString().c_str());
         lv_label_set_text(frm_settings_wifi_mask, buf);
-
         strcpy(buf, "Gateway: ");
         strcat(buf, WiFi.gatewayIP().toString().c_str());
         lv_label_set_text(frm_settings_wifi_gateway, buf);
-
         strcpy(buf, "DNS: ");
         strcat(buf, WiFi.dnsIP().toString().c_str());
         lv_label_set_text(frm_settings_wifi_dns, buf);
@@ -1972,7 +1962,7 @@ void wifi_con_info(){
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
-    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &ubuntu);
+    lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_16);
     lv_disp_set_theme(dispp, theme);
 
     // Home screen**************************************************************
@@ -2432,7 +2422,7 @@ void ui(){
     lv_obj_align(frm_settings_wifi_ip, LV_ALIGN_TOP_LEFT, 0, 130);
 
     frm_settings_wifi_mask = lv_label_create(frm_settings_obj_wifi);
-     lv_label_set_text(frm_settings_wifi_mask, "Mask: ");
+    lv_label_set_text(frm_settings_wifi_mask, "Mask: ");
     lv_obj_align(frm_settings_wifi_mask, LV_ALIGN_TOP_LEFT, 0, 150);
 
     frm_settings_wifi_gateway = lv_label_create(frm_settings_obj_wifi);
@@ -2844,7 +2834,7 @@ const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
         case WIFI_AUTH_MAX:
             return "MAX";
     }
-    return NULL;
+    return "unknown";
 }
 
 void wifi_auto_toggle(){
@@ -2923,7 +2913,7 @@ void wifi_auto_toggle(){
                                 c = 0;
                                 break;
                             }
-                            delay(1000);
+                            vTaskDelay(1000 / portTICK_PERIOD_MS);
                         }
 
                         if(WiFi.isConnected()){
@@ -2988,6 +2978,7 @@ void wifi_auto_connect(void * param){
         Serial.println("done");
         lv_label_set_text(frm_home_title_lbl, "done");
         lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         if(wifi_connected_nets.list.size() > 0){
             for(uint32_t i = 0; i < wifi_connected_nets.list.size(); i++){
                 for(uint32_t j = 0; j < list.size(); j++){
@@ -3018,9 +3009,9 @@ void wifi_auto_connect(void * param){
                                     c = 0;
                                     break;
                                 }
-                                delay(1000);
+                                vTaskDelay(1000 / portTICK_PERIOD_MS);
                             }
-
+                    
                             if(WiFi.isConnected()){
                                 last_wifi_con = i;
                                 break;
@@ -3043,12 +3034,11 @@ void wifi_auto_connect(void * param){
                                     c = 0;
                                     break;
                                 }
-                                delay(1000);
+                                vTaskDelay(1000 / portTICK_PERIOD_MS);
                             }
-
+                            
                             if(WiFi.isConnected()){
                                 last_wifi_con = i;
-                                break;
                             }
                         }
                     }
@@ -3098,7 +3088,6 @@ void announce(){
         Serial.print("transmiting ");
         Serial.println(transmiting?"true":"false");
         Serial.println("announce");
-        lv_task_handler();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 
@@ -3106,7 +3095,6 @@ void announce(){
         Serial.print("gotPacket ");
         Serial.println(gotPacket?"true":"false");
         Serial.println("announce");
-        lv_task_handler();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     Serial.println("Hi!");
@@ -3229,7 +3217,7 @@ void setup(){
         lv_label_set_text(frm_home_title_lbl, "LoRa radio failed");
 
     if(wifi_connected_nets.list.size() > 0)
-        xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 2, &task_wifi_auto, 0);
+        xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 1, &task_wifi_auto, 0);
 
     announce();
 }
