@@ -463,7 +463,6 @@ void processReceivedPacket(void * param){
         }
         if(gotPacket){
             processing = true;
-            //if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
             Serial.println("Packet received");
 
             uint32_t size = radio.getPacketLength();
@@ -525,14 +524,13 @@ void processReceivedPacket(void * param){
                                 vTaskDelay(100 / portTICK_PERIOD_MS);
                             }
                             activity(lv_color_hex(0xff0000));
-                            vTaskDelay(500 / portTICK_PERIOD_MS);
                             transmiting = true;
                             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                                 if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                     Serial.println("Confirmation sent");
                                 else
                                     Serial.print("Confirmation not sent");
-                                    xSemaphoreGive(xSemaphore);
+                                xSemaphoreGive(xSemaphore);
                             }
                             activity(lv_color_hex(0x00ff00));
                             transmiting = false;
@@ -560,7 +558,7 @@ void processReceivedPacket(void * param){
                                     Serial.print("failed");
                                 xSemaphoreGive(xSemaphore);
                             }
-                            //activity(lv_color_hex(0xcccccc));
+                            activity(lv_color_hex(0x00ff00));
                             transmiting = false;
                         }
                         if(strcmp(p.status, "pong") == 0){
@@ -585,19 +583,13 @@ void processReceivedPacket(void * param){
                     }
                 }
                 else{
-                    //lv_task_handler();
-                    //notification_list.add(LV_SYMBOL_WARNING "Packet ignored");
-                    //lv_task_handler();
                     Serial.println("Packet ignored");
                 }
             }else
                 Serial.println("Unknown or malformed packet");
             gotPacket = false;
             radio.startReceive();
-            //xSemaphoreGive(xSemaphore);
             processing = false;
-            //activity(lv_color_hex(0xcccccc));
-            //}
         }
         vTaskDelay(20 / portTICK_PERIOD_MS);
     }
@@ -1030,12 +1022,9 @@ void hide_chat(lv_event_t * e){
             if(task_check_new_msg != NULL){
                 vTaskDelete(task_check_new_msg);
                 task_check_new_msg = NULL;
-                Serial.println("task_check_new_msg finished");
+                Serial.println("task_check_new_msg deleted");
             }
-            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                lv_obj_clean(frm_chat_list);
-                xSemaphoreGive(xSemaphore);
-            }
+            
             msg_count = 0;
             lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
             actual_contact = NULL;
@@ -1053,7 +1042,7 @@ void show_chat(lv_event_t * e){
 
     actual_contact = contacts_list.getContactByID(id);
 
-    char title[31] = "Chat with ";
+    char title[60] = "Chat with ";
     strcat(title, name);
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_chat != NULL){
@@ -1062,10 +1051,10 @@ void show_chat(lv_event_t * e){
             lv_group_focus_obj(frm_chat_text_ans);
             if(task_check_new_msg == NULL){
                 xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 11000, NULL, 1, &task_check_new_msg, 1);
-                Serial.println("task_check_new_msg running");
-                Serial.print("actual contact is ");
-                Serial.println(actual_contact->getName());
+                Serial.println("task_check_new_msg created");
             }
+            Serial.print("actual contact is ");
+            Serial.println(actual_contact->getName());
         }
     }
 }
@@ -1132,7 +1121,18 @@ void copy_text(lv_event_t * e){
     lv_obj_t * lbl = (lv_obj_t *)lv_event_get_user_data(e);
     if(code == LV_EVENT_LONG_PRESSED){
         lv_textarea_add_text(frm_chat_text_ans, lv_label_get_text(lbl));
-        lv_task_handler();
+    }
+}
+
+void check_new_msg_(void * param){
+    while(true){
+        for(int i = 0; i < 10; i++){
+            lv_list_add_text(frm_chat_list, "test");
+            lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK," ");
+            vTaskDelay(10 / portTICK_PERIOD_MS);    
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        lv_obj_clean(frm_chat_list);
     }
 }
 
@@ -1143,6 +1143,7 @@ void check_new_msg(void * param){
     char date[30] = {'\0'};
     char name[100] = {'\0'};
     
+    lv_obj_clean(frm_chat_list);
     while(true){
         caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
         actual_count = caller_msg.size();
@@ -1155,9 +1156,9 @@ void check_new_msg(void * param){
                     Serial.println(name);
                     lv_list_add_text(frm_chat_list, name);
                 }else{
-                    if(strcmp(caller_msg[i].status, "recv") == 0)
+                    if(strcmp(caller_msg[i].status, "recv") == 0){
                         btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
-                    else{
+                    }else{
                         strcpy(name, actual_contact->getName().c_str());
                         strcat(name, caller_msg[i].date_time);
                         lv_list_add_text(frm_chat_list, name);
@@ -1267,7 +1268,7 @@ void update_time(void *timeStruct) {
             lv_label_set_text(frm_home_date_lbl, date);
         }
         vTaskDelay(60000 / portTICK_RATE_MS);
-        announce();
+        //announce();
     }
     vTaskDelete(task_date_time);
 }
@@ -3102,12 +3103,13 @@ void announce(){
     }
     Serial.println("Hi!");
     announcing = true;
-    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+    //if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
-            xSemaphoreGive(xSemaphore);
-        }
-    }
-    xSemaphoreGive(xSemaphore);
+            
+        }else
+            Serial.println("announcement failed");
+        //xSemaphoreGive(xSemaphore);
+    //}
     //activity(lv_color_hex(0xcccccc));
     announcing = false;
 }
