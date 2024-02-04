@@ -863,7 +863,7 @@ String decrypt(char * contact_id, String msg){
 
 void test(lv_event_t * e){
     lora_packet_status my_packet;
-    //xTaskCreatePinnedToCore(song, "play_song", 10000, NULL, 2 | portPRIVILEGE_BIT, &task_play_radio, 0);
+    notify_snd();
     strcpy(my_packet.id, user_id);
     strcpy(my_packet.status, "ping");
     
@@ -1527,9 +1527,14 @@ void forget_net(lv_event_t * e){
     if(code == LV_EVENT_LONG_PRESSED){
         if(wifi_connected_nets.del(wifi_list[i].SSID)){
             lv_label_set_text(frm_wifi_connected_to_lbl, "forgoten");
-            wifi_connected_nets.save();
+            Serial.println("SSID deleted from connected nets");
             WiFi.disconnect(true);
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+            if(wifi_connected_nets.save()){
+                Serial.println("connected nets list save failed");
+            }
+        }else{
+            Serial.println("SSID not found in connected nets");
         }
     }
 }
@@ -1543,7 +1548,7 @@ void wifi_select(lv_event_t * e){
         Serial.println(wifi_list[i].SSID);
         Serial.println(wifi_list[i].RSSI);
         Serial.println(wifi_list[i].auth_type);
-
+        
         switch(wifi_list[i].auth_type){
             case WIFI_AUTH_WPA2_PSK:
                 lv_obj_remove_event_cb(frm_wifi_simple_btn_connect, wifi_apply);
@@ -1801,26 +1806,24 @@ void song(void * param) {
 }
 
 void taskplaySong(void *p) {
-    //if (xSemaphoreTake(xSemaphore, 10000 / portTICK_PERIOD_MS) == pdTRUE) {
-        if (SD.exists("/comp_up.mp3")) {
-            const char *path = "comp_up.mp3";
-            digitalWrite(BOARD_POWERON, HIGH);
-            audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
-            audio.setVolume(21);
-            audio.connecttoFS(SD, path);
-            Serial.printf("play %s\r\n", path);
-            while (audio.isRunning()) {
-                audio.loop();
-            }
-            audio.stopSong();
+    if(xSemaphoreTake(xSemaphore, 100 / portTICK_PERIOD_MS) == pdTRUE){
+        const char *path = "comp_up.mp3";
+        digitalWrite(BOARD_POWERON, HIGH);
+        audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
+        audio.setVolume(21);
+        audio.connecttoFS(SPIFFS, path);
+        Serial.printf("play %s\r\n", path);
+        while (audio.isRunning()) {
+            audio.loop();
         }
-        //xSemaphoreGive(xSemaphore);
-    //}
-    vTaskDelete(task_play);
+        audio.stopSong();
+        xSemaphoreGive(xSemaphore);
+    }
+    vTaskDelete(NULL);
 }
 
 void notify_snd(){
-    //xTaskCreatePinnedToCore(taskplaySong, "play_not_snd", 10000, NULL, 2, &task_play, 0);
+    //xTaskCreatePinnedToCore(taskplaySong, "play_not_snd", 10000, NULL, 2 | portPRIVILEGE_BIT, NULL, 0);
 }
 
 /*
@@ -1915,8 +1918,8 @@ static lv_obj_t * create_text(lv_obj_t * parent, const char * icon, const char *
 void wifi_con_info(){
     char buf[100] = {'\0'};
     char num[10] = {'\0'};
-    
-    if(WiFi.isConnected()){
+
+    if(WiFi.isConnected() && last_wifi_con < wifi_connected_nets.list.size()){
         strcpy(buf, "SSID: ");
         strcat(buf, wifi_connected_nets.list[last_wifi_con].SSID);
         lv_label_set_text(frm_settings_wifi_ssid, buf);

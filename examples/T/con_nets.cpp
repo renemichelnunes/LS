@@ -27,18 +27,18 @@ bool Wifi_connected_nets::add(wifi_info wi){
 }
 
 bool Wifi_connected_nets::save(){
+    if(!SPIFFS.begin(true)){
+        Serial.println("failed mounting SPIFFS");
+        return false;
+    }
+
+    fs::File file = SPIFFS.open("/wifi_list", FILE_WRITE);
+    if(!file){
+        Serial.println("couldn't open settings file");
+        return false;
+    }
+
     if(list.size() > 0){
-        if(!SPIFFS.begin(true)){
-            Serial.println("failed mounting SPIFFS");
-            return false;
-        }
-
-        fs::File file = SPIFFS.open("/wifi_list", FILE_WRITE);
-        if(!file){
-            Serial.println("couldn't open settings file");
-            return false;
-        }
-
         Serial.println("Saving networks...");
         for(uint32_t i = 0; i < list.size(); i++){
             file.println(list[i].SSID);
@@ -46,7 +46,6 @@ bool Wifi_connected_nets::save(){
             file.println(list[i].login);
             file.println(list[i].pass);
         }
-
         file.close();
         return true;
     }
