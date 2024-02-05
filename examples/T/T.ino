@@ -1070,7 +1070,6 @@ void send_message(lv_event_t * e){
         strcpy(pkt.status, "send");
         strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
         
-        //if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(hasRadio){
             if(strcmp(lv_textarea_get_text(frm_chat_text_ans), "") != 0){
                 strcpy(msg, lv_textarea_get_text(frm_chat_text_ans));
@@ -1111,8 +1110,6 @@ void send_message(lv_event_t * e){
                 }
             }
         }
-        //    xSemaphoreGive(xSemaphore);
-        //}
     }
 }
 
@@ -1142,7 +1139,7 @@ void check_new_msg(void * param){
     lv_obj_t * btn = NULL, * lbl = NULL;
     char date[30] = {'\0'};
     char name[100] = {'\0'};
-    
+
     lv_obj_clean(frm_chat_list);
     while(true){
         caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
@@ -1268,7 +1265,7 @@ void update_time(void *timeStruct) {
             lv_label_set_text(frm_home_date_lbl, date);
         }
         vTaskDelay(60000 / portTICK_RATE_MS);
-        //announce();
+        announce();
     }
     vTaskDelete(task_date_time);
 }
