@@ -1143,6 +1143,14 @@ void check_new_msg_(void * param){
     }
 }
 
+void clean_chat_list(lv_obj_t * list){
+    lv_obj_del(frm_chat_list);
+    frm_chat_list = NULL;
+    frm_chat_list = lv_list_create(frm_chat);
+    lv_obj_set_size(frm_chat_list, 320, 170);
+    lv_obj_align(frm_chat_list, LV_ALIGN_TOP_MID, 0, 5);
+}
+
 void check_new_msg(void * param){
     vector<lora_packet> caller_msg;
     uint32_t actual_count = 0;
@@ -1150,7 +1158,8 @@ void check_new_msg(void * param){
     char date[30] = {'\0'};
     char name[100] = {'\0'};
 
-    lv_obj_clean(frm_chat_list);
+    //lv_obj_clean(frm_chat_list);
+    clean_chat_list(frm_chat_list);
     while(true){
         caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
         actual_count = caller_msg.size();
