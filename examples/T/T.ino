@@ -465,9 +465,13 @@ void processReceivedPacket(void * param){
             processing = true;
             Serial.println("Packet received");
 
-            uint32_t size = radio.getPacketLength();
-            Serial.print("Size ");
-            Serial.println(size);
+            uint32_t size = 0;
+            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                size = radio.getPacketLength();
+                Serial.print("Size ");
+                Serial.println(size);
+                xSemaphoreGive(xSemaphore);
+            }
             if(size > 0 and size <= sizeof(lora_packet)){
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                     radio.readData((uint8_t *)&p, size);
@@ -485,10 +489,16 @@ void processReceivedPacket(void * param){
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
                     Serial.print(F(" RSSI:"));
-                    Serial.print(radio.getRSSI());
+                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                        Serial.print(radio.getRSSI());
+                        xSemaphoreGive(xSemaphore);
+                    }
                     Serial.print(F(" dBm"));
                     Serial.print(F("  SNR:"));
-                    Serial.print(radio.getSNR());
+                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                        Serial.print(radio.getSNR());
+                        xSemaphoreGive(xSemaphore);
+                    }
                     Serial.println(F(" dB"));
 
                     contact = contacts_list.getContactByID(p.id);
@@ -3080,6 +3090,7 @@ void wifi_auto_connect(void * param){
 
 void announce(){
     lora_packet_status hi;
+    int32_t status = 0;
 
     strcpy(hi.id, user_id);
     strcpy(hi.status, "show");
@@ -3098,15 +3109,18 @@ void announce(){
         Serial.println("announce");
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-    Serial.println("Hi!");
+    
     announcing = true;
-    //if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        if(radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
-            
-        }else
-            Serial.println("announcement failed");
-        //xSemaphoreGive(xSemaphore);
-    //}
+    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+        status = radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status));
+        if(status == RADIOLIB_ERR_NONE){
+            Serial.println("Hi!");
+        }else{
+            Serial.print("announcement failed ");
+            Serial.println(status);
+        }
+        xSemaphoreGive(xSemaphore);
+    }
     //activity(lv_color_hex(0xcccccc));
     announcing = false;
 }
