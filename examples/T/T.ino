@@ -1139,7 +1139,7 @@ void check_new_msg_(void * param){
             vTaskDelay(10 / portTICK_PERIOD_MS);    
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        lv_obj_clean(frm_chat_list);
+        clean_chat_list(frm_chat_list);
     }
 }
 
