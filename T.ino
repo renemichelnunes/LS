@@ -20,7 +20,6 @@
 #include "es7210.h"
 #include "Cipher.h"
 #include "esp_wifi.h"
-#include <mutex>
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
@@ -67,8 +66,6 @@ Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
 notification notification_list = notification();
 
-static SemaphoreHandle_t lvgl_mutex = xSemaphoreCreateMutex();
-
 char user_name[50] = "";
 char user_id[7] = "";
 char connected_to[200] = "";
@@ -83,6 +80,7 @@ void datetime();
 void wifi_auto_toggle();
 const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode);
 volatile int last_wifi_con = -1;
+volatile uint8_t volume = 10;
 
 Cipher * cipher = new Cipher();
 
@@ -184,27 +182,27 @@ static void loadContacts(){
 }
 
 static void saveContacts(){
-  if(!SPIFFS.begin(true)){
-    Serial.println("failed mounting SPIFFS");
-    return;
-  }
+    if(!SPIFFS.begin(true)){
+        Serial.println("failed mounting SPIFFS");
+        return;
+    }
 
-  fs::File file = SPIFFS.open("/contacts", FILE_WRITE);
-  if(!file){
-    Serial.println("contacts file problem");
-    return;
-  }
+    fs::File file = SPIFFS.open("/contacts", FILE_WRITE);
+    if(!file){
+        Serial.println("contacts file problem");
+        return;
+    }
 
-  Contact c;
+    Contact c;
 
-  for(uint32_t index = 0; index < contacts_list.size(); index++){
-    c = contacts_list.getContact(index);
-    file.println(c.getName());
-    file.println(c.getID());
-  }
-  Serial.print(contacts_list.size());
-  Serial.println(" contacts saved");
-  file.close();
+    for(uint32_t index = 0; index < contacts_list.size(); index++){
+        c = contacts_list.getContact(index);
+        file.println(c.getName());
+        file.println(c.getID());
+    }
+    Serial.print(contacts_list.size());
+    Serial.println(" contacts saved");
+    file.close();
 }
 
 static void refresh_contact_list(){
@@ -230,15 +228,15 @@ static void refresh_contact_list(){
 }
 
 std::string generate_ID(){
-  srand(time(NULL));
-  static const char alphanum[] = "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  std::string ss;
+    srand(time(NULL));
+    static const char alphanum[] = "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    std::string ss;
 
-  for (int i = 0; i < 6; ++i) {
-    ss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-  }
-  return ss;
+    for (int i = 0; i < 6; ++i) {
+        ss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+    }
+    return ss;
 }
 
 static void notify(void * param){
@@ -468,13 +466,9 @@ void processReceivedPacket(void * param){
             processing = true;
             Serial.println("Packet received");
 
-            uint32_t size = 0;
-            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                size = radio.getPacketLength();
-                Serial.print("Size ");
-                Serial.println(size);
-                xSemaphoreGive(xSemaphore);
-            }
+            uint32_t size = radio.getPacketLength();
+            Serial.print("Size ");
+            Serial.println(size);
             if(size > 0 and size <= sizeof(lora_packet)){
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                     radio.readData((uint8_t *)&p, size);
@@ -492,16 +486,10 @@ void processReceivedPacket(void * param){
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
                     Serial.print(F(" RSSI:"));
-                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                        Serial.print(radio.getRSSI());
-                        xSemaphoreGive(xSemaphore);
-                    }
+                    Serial.print(radio.getRSSI());
                     Serial.print(F(" dBm"));
                     Serial.print(F("  SNR:"));
-                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                        Serial.print(radio.getSNR());
-                        xSemaphoreGive(xSemaphore);
-                    }
+                    Serial.print(radio.getSNR());
                     Serial.println(F(" dB"));
 
                     contact = contacts_list.getContactByID(p.id);
@@ -1142,18 +1130,7 @@ void check_new_msg_(void * param){
             vTaskDelay(10 / portTICK_PERIOD_MS);    
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        clean_chat_list(frm_chat_list);
-    }
-}
-
-void clean_chat_list(lv_obj_t * list){
-    if(xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE){
-        lv_obj_del(frm_chat_list);
-        frm_chat_list = NULL;
-        frm_chat_list = lv_list_create(frm_chat);
-        lv_obj_set_size(frm_chat_list, 320, 170);
-        lv_obj_align(frm_chat_list, LV_ALIGN_TOP_MID, 0, 5);
-        xSemaphoreGive(lvgl_mutex);
+        lv_obj_clean(frm_chat_list);
     }
 }
 
@@ -1164,11 +1141,7 @@ void check_new_msg(void * param){
     char date[30] = {'\0'};
     char name[100] = {'\0'};
 
-    if(xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE){
-        lv_obj_clean(frm_chat_list);
-        xSemaphoreGive(lvgl_mutex);
-    }
-    //clean_chat_list(frm_chat_list);
+    lv_obj_clean(frm_chat_list);
     while(true){
         caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
         actual_count = caller_msg.size();
@@ -3108,7 +3081,6 @@ void wifi_auto_connect(void * param){
 
 void announce(){
     lora_packet_status hi;
-    int32_t status = 0;
 
     strcpy(hi.id, user_id);
     strcpy(hi.status, "show");
@@ -3127,18 +3099,15 @@ void announce(){
         Serial.println("announce");
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-    
+    Serial.println("Hi!");
     announcing = true;
-    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        status = radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status));
-        if(status == RADIOLIB_ERR_NONE){
-            Serial.println("Hi!");
-        }else{
-            Serial.print("announcement failed ");
-            Serial.println(status);
-        }
-        xSemaphoreGive(xSemaphore);
-    }
+    //if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+        if(radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status)) == 0){
+            
+        }else
+            Serial.println("announcement failed");
+        //xSemaphoreGive(xSemaphore);
+    //}
     //activity(lv_color_hex(0xcccccc));
     announcing = false;
 }
