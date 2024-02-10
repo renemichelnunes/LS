@@ -44,6 +44,7 @@ uint8_t touchAddress = GT911_SLAVE_ADDRESS1;
 TouchLib *touch = NULL;
 TFT_eSPI tft;
 SemaphoreHandle_t xSemaphore = NULL;
+static pthread_mutex_t lvgl_mutex = NULL;
 bool touchDected = false;
 bool kbDected = false;
 bool hasRadio = false; 
@@ -60,14 +61,13 @@ TaskHandle_t task_recv_pkt = NULL,
              task_date_time = NULL,
              task_bat = NULL,
              task_wifi_auto = NULL,
+             task_wifi_scan = NULL,
              task_play = NULL,
              task_play_radio = NULL;
 
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
 notification notification_list = notification();
-
-static SemaphoreHandle_t lvgl_mutex = xSemaphoreCreateMutex();
 
 char user_name[50] = "";
 char user_id[7] = "";
@@ -208,23 +208,35 @@ static void saveContacts(){
 }
 
 static void refresh_contact_list(){
+    
     lv_obj_clean(frm_contacts_list);
+    
     lv_obj_t * btn;
     for(uint32_t i = 0; i < contacts_list.size(); i++){
+        
         btn = lv_list_add_btn(frm_contacts_list, LV_SYMBOL_CALL, contacts_list.getContact(i).getName().c_str());
         lv_obj_t * lbl = lv_label_create(btn);
         lv_label_set_text(lbl, contacts_list.getContact(i).getID().c_str());
         lv_obj_t * obj_status = lv_obj_create(btn);
         lv_obj_set_size(obj_status, 20, 20);
         lv_obj_clear_flag(obj_status, LV_OBJ_FLAG_SCROLLABLE);
-        if(contacts_list.getContact(i).inrange)
+        
+        if(contacts_list.getContact(i).inrange){
+            
             lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-        else
+            
+        }
+        else{
+            
             lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
+            
+        }
+        
         lv_obj_align(obj_status, LV_ALIGN_RIGHT_MID, 0, 0);
         lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_event_cb(btn, show_edit_contacts, LV_EVENT_LONG_PRESSED, btn);
         lv_obj_add_event_cb(btn, show_chat, LV_EVENT_SHORT_CLICKED, btn);
+        
     }
     saveContacts();
 }
@@ -249,14 +261,18 @@ static void notify(void * param){
         if(notification_list.size() > 0){
             //vTaskDelay(1000 / portTICK_PERIOD_MS);
             notification_list.pop(n, b);
+            
             lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
             lv_label_set_text(frm_not_lbl, n);
             lv_label_set_text(frm_not_symbol_lbl, b);
             lv_label_set_text(frm_home_title_lbl, n);
             lv_label_set_text(frm_home_symbol_lbl, b);
+            
             vTaskDelay(1000 / portTICK_PERIOD_MS);
+            
             lv_label_set_text(frm_not_lbl, "");
             lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+            
             strcpy(n, "");
             Serial.println("notified");
         }
@@ -601,7 +617,10 @@ void processReceivedPacket(void * param){
             }else
                 Serial.println("Unknown or malformed packet");
             gotPacket = false;
-            radio.startReceive();
+            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                radio.startReceive();
+                xSemaphoreGive(xSemaphore);
+            }
             processing = false;
         }
         vTaskDelay(20 / portTICK_PERIOD_MS);
@@ -1047,21 +1066,22 @@ void hide_chat(lv_event_t * e){
 
 void show_chat(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
-    lv_obj_t * lbl = lv_obj_get_child(btn, 1);
-    lv_obj_t * lbl_id = lv_obj_get_child(btn, 2);
-    const char * name = lv_label_get_text(lbl);
-    const char * id = lv_label_get_text(lbl_id);
-
-    actual_contact = contacts_list.getContactByID(id);
-
-    char title[60] = "Chat with ";
-    strcat(title, name);
     if(code == LV_EVENT_SHORT_CLICKED){
+        
+        lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
+        lv_obj_t * lbl = lv_obj_get_child(btn, 1);
+        lv_obj_t * lbl_id = lv_obj_get_child(btn, 2);
+        const char * name = lv_label_get_text(lbl);
+        const char * id = lv_label_get_text(lbl_id);
+        
+        actual_contact = contacts_list.getContactByID(id);
+        char title[60] = "Chat with ";
+        strcat(title, name);
         if(frm_chat != NULL){
             lv_obj_clear_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
             lv_label_set_text(frm_chat_btn_title_lbl, title);
             lv_group_focus_obj(frm_chat_text_ans);
+            
             if(task_check_new_msg == NULL){
                 xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 11000, NULL, 1, &task_check_new_msg, 1);
                 Serial.println("task_check_new_msg created");
@@ -1122,7 +1142,8 @@ void send_message(lv_event_t * e){
                     lv_textarea_set_text(frm_chat_text_ans, "");
                 }
             }
-        }
+        }else
+            Serial.println("Radio not configured");
     }
 }
 
@@ -1137,38 +1158,38 @@ void copy_text(lv_event_t * e){
 void check_new_msg_(void * param){
     while(true){
         for(int i = 0; i < 10; i++){
+            pthread_mutex_lock(&lvgl_mutex);
             lv_list_add_text(frm_chat_list, "test");
             lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK," ");
-            vTaskDelay(10 / portTICK_PERIOD_MS);    
+            pthread_mutex_unlock(&lvgl_mutex);
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        clean_chat_list(frm_chat_list);
+        pthread_mutex_lock(&lvgl_mutex);
+        lv_obj_clean(frm_chat_list);
+        pthread_mutex_unlock(&lvgl_mutex);
     }
 }
 
 void clean_chat_list(lv_obj_t * list){
-    if(xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE){
-        lv_obj_del(frm_chat_list);
-        frm_chat_list = NULL;
-        frm_chat_list = lv_list_create(frm_chat);
-        lv_obj_set_size(frm_chat_list, 320, 170);
-        lv_obj_align(frm_chat_list, LV_ALIGN_TOP_MID, 0, 5);
-        xSemaphoreGive(lvgl_mutex);
-    }
+    lv_obj_del(frm_chat_list);
+    frm_chat_list = NULL;
+    frm_chat_list = lv_list_create(frm_chat);
+    lv_obj_set_size(frm_chat_list, 320, 170);
+    lv_obj_align(frm_chat_list, LV_ALIGN_TOP_MID, 0, 5);
+    
 }
 
 void check_new_msg(void * param){
     vector<lora_packet> caller_msg;
     uint32_t actual_count = 0;
     lv_obj_t * btn = NULL, * lbl = NULL;
-    char date[30] = {'\0'};
+    char date[60] = {'\0'};
     char name[100] = {'\0'};
-
-    if(xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE){
-        lv_obj_clean(frm_chat_list);
-        xSemaphoreGive(lvgl_mutex);
-    }
+    
     //clean_chat_list(frm_chat_list);
+    pthread_mutex_lock(&lvgl_mutex);
+    lv_obj_clean(frm_chat_list);
+    pthread_mutex_unlock(&lvgl_mutex);
     while(true){
         caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
         actual_count = caller_msg.size();
@@ -1179,28 +1200,42 @@ void check_new_msg(void * param){
                     strcpy(name, "Me");
                     strcat(name, caller_msg[i].date_time);
                     Serial.println(name);
+                    pthread_mutex_lock(&lvgl_mutex);
                     lv_list_add_text(frm_chat_list, name);
+                    pthread_mutex_unlock(&lvgl_mutex);
                 }else{
                     if(strcmp(caller_msg[i].status, "recv") == 0){
+                        pthread_mutex_lock(&lvgl_mutex);
                         btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
+                        pthread_mutex_unlock(&lvgl_mutex);
                     }else{
                         strcpy(name, actual_contact->getName().c_str());
                         strcat(name, caller_msg[i].date_time);
+                        pthread_mutex_lock(&lvgl_mutex);
                         lv_list_add_text(frm_chat_list, name);
+                        pthread_mutex_unlock(&lvgl_mutex);
                         Serial.println(name);
                     }
                 }
                 Serial.println(caller_msg[i].msg);
                 if(strcmp(caller_msg[i].status, "recv") != 0){
+                    pthread_mutex_lock(&lvgl_mutex);
                     btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
                     lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
+                    pthread_mutex_unlock(&lvgl_mutex);
                 }
+                pthread_mutex_lock(&lvgl_mutex);
                 lbl = lv_obj_get_child(btn, 0);
+                pthread_mutex_unlock(&lvgl_mutex);
                 if(strcmp(caller_msg[i].status, "recv") != 0){
+                    pthread_mutex_lock(&lvgl_mutex);
                     lv_obj_set_style_text_font(lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
                     lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
+                    pthread_mutex_unlock(&lvgl_mutex);
                 }
+                pthread_mutex_lock(&lvgl_mutex);
                 lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
+                pthread_mutex_unlock(&lvgl_mutex);
             }
             msg_count = actual_count;
         }
@@ -1284,14 +1319,17 @@ void update_time(void *timeStruct) {
     char hourMin[6];
     char date[12];
     while(true){
+        
         if(getLocalTime((struct tm*)timeStruct)){
             
             strftime(hourMin, 6, "%H:%M %p", (struct tm *)timeStruct);
             lv_label_set_text(frm_home_time_lbl, hourMin);
-
+        
             strftime(date, 12, "%a, %b %d", (struct tm *)timeStruct);
             lv_label_set_text(frm_home_date_lbl, date);
+            
         }
+        
         vTaskDelay(60000 / portTICK_RATE_MS);
         announce();
     }
@@ -1315,12 +1353,13 @@ void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst
 
 void setDateTime(){
     char day[3] = {'\0'}, month[3] = {'\0'}, year[5] = {'\0'}, hour[3] = {'\0'}, minute[3] = {'\0'};
-
+    
     strcpy(day, lv_textarea_get_text(frm_settings_day));
     strcpy(month, lv_textarea_get_text(frm_settings_month));
     strcpy(year, lv_textarea_get_text(frm_settings_year));
     strcpy(hour, lv_textarea_get_text(frm_settings_hour));
     strcpy(minute, lv_textarea_get_text(frm_settings_minute));
+    
 
     if(strcmp(day, "") != 0 && strcmp(month, "") != 0 && strcmp(year, "") != 0 && strcmp(hour, "") != 0 && strcmp(minute, "") != 0){
         try{
@@ -1338,10 +1377,14 @@ void applyDate(lv_event_t * e){
 
     setDateTime();
     strftime(hourMin, 6, "%H:%M %p", (struct tm *)&timeinfo);
+    
     lv_label_set_text(frm_home_time_lbl, hourMin);
+    
 
     strftime(date, 12, "%a, %b %d", (struct tm *)&timeinfo);
+    
     lv_label_set_text(frm_home_date_lbl, date);
+    
 }
 
 void apply_color(lv_event_t * e){
@@ -1359,13 +1402,21 @@ void apply_color(lv_event_t * e){
 void update_frm_contacts_status(uint16_t index, bool in_range){
     if(index > contacts_list.size() - 1 || index < 0)
         return;
+    
     lv_obj_t * btn = lv_obj_get_child(frm_contacts_list, index);
     lv_obj_t * obj_status = lv_obj_get_child(btn, 3);
     
-    if(in_range)
+    
+    if(in_range){
+        
         lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-    else
+        
+    }
+    else{
+        
         lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
+        
+    }
 }
 
 void check_contacts_in_range(){
@@ -1429,7 +1480,9 @@ void update_bat(void * param){
         strcpy(msg, pc);
         strcat(msg, "% ");
         strcat(msg, get_battery_icon(p));
+        
         lv_label_set_text(frm_home_bat_lbl, msg);
+        
         check_contacts_in_range();
         vTaskDelay(30000 / portTICK_PERIOD_MS);
     }
@@ -1608,11 +1661,15 @@ void wifi_scan_task(void * param){
     char ch[3] = {'\0'};
     lv_obj_t * btn = NULL;
     Serial.print("scanning...");
+    
     lv_label_set_text(frm_wifi_connected_to_lbl, "Scanning...");
+    
     //WiFi.disconnect(true);
     n = WiFi.scanNetworks();
     if(n > 0){
+        
         lv_obj_clean(frm_wifi_list);
+        
         wifi_list.clear();
         for(uint i = 0; i < n; i++){
             wi.auth_type = WiFi.encryptionType(i);
@@ -1629,33 +1686,40 @@ void wifi_scan_task(void * param){
             strcat(ssid, " ch:");
             itoa(WiFi.channel(i), ch, 10);
             strcat(ssid, ch);
+            
             btn = lv_list_add_btn(frm_wifi_list, LV_SYMBOL_WIFI, ssid);
             lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_SHORT_CLICKED, (void *)i);
             lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_LONG_PRESSED, (void *)i);
-
+            
         }
     }
     Serial.println("done");
+    
     lv_label_set_text(frm_wifi_connected_to_lbl, "Scan complete");
-    vTaskDelete(NULL);
+    
+    vTaskDelete(task_wifi_scan);
 }
 
 void wifi_scan(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
-        xTaskCreatePinnedToCore(wifi_scan_task, "wifi_scan_task", 10000, NULL, 1, NULL, 1);
+        xTaskCreatePinnedToCore(wifi_scan_task, "wifi_scan_task", 10000, NULL, 1, &task_wifi_scan, 1);
     }
 }
 
 void update_wifi_icon(){
     if(WiFi.isConnected()){
+        
         lv_label_set_text(frm_home_wifi_lbl, LV_SYMBOL_WIFI);
         lv_label_set_text(frm_wifi_connected_to_lbl, connected_to);
+        
     }
     else{
+        
         lv_label_set_text(frm_home_wifi_lbl, "");
         lv_label_set_text(frm_wifi_connected_to_lbl, "");
+        
     }
     wifi_con_info();
 }
@@ -1880,7 +1944,9 @@ void show_especial(lv_event_t * e){
 }
 
 void activity(lv_color_t color){
+    
     lv_obj_set_style_bg_color(frm_home_activity_led, color, LV_PART_MAIN | LV_STATE_DEFAULT);
+    
 }
 
 const char * kbmap[] = {"á", "à", "ã", "â", "Á", "À", "Ã", "Â","\n",
@@ -1948,34 +2014,53 @@ void wifi_con_info(){
     if(WiFi.isConnected() && last_wifi_con < wifi_connected_nets.list.size()){
         strcpy(buf, "SSID: ");
         strcat(buf, wifi_connected_nets.list[last_wifi_con].SSID);
+        
         lv_label_set_text(frm_settings_wifi_ssid, buf);
+        
         strcpy(buf, "Auth: ");
         strcat(buf, wifi_auth_mode_to_str(wifi_connected_nets.list[last_wifi_con].auth_type));
+        
         lv_label_set_text(frm_settings_wifi_auth, buf);
+        
         itoa(wifi_connected_nets.list[last_wifi_con].ch, num, 10);
         strcpy(buf, "Channel: ");
         strcat(buf, num);
+        
         lv_label_set_text(frm_settings_wifi_ch, buf);
+        
         itoa(WiFi.RSSI(last_wifi_con), num, 10);
         strcpy(buf, "RSSI: ");
         strcat(buf, num);
+        
         lv_label_set_text(frm_settings_wifi_rssi, buf);
+        
         strcpy(buf, "MAC: ");
         strcat(buf, WiFi.macAddress().c_str());
+        
         lv_label_set_text(frm_settings_wifi_mac, buf);
+        
         strcpy(buf, "IP: ");
         strcat(buf, WiFi.localIP().toString().c_str());
+        
         lv_label_set_text(frm_settings_wifi_ip, buf);
+        
         strcpy(buf, "Subnet: ");
         strcat(buf, WiFi.subnetMask().toString().c_str());
+        
         lv_label_set_text(frm_settings_wifi_mask, buf);
+        
         strcpy(buf, "Gateway: ");
         strcat(buf, WiFi.gatewayIP().toString().c_str());
+        
         lv_label_set_text(frm_settings_wifi_gateway, buf);
+        
         strcpy(buf, "DNS: ");
         strcat(buf, WiFi.dnsIP().toString().c_str());
+        
         lv_label_set_text(frm_settings_wifi_dns, buf);
+        
     }else{
+        
         lv_label_set_text(frm_settings_wifi_ssid, "Disconnected");
         lv_label_set_text(frm_settings_wifi_auth, "");
         lv_label_set_text(frm_settings_wifi_ch, "");
@@ -1985,6 +2070,7 @@ void wifi_con_info(){
         lv_label_set_text(frm_settings_wifi_mask, "");
         lv_label_set_text(frm_settings_wifi_gateway, "");
         lv_label_set_text(frm_settings_wifi_dns, "");
+        
     }
 }
 
@@ -2287,6 +2373,7 @@ void ui(){
     lv_obj_set_align(frm_chat_btn_send_lbl, LV_ALIGN_CENTER);
 
     //group the objects, the answer area will be almost on focus every time we send a msg
+    
     frm_chat_group = lv_group_create();
     lv_group_add_obj(frm_chat_group, frm_chat_btn_back);
     lv_group_add_obj(frm_chat_group, frm_chat_btn_send);
@@ -2834,8 +2921,10 @@ void datetime(){
         Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S zone %Z %z ");
         strftime(hm, 6, "%H:%M %p", &timeinfo);
         strftime(date, 12, "%a, %b %d", &timeinfo);
+        
         lv_label_set_text(frm_home_time_lbl, hm);
         lv_label_set_text(frm_home_date_lbl, date);
+        
     }else
         Serial.println("Connect to a WiFi network to update the time and date");
 }
@@ -2988,8 +3077,10 @@ void wifi_auto_connect(void * param){
     if(wifi_connected_nets.list.size() != 0){
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         Serial.print("Searching for wifi connections...");
+        
         lv_label_set_text(frm_home_title_lbl, "Searching for wifi connections...");
         lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
+        
         WiFi.disconnect(true);
         WiFi.mode(WIFI_STA);
         
@@ -3001,12 +3092,16 @@ void wifi_auto_connect(void * param){
             }
         else{
             Serial.println("No wifi networks found");
+            
             lv_label_set_text(frm_home_title_lbl, "No wifi networks found");
             lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
+            
         }
         Serial.println("done");
+        
         lv_label_set_text(frm_home_title_lbl, "done");
         lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
+        
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         if(wifi_connected_nets.list.size() > 0){
             for(uint32_t i = 0; i < wifi_connected_nets.list.size(); i++){
@@ -3016,7 +3111,9 @@ void wifi_auto_connect(void * param){
                         Serial.print(wifi_connected_nets.list[i].SSID);
                         strcpy(a, "Connecting to ");
                         strcat(a, wifi_connected_nets.list[i].SSID);
+                        
                         lv_label_set_text(frm_home_title_lbl, a);
+                        
 
                         if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_ENTERPRISE){
                             esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
@@ -3077,24 +3174,32 @@ void wifi_auto_connect(void * param){
             }
 
             if(WiFi.isConnected()){
+                
                 lv_label_set_text(frm_home_title_lbl, "connected");
                 lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
                 lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+                
                 strcpy(connected_to, wifi_connected_nets.list[last_wifi_con].SSID);
                 strcat(connected_to, " ");
                 strcat(connected_to, WiFi.localIP().toString().c_str());
                 Serial.println(" connected");
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
+                
                 lv_label_set_text(frm_home_title_lbl, "");
                 lv_label_set_text(frm_home_symbol_lbl, "");
+                
                 datetime();
             }else{
                 Serial.println("disconnected");
+                
                 lv_label_set_text(frm_home_title_lbl, "disconnected");
                 lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
+                
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
+                
                 lv_label_set_text(frm_home_title_lbl, "");
                 lv_label_set_text(frm_home_symbol_lbl, "");
+                
                 WiFi.disconnect();
                 WiFi.mode(WIFI_OFF);
             }
@@ -3208,6 +3313,8 @@ void setup(){
     assert(xSemaphore);
     xSemaphoreGive( xSemaphore );
 
+    pthread_mutex_init(&lvgl_mutex, NULL);
+
     Wire.beginTransmission(touchAddress);
     ret = Wire.endTransmission() == 0;
     touchDected = ret;
@@ -3231,6 +3338,8 @@ void setup(){
     // set brightness
     analogWrite(BOARD_BL_PIN, 100);
     
+    if(wifi_connected_nets.list.size() > 0)
+        xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 1, &task_wifi_auto, 0);
     if(wifi_connected)
         datetime();
     //date time task
@@ -3245,18 +3354,13 @@ void setup(){
 
     // Notification task
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
-    if(hasRadio)
-        lv_label_set_text(frm_home_title_lbl, "LoRa radio ready");
-    else
-        lv_label_set_text(frm_home_title_lbl, "LoRa radio failed");
-
-    if(wifi_connected_nets.list.size() > 0)
-        xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 1, &task_wifi_auto, 0);
 
     announce();
 }
 
 void loop(){
+    pthread_mutex_lock(&lvgl_mutex);
     lv_task_handler();
+    pthread_mutex_unlock(&lvgl_mutex);
     delay(5);
 }
