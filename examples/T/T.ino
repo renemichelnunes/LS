@@ -20,14 +20,17 @@
 #include "es7210.h"
 #include "Cipher.h"
 #include "esp_wifi.h"
-#include <mutex>
+#include "mutex"
+#include <HTTPSServer.hpp>
+#include <SSLCert.hpp>
+#include <HTTPRequest.hpp>
+#include <HTTPResponse.hpp>
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
 LV_IMG_DECLARE(icon_brightness);
 LV_IMG_DECLARE(bg2);
 LV_IMG_DECLARE(icon_lora2);
-
 
 vector <wifi_info> wifi_list;
 Wifi_connected_nets wifi_connected_nets = Wifi_connected_nets();
@@ -1420,7 +1423,7 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
 }
 
 void check_contacts_in_range(){
-    activity(lv_color_hex(0x0FFBFF));
+    activity(lv_color_hex(0x0095ff));
     contacts_list.check_inrange();
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
@@ -1442,13 +1445,17 @@ void initBat(){
     }
 }
 
+long mapv(long x, long in_min, long in_max, long out_min, long out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 uint32_t read_bat(){
     uint16_t v = analogRead(BOARD_BAT_ADC);
     double vBat = ((double)v / 4095.0) * 2.0 * 3.3 * (vRef / 1000.0);
     if (vBat > 4.2) {
         vBat = 4.2;
     }
-    uint32_t batPercent = map(vBat * 100, 320, 420, 0, 100);
+    uint32_t batPercent = mapv(vBat * 100, 320, 420, 0, 100);
     if (batPercent < 0) {
         batPercent = 0;
     }
@@ -1969,7 +1976,7 @@ void setBrightness(lv_event_t * e){
 
     if(code == LV_EVENT_VALUE_CHANGED){
         val = lv_roller_get_selected(roller);
-        analogWrite(BOARD_BL_PIN, map(val, 0, 9, 100, 255));
+        analogWrite(BOARD_BL_PIN, mapv(val, 0, 9, 100, 255));
     }
 }
 
@@ -2172,13 +2179,12 @@ void ui(){
 
     // Activity led 
     frm_home_activity_led = lv_obj_create(frm_home);
-    lv_obj_set_size(frm_home_activity_led, 10, 15);
+    lv_obj_set_size(frm_home_activity_led, 7, 15);
     lv_obj_align(frm_home_activity_led, LV_ALIGN_TOP_RIGHT, -75, -10);
     lv_obj_clear_flag(frm_home_activity_led, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(frm_home_activity_led, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(frm_home_activity_led, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(frm_home_activity_led, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(frm_home_activity_led, lv_color_hex(0x666666), LV_PART_MAIN | LV_STATE_DEFAULT);
-
+    
     // Contacts form**************************************************************
     frm_contacts = lv_obj_create(lv_scr_act());
     lv_obj_set_size(frm_contacts, LV_HOR_RES, LV_VER_RES);
@@ -3248,6 +3254,61 @@ void announce(){
     announcing = false;
 }
 
+void setupServer(void * param){
+    using namespace httpsserver;
+    HTTPSServer * secureServer = NULL;
+    SSLCert * cert;
+    while(true){
+        if(WiFi.isConnected()){
+            Serial.println("Starting server...");
+            cert = new SSLCert();
+
+            int createCertResult = createSelfSignedCert(
+            *cert,
+            KEYSIZE_2048,
+            "CN=CLI,O=CLI,C=BR");
+        
+            if (createCertResult != 0) {
+                Serial.printf("Error generating certificate");
+                return; 
+            }
+
+            secureServer = new HTTPSServer(cert);
+            ResourceNode * nodeRoot = new ResourceNode("/", "GET", [](HTTPRequest * req, HTTPResponse * res){
+            // Implementation of the route handling function
+                res->setHeader("Content-Type", "text/html");
+                res->println("<!DOCTYPE html>");
+                res->println("<html>");
+                res->println("<head><title>Hello World!</title></head>");
+                res->println("<body>");
+                res->println("<h1>Hello World!</h1>");
+                res->println("<p>This is the authentication and authorization example. When asked for login "
+                    "information, try admin/secret or user/test.</p>");
+                res->println("<p>Go to: <a href=\"/internal\">Internal Page</a> | <a href=\"/public\">Public Page</a></p>");
+                res->println("</body>");
+                res->println("</html>");
+            });
+            secureServer->registerNode(nodeRoot);
+            secureServer->start();
+            if (secureServer->isRunning()) {
+                Serial.println("Server ready.");
+            }
+            while(WiFi.isConnected()){
+                secureServer->loop();
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+            }
+        }else{
+            if(secureServer != NULL){
+                secureServer->~HTTPSServer();
+                secureServer = NULL;
+                Serial.println("Server ended");
+            }
+        }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
+}
+
 void setup(){
     bool ret = false;
     Serial.begin(115200);
@@ -3337,7 +3398,7 @@ void setup(){
     
     // set brightness
     analogWrite(BOARD_BL_PIN, 100);
-    
+
     if(wifi_connected_nets.list.size() > 0)
         xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 1, &task_wifi_auto, 0);
     if(wifi_connected)
@@ -3354,7 +3415,8 @@ void setup(){
 
     // Notification task
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
-
+    // web server
+    xTaskCreatePinnedToCore(setupServer, "server", 11000, NULL, 1, NULL, 1);
     announce();
 }
 
