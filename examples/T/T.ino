@@ -831,7 +831,12 @@ void processReceivedPacket(void * param){
                             strcpy(c.status, "recv");
                             Serial.println("Sending confirmation...");
                             while(announcing){
-                                Serial.println("Awaiting announcement to finnish before send confirmation..");
+                                Serial.println("Awaiting announcement to finnish before send confirmation...");
+                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                            }
+
+                            while(transmiting){
+                                Serial.println("waiting transmission to finish");
                                 vTaskDelay(100 / portTICK_PERIOD_MS);
                             }
                             activity(lv_color_hex(0xff0000));
@@ -853,11 +858,17 @@ void processReceivedPacket(void * param){
                         
                         if(strcmp(p.status, "ping") == 0){
                             notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
+                            if(activeClients[0] != NULL)
+                                activeClients[0]->send("[ping]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
                             Serial.print("Sending pong...");
                             strcpy(pong.id, user_id);
                             strcpy(pong.status, "pong");
                             while(announcing){
-                                Serial.println("Awaiting announcing to finnish before send confirmation..");
+                                Serial.println("Awaiting announcing to finish before send confirmation...");
+                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                            }
+                            while(transmiting){
+                                Serial.println("waiting transmission to finish before send confirmation...");
                                 vTaskDelay(100 / portTICK_PERIOD_MS);
                             }
                             activity(lv_color_hex(0xff0000));
@@ -895,6 +906,8 @@ void processReceivedPacket(void * param){
                 }
                 else{
                     Serial.println("Packet ignored");
+                    if(activeClients[0] != NULL)
+                        activeClients[0]->send("[Packet ignored]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
                 }
             }else{
                 Serial.println("Unknown or malformed packet");
