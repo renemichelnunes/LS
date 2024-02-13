@@ -469,6 +469,275 @@ bool checkKb()
     return Wire.read() != -1;
 }
 
+#define HEADER_USERNAME "X-USERNAME"
+#define HEADER_GROUP    "X-GROUP"
+
+void middlewareAuthentication(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
+    req->setHeader(HEADER_USERNAME, "");
+    req->setHeader(HEADER_GROUP, "");
+
+    std::string reqUsername = req->getBasicAuthUser();
+    std::string reqPassword = req->getBasicAuthPassword();
+
+    if (reqUsername.length() > 0 && reqPassword.length() > 0) {
+        bool authValid = true;
+        std::string group = "";
+        if (reqUsername == "admin" && reqPassword == "admin") {
+            group = "ADMIN";
+        } else if (reqUsername == "user" && reqPassword == "user") {
+            group = "USER";
+        } else {
+            authValid = false;
+        }
+
+        if (authValid) {
+            req->setHeader(HEADER_USERNAME, reqUsername);
+            req->setHeader(HEADER_GROUP, group);
+            next();
+        } else {
+            res->setStatusCode(401);
+            res->setStatusText("Unauthorized");
+            res->setHeader("Content-Type", "text/plain");
+            res->setHeader("WWW-Authenticate", "Basic realm=\"ESP32 privileged area\"");
+            res->println("401. Unauthorized (try admin/secret or user/test)");
+        }
+    }else{
+        next();
+    }
+}
+
+void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
+    std::string username = req->getHeader(HEADER_USERNAME);
+
+    if (username == "" && req->getRequestString().substr(0,9) == "/") {
+        res->setStatusCode(401);
+        res->setStatusText("Unauthorized");
+        res->setHeader("Content-Type", "text/plain");
+        res->setHeader("WWW-Authenticate", "Basic realm=\"T-Deck privileged area\"");
+        res->println("401. Unauthorized");
+
+    } else {
+        next();
+    }
+}
+
+void handleRoot(HTTPRequest * req, HTTPResponse * res) {
+    res->setHeader("Content-Type", "text/html");
+
+    res->print(
+        "<!DOCTYPE HTML>\n"
+        "<html>\n"
+        "   <head>\n"
+        "   <title>T-Deck Chat</title>\n"
+        "</head>\n"
+        "<body>\n"
+        "    <div style=\"width:500px;border:1px solid black;margin:20px auto;display:block\">\n"
+        "        <form onsubmit=\"return false\">\n"
+        "            Your Name: <input type=\"text\" id=\"txtName\" value=\"T-Deck user\">\n"
+        "            <button type=\"submit\" id=\"btnConnect\">Connect</button>\n"
+        "        </form>\n"
+        "        <form onsubmit=\"return false\">\n"
+        "            <div style=\"overflow:scroll;height:400px\" id=\"divOut\">Not connected...</div>\n"
+        "            Your Message: <input type=\"text\" id=\"txtChat\" disabled>\n"
+        "            <button type=\"submit\" id=\"btnSend\" disabled>Send</button>\n"
+        "        </form>\n"
+        "    </div>\n"
+        "    <script type=\"text/javascript\">\n"
+        "        const elem = id => document.getElementById(id);\n"
+        "        const txtName = elem(\"txtName\");\n"
+        "        const txtChat = elem(\"txtChat\");\n"
+        "        const btnConnect = elem(\"btnConnect\");\n"
+        "        const btnSend = elem(\"btnSend\");\n"
+        "        const divOut = elem(\"divOut\");\n"
+        "\n"
+        "        class Chat {\n"
+        "            constructor() {\n"
+        "                this.connecting = false;\n"
+        "                this.connected = false;\n"
+        "                this.name = \"\";\n"
+        "                this.ws = null;\n"
+        "            }\n"
+        "            connect() {\n"
+        "                if (this.ws === null) {\n"
+        "                    this.connecting = true;\n"
+        "                    txtName.disabled = true;\n"
+        "                    this.name = txtName.value;\n"
+        "                    btnConnect.innerHTML = \"Connecting...\";\n"
+        "                    this.ws = new WebSocket(\"wss://\" + document.location.host + \"/chat\");\n"
+        "                    this.ws.onopen = e => {\n"
+        "                        this.connecting = false;\n"
+        "                        this.connected = true;\n"
+        "                        divOut.innerHTML = \"<p>Connected.</p>\";\n"
+        "                        btnConnect.innerHTML = \"Disconnect\";\n"
+        "                        txtChat.disabled=false;\n"
+        "                        btnSend.disabled=false;\n"
+        "                        this.ws.send(this.name + \" joined!\");\n"
+        "                    };\n"
+        "                    this.ws.onmessage = e => {\n"
+        "                        divOut.innerHTML+=\"<p>\"+e.data+\"</p>\";\n"
+        "                        divOut.scrollTo(0,divOut.scrollHeight);\n"
+        "                    }\n"
+        "                    this.ws.onclose = e => {\n"
+        "                        this.disconnect();\n"
+        "                    }\n"
+        "                }\n"
+        "            }\n"
+        "            disconnect() {\n"
+        "                if (this.ws !== null) {\n"
+        "                    this.ws.send(this.name + \" left!\");\n"
+        "                    this.ws.close();\n"
+        "                    this.ws = null;\n"
+        "                }\n"
+        "                if (this.connected) {\n"
+        "                    this.connected = false;\n"
+        "                    txtChat.disabled=true;\n"
+        "                    btnSend.disabled=true;\n"
+        "                    txtName.disabled = false;\n"
+        "                    divOut.innerHTML+=\"<p>Disconnected.</p>\";\n"
+        "                    btnConnect.innerHTML = \"Connect\";\n"
+        "                }\n"
+        "            }\n"
+        "            sendMessage(msg) {\n"
+        "                if (this.ws !== null) {\n"
+        "                    this.ws.send(this.name + \": \" + msg);\n"
+        "                }\n"
+        "            }\n"
+        "        };\n"
+        "        let chat = new Chat();\n"
+        "        btnConnect.onclick = () => {\n"
+        "            if (chat.connected) {\n"
+        "                chat.disconnect();\n"
+        "            } else if (!chat.connected && !chat.connecting) {\n"
+        "                chat.connect();\n"
+        "            }\n"
+        "        }\n"
+        "        btnSend.onclick = () => {\n"
+        "            chat.sendMessage(txtChat.value);\n"
+        "            txtChat.value=\"\";\n"
+        "            txtChat.focus();\n"
+        "        }\n"
+        "    </script>\n"
+        "</body>\n"
+        "</html>\n"
+    );
+}
+
+void handle404(HTTPRequest * req, HTTPResponse * res) {
+    req->discardRequestBody();
+    res->setStatusCode(404);
+    res->setStatusText("Not Found");
+    res->setHeader("Content-Type", "text/html");
+    res->println("<!DOCTYPE html>");
+    res->println("<html>");
+    res->println("<head><title>Not Found</title></head>");
+    res->println("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>");
+    res->println("</html>");
+}
+
+class ChatHandler : public WebsocketHandler{
+    public:
+        static WebsocketHandler * create();
+        void onMessage(WebsocketInputStreambuf * input);
+        void onClose();
+};
+
+ChatHandler * activeClients[4];
+
+WebsocketHandler * ChatHandler::create() {
+    Serial.println("Creating new chat client!");
+    ChatHandler * handler = new ChatHandler();
+    for(int i = 0; i < 4; i++) {
+        if (activeClients[i] == nullptr) {
+            activeClients[i] = handler;
+            break;
+        }
+    }
+    return handler;
+}
+
+void ChatHandler::onClose() {
+    for(int i = 0; i < 4; i++) {
+        if (activeClients[i] == this) {
+            activeClients[i] = nullptr;
+        }
+    }
+}
+
+void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
+    // Get the input message
+    std::ostringstream ss;
+    std::string msg;
+    ss << inbuf;
+    msg = ss.str();
+
+    Serial.println(msg.c_str());
+    // Send it back to every client
+    for(int i = 0; i < 4; i++) {
+        if (activeClients[i] != nullptr) {
+            activeClients[i]->send(msg, SEND_TYPE_TEXT);
+        }
+    }
+}
+
+void setupServer(void * param){
+    HTTPSServer * secureServer = NULL;
+    SSLCert * cert;
+
+    for(int i = 0; i < 4; i++) activeClients[i] = nullptr;
+
+    while(true){
+        if(WiFi.isConnected()){
+            Serial.println("Starting server...");
+            cert = new SSLCert();
+
+            int createCertResult = createSelfSignedCert(
+            *cert,
+            KEYSIZE_2048,
+            "CN=CLI,O=CLI,C=BR");
+        
+            if (createCertResult != 0) {
+                Serial.printf("Error generating certificate");
+                return; 
+            }
+
+            secureServer = new HTTPSServer(cert, 443, 4);
+            ResourceNode * nodeRoot = new ResourceNode("/", "GET", &handleRoot);
+            ResourceNode * node404 = new ResourceNode("", "GET", &handle404);
+
+            secureServer->registerNode(nodeRoot);
+            secureServer->registerNode(node404);
+
+            WebsocketNode * chatNode = new WebsocketNode("/chat", &ChatHandler::create);
+            secureServer->registerNode(chatNode);
+            secureServer->setDefaultNode(node404);
+
+            //secureServer->addMiddleware(&middlewareAuthentication);
+            //secureServer->addMiddleware(&middlewareAuthorization);
+
+            secureServer->start();
+            if (secureServer->isRunning()) {
+                Serial.println("Server ready.");
+            }
+            while(WiFi.isConnected()){
+                secureServer->loop();
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+        }else{
+            if(secureServer != NULL){
+                secureServer->~HTTPSServer();
+                secureServer = NULL;
+                for(int i = 0; i < 4; i++){
+                    activeClients[i]->close();
+                    activeClients[i] = nullptr;
+                }
+                Serial.println("Server ended");
+            }
+        }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
+}
+
 void processReceivedPacket(void * param){
     lora_packet p;
     lora_packet_status c;
@@ -488,7 +757,8 @@ void processReceivedPacket(void * param){
         if(gotPacket){
             processing = true;
             Serial.println("Packet received");
-
+            if(activeClients[0] != NULL)
+                activeClients[0]->send("[Packet received]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
             uint32_t size = 0;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 size = radio.getPacketLength();
@@ -535,6 +805,13 @@ void processReceivedPacket(void * param){
                             strcpy(p.msg, dec_msg);
                             notify_snd();
                             messages_list.addMessage(p);
+
+                            if(activeClients[0]){
+                                strcpy(message, contact->getName().c_str());
+                                strcat(message, ": ");
+                                strcat(message, p.msg);
+                                activeClients[0]->send(message, httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+                            }
                             
                             strcpy(message, contact->getName().c_str());
                             strcat(message, ": ");
@@ -552,7 +829,7 @@ void processReceivedPacket(void * param){
 
                             strcpy(c.id, user_id);
                             strcpy(c.status, "recv");
-                            Serial.print("Sending confirmation...");
+                            Serial.println("Sending confirmation...");
                             while(announcing){
                                 Serial.println("Awaiting announcement to finnish before send confirmation..");
                                 vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -563,7 +840,7 @@ void processReceivedPacket(void * param){
                                 if(radio.transmit((uint8_t*)&c, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                     Serial.println("Confirmation sent");
                                 else
-                                    Serial.print("Confirmation not sent");
+                                    Serial.println("Confirmation not sent");
                                 xSemaphoreGive(xSemaphore);
                             }
                             activity(lv_color_hex(0x00ff00));
@@ -619,8 +896,11 @@ void processReceivedPacket(void * param){
                 else{
                     Serial.println("Packet ignored");
                 }
-            }else
+            }else{
                 Serial.println("Unknown or malformed packet");
+                if(activeClients[0] != NULL)
+                    activeClients[0]->send("[Unknown or malformed packet]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+            }
             gotPacket = false;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 radio.startReceive();
@@ -1430,11 +1710,18 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
 void check_contacts_in_range(){
     activity(lv_color_hex(0x0095ff));
     contacts_list.check_inrange();
+    char msg[100] = {'\0'};
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
 
         Serial.print(contacts_list.getList()[i].getName());
         Serial.println(contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
+        strcpy(msg, "[");
+        strcat(msg, contacts_list.getList()[i].getName().c_str());
+        strcat(msg, contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
+        strcat(msg, "]");
+        if(activeClients[0] != NULL)
+            activeClients[0]->send(msg, httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
     }
     //activity(lv_color_hex(0xcccccc));
 }
@@ -3249,227 +3536,18 @@ void announce(){
         status = radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status));
         if(status == RADIOLIB_ERR_NONE){
             Serial.println("Hi!");
+            if(activeClients[0] != NULL)
+                activeClients[0]->send("[Hi!]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
         }else{
             Serial.print("announcement failed ");
             Serial.println(status);
+            if(activeClients[0] != NULL)
+                activeClients[0]->send("announcement failed " + status, httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
         }
         xSemaphoreGive(xSemaphore);
     }
     //activity(lv_color_hex(0xcccccc));
     announcing = false;
-}
-
-#define HEADER_USERNAME "X-USERNAME"
-#define HEADER_GROUP    "X-GROUP"
-
-void middlewareAuthentication(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
-    req->setHeader(HEADER_USERNAME, "");
-    req->setHeader(HEADER_GROUP, "");
-
-    std::string reqUsername = req->getBasicAuthUser();
-    std::string reqPassword = req->getBasicAuthPassword();
-
-    if (reqUsername.length() > 0 && reqPassword.length() > 0) {
-        bool authValid = true;
-        std::string group = "";
-        if (reqUsername == "admin" && reqPassword == "admin") {
-            group = "ADMIN";
-        } else if (reqUsername == "user" && reqPassword == "user") {
-            group = "USER";
-        } else {
-            authValid = false;
-        }
-
-        if (authValid) {
-            req->setHeader(HEADER_USERNAME, reqUsername);
-            req->setHeader(HEADER_GROUP, group);
-            next();
-        } else {
-            res->setStatusCode(401);
-            res->setStatusText("Unauthorized");
-            res->setHeader("Content-Type", "text/plain");
-            res->setHeader("WWW-Authenticate", "Basic realm=\"ESP32 privileged area\"");
-            res->println("401. Unauthorized (try admin/secret or user/test)");
-        }
-    }else{
-        next();
-    }
-}
-
-void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
-    std::string username = req->getHeader(HEADER_USERNAME);
-
-    if (username == "" && req->getRequestString().substr(0,9) == "/internal") {
-        res->setStatusCode(401);
-        res->setStatusText("Unauthorized");
-        res->setHeader("Content-Type", "text/plain");
-        res->setHeader("WWW-Authenticate", "Basic realm=\"ESP32 privileged area\"");
-        res->println("401. Unauthorized (try admin/secret or user/test)");
-
-    } else {
-        next();
-    }
-}
-
-void handleAdminPage(HTTPRequest * req, HTTPResponse * res) {
-    // Headers
-    res->setHeader("Content-Type", "text/html; charset=utf8");
-
-    std::string header = "<!DOCTYPE html><html><head><title>Secret Admin Page</title></head><body><h1>Secret Admin Page</h1>";
-    std::string footer = "</body></html>";
-
-    if (req->getHeader(HEADER_GROUP) == "ADMIN") {
-        res->setStatusCode(200);
-        res->setStatusText("OK");
-        res->printStd(header);
-        res->println("<div style=\"border:1px solid red;margin: 20px auto;padding:10px;background:#ff8080\">");
-        res->println("<h1>Congratulations</h1>");
-        res->println("<p>You found the secret administrator page!</p>");
-        res->println("<p><a href=\"/internal\">Go back</a></p>");
-        res->println("</div>");
-    } else {
-        res->printStd(header);
-        res->setStatusCode(403);
-        res->setStatusText("Unauthorized");
-        res->println("<p><strong>403 Unauthorized</strong> You have no power here!</p>");
-    }
-
-    res->printStd(footer);
-}
-
-void handlePublicPage(HTTPRequest * req, HTTPResponse * res) {
-    res->setHeader("Content-Type", "text/html");
-    res->println("<!DOCTYPE html>");
-    res->println("<html>");
-    res->println("<head><title>Hello World!</title></head>");
-    res->println("<body>");
-    res->println("<h1>Hello World!</h1>");
-    res->print("<p>Your server is running for ");
-    res->print((int)(millis()/1000), DEC);
-    res->println(" seconds.</p>");
-    res->println("<p><a href=\"/\">Go back</a></p>");
-    res->println("</body>");
-    res->println("</html>");
-}
-
-void handleRoot(HTTPRequest * req, HTTPResponse * res) {
-    res->setHeader("Content-Type", "text/html");
-    res->println("<!DOCTYPE html>");
-    res->println("<html>");
-    res->println("<head><title>Hello World!</title></head>");
-    res->println("<body>");
-    res->println("<h1>Hello World!</h1>");
-    res->println("<p>This is the authentication and authorization example. When asked for login "
-        "information, try admin/secret or user/test.</p>");
-    res->println("<p>Go to: <a href=\"/internal\">Internal Page</a> | <a href=\"/public\">Public Page</a></p>");
-    res->println("</body>");
-    res->println("</html>");
-}
-
-void handle404(HTTPRequest * req, HTTPResponse * res) {
-    req->discardRequestBody();
-    res->setStatusCode(404);
-    res->setStatusText("Not Found");
-    res->setHeader("Content-Type", "text/html");
-    res->println("<!DOCTYPE html>");
-    res->println("<html>");
-    res->println("<head><title>Not Found</title></head>");
-    res->println("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>");
-    res->println("</html>");
-}
-
-void handleInternalPage(HTTPRequest * req, HTTPResponse * res) {
-    // Header
-    res->setStatusCode(200);
-    res->setStatusText("OK");
-    res->setHeader("Content-Type", "text/html; charset=utf8");
-
-    // Write page
-    res->println("<!DOCTYPE html>");
-    res->println("<html>");
-    res->println("<head>");
-    res->println("<title>Internal Area</title>");
-    res->println("</head>");
-    res->println("<body>");
-
-    // Personalized greeting
-    res->print("<h1>Hello ");
-    // We can safely use the header value, this area is only accessible if it's
-    // set (the middleware takes care of this)
-    res->printStd(req->getHeader(HEADER_USERNAME));
-    res->print("!</h1>");
-
-    res->println("<p>Welcome to the internal area. Congratulations on successfully entering your password!</p>");
-
-    // The "admin area" will only be shown if the correct group has been assigned in the authenticationMiddleware
-    if (req->getHeader(HEADER_GROUP) == "ADMIN") {
-        res->println("<div style=\"border:1px solid red;margin: 20px auto;padding:10px;background:#ff8080\">");
-        res->println("<h2>You are an administrator</h2>");
-        res->println("<p>You are allowed to access the admin page:</p>");
-        res->println("<p><a href=\"/internal/admin\">Go to secret admin page</a></p>");
-        res->println("</div>");
-    }
-
-    // Link to the root page
-    res->println("<p><a href=\"/\">Go back home</a></p>");
-    res->println("</body>");
-    res->println("</html>");
-}
-
-void setupServer(void * param){
-    HTTPSServer * secureServer = NULL;
-    SSLCert * cert;
-
-    while(true){
-        if(WiFi.isConnected()){
-            Serial.println("Starting server...");
-            cert = new SSLCert();
-
-            int createCertResult = createSelfSignedCert(
-            *cert,
-            KEYSIZE_2048,
-            "CN=CLI,O=CLI,C=BR");
-        
-            if (createCertResult != 0) {
-                Serial.printf("Error generating certificate");
-                return; 
-            }
-
-            secureServer = new HTTPSServer(cert);
-            ResourceNode * nodeRoot     = new ResourceNode("/", "GET", &handleRoot);
-            ResourceNode * nodeInternal = new ResourceNode("/internal", "GET", &handleInternalPage);
-            ResourceNode * nodeAdmin    = new ResourceNode("/internal/admin", "GET", &handleAdminPage);
-            ResourceNode * nodePublic   = new ResourceNode("/public", "GET", &handlePublicPage);
-            ResourceNode * node404      = new ResourceNode("", "GET", &handle404);
-
-            secureServer->registerNode(nodeRoot);
-            secureServer->registerNode(nodeInternal);
-            secureServer->registerNode(nodeAdmin);
-            secureServer->registerNode(nodePublic);
-
-            secureServer->setDefaultNode(node404);
-
-            secureServer->addMiddleware(&middlewareAuthentication);
-            secureServer->addMiddleware(&middlewareAuthorization);
-
-            secureServer->start();
-            if (secureServer->isRunning()) {
-                Serial.println("Server ready.");
-            }
-            while(WiFi.isConnected()){
-                secureServer->loop();
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-            }
-        }else{
-            if(secureServer != NULL){
-                secureServer->~HTTPSServer();
-                secureServer = NULL;
-                Serial.println("Server ended");
-            }
-        }
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
-    vTaskDelete(NULL);
 }
 
 void setup(){
