@@ -747,12 +747,12 @@ void processReceivedPacket(void * param){
 
     while(true){
         while(announcing){
-            Serial.println("waiting announcing to finish");
-            vTaskDelay(100 / portTICK_PERIOD_MS);
+            //Serial.println("waiting announcing to finish");
+            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         while(transmiting){
-            Serial.println("waiting transmission to finish");
-            vTaskDelay(100 / portTICK_PERIOD_MS);
+            //Serial.println("waiting transmission to finish");
+            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         if(gotPacket){
             processing = true;
@@ -761,6 +761,7 @@ void processReceivedPacket(void * param){
                 activeClients[0]->send("[Packet received]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
             uint32_t size = 0;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                radio.standby();
                 size = radio.getPacketLength();
                 Serial.print("Size ");
                 Serial.println(size);
@@ -836,13 +837,13 @@ void processReceivedPacket(void * param){
                             strcpy(c.status, "recv");
                             Serial.println("Sending confirmation...");
                             while(announcing){
-                                Serial.println("Awaiting announcement to finnish before send confirmation...");
-                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                                //Serial.println("Awaiting announcement to finnish before send confirmation...");
+                                vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
 
                             while(transmiting){
-                                Serial.println("waiting transmission to finish");
-                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                                //Serial.println("waiting transmission to finish");
+                                vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
                             activity(lv_color_hex(0xff0000));
                             transmiting = true;
@@ -869,12 +870,12 @@ void processReceivedPacket(void * param){
                             strcpy(pong.id, user_id);
                             strcpy(pong.status, "pong");
                             while(announcing){
-                                Serial.println("Awaiting announcing to finish before send confirmation...");
-                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                                //Serial.println("Awaiting announcing to finish before send confirmation...");
+                                vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
                             while(transmiting){
-                                Serial.println("waiting transmission to finish before send confirmation...");
-                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                                //Serial.println("waiting transmission to finish before send confirmation...");
+                                vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
                             activity(lv_color_hex(0xff0000));
                             transmiting = true;
@@ -926,7 +927,7 @@ void processReceivedPacket(void * param){
             }
             processing = false;
         }
-        vTaskDelay(20 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
@@ -1196,16 +1197,12 @@ void test(lv_event_t * e){
     
     if(hasRadio){
         while(transmiting){
-            Serial.println("waiting transmition to finish");
-            vTaskDelay(100 / portTICK_PERIOD_MS);
-        }
-        while(announcing){
-            Serial.println("waiting announcing to finish");
-            vTaskDelay(100 / portTICK_PERIOD_MS);
+            //Serial.println("waiting transmition to finish");
+            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         while(processing){
-            Serial.println("waiting processing to finish");
-            vTaskDelay(100 / portTICK_PERIOD_MS);
+            //Serial.println("waiting processing to finish");
+            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         transmiting = true;
         int state = 0;
@@ -3536,20 +3533,16 @@ void announce(){
     
     activity(lv_color_hex(0xffff00));
     while(transmiting){
-        Serial.print("transmiting ");
-        Serial.println(transmiting?"true":"false");
-        Serial.println("announce");
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        //Serial.print("transmiting ");
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 
     while(processing){
-        Serial.print("gotPacket ");
-        Serial.println(gotPacket?"true":"false");
-        Serial.println("announce");
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        //Serial.print("gotPacket ");
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     
-    announcing = true;
+    transmiting = true;
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         status = radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status));
         if(status == RADIOLIB_ERR_NONE){
@@ -3565,7 +3558,7 @@ void announce(){
         xSemaphoreGive(xSemaphore);
     }
     //activity(lv_color_hex(0xcccccc));
-    announcing = false;
+    transmiting = false;
 }
 
 void setup(){
