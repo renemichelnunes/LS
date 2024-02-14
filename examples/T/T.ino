@@ -498,8 +498,8 @@ void middlewareAuthentication(HTTPRequest * req, HTTPResponse * res, std::functi
             res->setStatusCode(401);
             res->setStatusText("Unauthorized");
             res->setHeader("Content-Type", "text/plain");
-            res->setHeader("WWW-Authenticate", "Basic realm=\"ESP32 privileged area\"");
-            res->println("401. Unauthorized (try admin/secret or user/test)");
+            res->setHeader("WWW-Authenticate", "Basic realm=\"T-Deck privileged area\"");
+            res->println("401. Unauthorized");
         }
     }else{
         next();
@@ -530,8 +530,8 @@ void handleRoot(HTTPRequest * req, HTTPResponse * res) {
         "   <head>\n"
         "   <title>T-Deck Chat</title>\n"
         "</head>\n"
-        "<body>\n"
-        "    <div style=\"width:500px;border:1px solid black;margin:20px auto;display:block\">\n"
+        "<body style=\"color-scheme: dark; background-color: black; color: white;\">\n"
+        "    <div style=\"width:500px;border:1px solid white;margin:20px auto;display:block\">\n"
         "        <form onsubmit=\"return false\">\n"
         "            Your Name: <input type=\"text\" id=\"txtName\" value=\"T-Deck user\">\n"
         "            <button type=\"submit\" id=\"btnConnect\">Connect</button>\n"
@@ -574,7 +574,7 @@ void handleRoot(HTTPRequest * req, HTTPResponse * res) {
         "                        this.ws.send(this.name + \" joined!\");\n"
         "                    };\n"
         "                    this.ws.onmessage = e => {\n"
-        "                        divOut.innerHTML+=\"<p>\"+e.data+\"</p>\";\n"
+        "                        divOut.innerHTML+=e.data+\"<br>\";\n"
         "                        divOut.scrollTo(0,divOut.scrollHeight);\n"
         "                    }\n"
         "                    this.ws.onclose = e => {\n"
@@ -711,8 +711,8 @@ void setupServer(void * param){
             secureServer->registerNode(chatNode);
             secureServer->setDefaultNode(node404);
 
-            //secureServer->addMiddleware(&middlewareAuthentication);
-            //secureServer->addMiddleware(&middlewareAuthorization);
+            secureServer->addMiddleware(&middlewareAuthentication);
+            secureServer->addMiddleware(&middlewareAuthorization);
 
             secureServer->start();
             if (secureServer->isRunning()) {
@@ -782,18 +782,23 @@ void processReceivedPacket(void * param){
                     Serial.println(p.status);
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
-                    Serial.print(F(" RSSI:"));
+                    strcpy(message, "[RSSI:");
                     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                        Serial.print(radio.getRSSI());
+                        sprintf(pmsg, "%.2f", radio.getRSSI());
                         xSemaphoreGive(xSemaphore);
                     }
-                    Serial.print(F(" dBm"));
-                    Serial.print(F("  SNR:"));
+                    strcat(message, pmsg);
+                    strcat(message, " dBm");
+                    strcat(message, " SNR:");
                     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                        Serial.print(radio.getSNR());
+                        sprintf(pmsg, "%.2f", radio.getSNR());
                         xSemaphoreGive(xSemaphore);
                     }
-                    Serial.println(F(" dB"));
+                    strcat(message, pmsg);
+                    strcat(message, " dBm]");
+                    Serial.println(message);
+                    if(activeClients[0] != NULL)
+                        activeClients[0]->send(message, httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
 
                     contact = contacts_list.getContactByID(p.id);
                 
