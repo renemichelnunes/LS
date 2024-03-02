@@ -547,7 +547,7 @@ const char* script_js = R"rawliteral(
 
     function addContact(){
         console.log("add");
-        ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + ':9501' : 'ws://' + window.location.host + ':9501');
+        ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + ':443' : 'ws://' + window.location.host + ':443');
         ws.onopen = function(e){
             console.log(e);
         };
@@ -567,7 +567,7 @@ const char* script_js = R"rawliteral(
 
 
     function connect(){
-        ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + ':9501' : 'ws://' + window.location.host + ':9501');
+        ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + ':443' : 'ws://' + window.location.host + ':443');
         ws.onopen = function(e){
             console.log(e);
         };
