@@ -25,6 +25,9 @@
 #include <SSLCert.hpp>
 #include <HTTPRequest.hpp>
 #include <HTTPResponse.hpp>
+#include "index.h"
+#include "style.h"
+#include "script.h"
 
 using namespace httpsserver;
 
@@ -523,103 +526,24 @@ void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::functio
 
 void handleRoot(HTTPRequest * req, HTTPResponse * res) {
     res->setHeader("Content-Type", "text/html");
+    res->setStatusCode(200);
+    res->setStatusText("OK");
+    res->println(index_html);
 
-    res->print(
-        "<!DOCTYPE HTML>\n"
-        "<html>\n"
-        "   <head>\n"
-        "   <title>T-Deck Chat</title>\n"
-        "</head>\n"
-        "<body style=\"color-scheme: dark; background-color: black; color: white;\">\n"
-        "    <div style=\"width:500px;border:1px solid white;margin:20px auto;display:block\">\n"
-        "        <form onsubmit=\"return false\">\n"
-        "            Your Name: <input type=\"text\" id=\"txtName\" value=\"T-Deck user\">\n"
-        "            <button type=\"submit\" id=\"btnConnect\">Connect</button>\n"
-        "        </form>\n"
-        "        <form onsubmit=\"return false\">\n"
-        "            <div style=\"overflow:scroll;height:400px\" id=\"divOut\">Not connected...</div>\n"
-        "            Your Message: <input type=\"text\" id=\"txtChat\" disabled>\n"
-        "            <button type=\"submit\" id=\"btnSend\" disabled>Send</button>\n"
-        "        </form>\n"
-        "    </div>\n"
-        "    <script type=\"text/javascript\">\n"
-        "        const elem = id => document.getElementById(id);\n"
-        "        const txtName = elem(\"txtName\");\n"
-        "        const txtChat = elem(\"txtChat\");\n"
-        "        const btnConnect = elem(\"btnConnect\");\n"
-        "        const btnSend = elem(\"btnSend\");\n"
-        "        const divOut = elem(\"divOut\");\n"
-        "\n"
-        "        class Chat {\n"
-        "            constructor() {\n"
-        "                this.connecting = false;\n"
-        "                this.connected = false;\n"
-        "                this.name = \"\";\n"
-        "                this.ws = null;\n"
-        "            }\n"
-        "            connect() {\n"
-        "                if (this.ws === null) {\n"
-        "                    this.connecting = true;\n"
-        "                    txtName.disabled = true;\n"
-        "                    this.name = txtName.value;\n"
-        "                    btnConnect.innerHTML = \"Connecting...\";\n"
-        "                    this.ws = new WebSocket(\"wss://\" + document.location.host + \"/chat\");\n"
-        "                    this.ws.onopen = e => {\n"
-        "                        this.connecting = false;\n"
-        "                        this.connected = true;\n"
-        "                        divOut.innerHTML = \"<p>Connected.</p>\";\n"
-        "                        btnConnect.innerHTML = \"Disconnect\";\n"
-        "                        txtChat.disabled=false;\n"
-        "                        btnSend.disabled=false;\n"
-        "                        this.ws.send(this.name + \" joined!\");\n"
-        "                    };\n"
-        "                    this.ws.onmessage = e => {\n"
-        "                        divOut.innerHTML+=e.data+\"<br>\";\n"
-        "                        divOut.scrollTo(0,divOut.scrollHeight);\n"
-        "                    }\n"
-        "                    this.ws.onclose = e => {\n"
-        "                        this.disconnect();\n"
-        "                    }\n"
-        "                }\n"
-        "            }\n"
-        "            disconnect() {\n"
-        "                if (this.ws !== null) {\n"
-        "                    this.ws.send(this.name + \" left!\");\n"
-        "                    this.ws.close();\n"
-        "                    this.ws = null;\n"
-        "                }\n"
-        "                if (this.connected) {\n"
-        "                    this.connected = false;\n"
-        "                    txtChat.disabled=true;\n"
-        "                    btnSend.disabled=true;\n"
-        "                    txtName.disabled = false;\n"
-        "                    divOut.innerHTML+=\"<p>Disconnected.</p>\";\n"
-        "                    btnConnect.innerHTML = \"Connect\";\n"
-        "                }\n"
-        "            }\n"
-        "            sendMessage(msg) {\n"
-        "                if (this.ws !== null) {\n"
-        "                    this.ws.send(this.name + \": \" + msg);\n"
-        "                }\n"
-        "            }\n"
-        "        };\n"
-        "        let chat = new Chat();\n"
-        "        btnConnect.onclick = () => {\n"
-        "            if (chat.connected) {\n"
-        "                chat.disconnect();\n"
-        "            } else if (!chat.connected && !chat.connecting) {\n"
-        "                chat.connect();\n"
-        "            }\n"
-        "        }\n"
-        "        btnSend.onclick = () => {\n"
-        "            chat.sendMessage(txtChat.value);\n"
-        "            txtChat.value=\"\";\n"
-        "            txtChat.focus();\n"
-        "        }\n"
-        "    </script>\n"
-        "</body>\n"
-        "</html>\n"
-    );
+}
+
+void handleStyle(HTTPRequest * req, HTTPResponse * res) {
+    res->setHeader("Content-Type", "text/css");
+    res->setStatusCode(200);
+    res->setStatusText("OK");
+    res->println(style_css);
+}
+
+void handleScript(HTTPRequest * req, HTTPResponse * res) {
+    res->setHeader("Content-Type", "application/javascript");
+    res->setStatusCode(200);
+    res->setStatusText("OK");
+    res->println(script_js);
 }
 
 void handle404(HTTPRequest * req, HTTPResponse * res) {
@@ -702,9 +626,13 @@ void setupServer(void * param){
 
             secureServer = new HTTPSServer(cert, 443, 4);
             ResourceNode * nodeRoot = new ResourceNode("/", "GET", &handleRoot);
+            ResourceNode *nodeStyle = new ResourceNode("/style.css", "GET", &handleStyle);
+            ResourceNode *nodeScript = new ResourceNode("/script.js", "GET", &handleScript);
             ResourceNode * node404 = new ResourceNode("", "GET", &handle404);
 
             secureServer->registerNode(nodeRoot);
+            secureServer->registerNode(nodeStyle);
+            secureServer->registerNode(nodeScript);
             secureServer->registerNode(node404);
 
             WebsocketNode * chatNode = new WebsocketNode("/chat", &ChatHandler::create);
