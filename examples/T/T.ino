@@ -525,14 +525,15 @@ void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::functio
 }
 
 void handleRoot(HTTPRequest * req, HTTPResponse * res) {
+    Serial.println("Sending main page");
     res->setHeader("Content-Type", "text/html");
     res->setStatusCode(200);
     res->setStatusText("OK");
     res->println(index_html);
-
 }
 
 void handleStyle(HTTPRequest * req, HTTPResponse * res) {
+    Serial.println("Sending style.css");
     res->setHeader("Content-Type", "text/css");
     res->setStatusCode(200);
     res->setStatusText("OK");
@@ -540,6 +541,7 @@ void handleStyle(HTTPRequest * req, HTTPResponse * res) {
 }
 
 void handleScript(HTTPRequest * req, HTTPResponse * res) {
+    Serial.println("Sending script.js");
     res->setHeader("Content-Type", "application/javascript");
     res->setStatusCode(200);
     res->setStatusText("OK");
@@ -611,13 +613,17 @@ void setupServer(void * param){
 
     while(true){
         if(WiFi.isConnected()){
+            
             Serial.println("Starting server...");
             cert = new SSLCert();
 
             int createCertResult = createSelfSignedCert(
             *cert,
             KEYSIZE_2048,
-            "CN=CLI,O=CLI,C=BR");
+            "CN=CLI2,O=CLI2,C=BR",
+            "20240302000000",
+            "20340302000000"
+            );
         
             if (createCertResult != 0) {
                 Serial.printf("Error generating certificate");
@@ -626,13 +632,13 @@ void setupServer(void * param){
 
             secureServer = new HTTPSServer(cert, 443, 4);
             ResourceNode * nodeRoot = new ResourceNode("/", "GET", &handleRoot);
-            ResourceNode *nodeStyle = new ResourceNode("/style.css", "GET", &handleStyle);
-            ResourceNode *nodeScript = new ResourceNode("/script.js", "GET", &handleScript);
+            //ResourceNode * nodeStyle = new ResourceNode("/style.css", "GET", &handleStyle);
+            //ResourceNode * nodeScript = new ResourceNode("/script.js", "GET", &handleScript);
             ResourceNode * node404 = new ResourceNode("", "GET", &handle404);
 
             secureServer->registerNode(nodeRoot);
-            secureServer->registerNode(nodeStyle);
-            secureServer->registerNode(nodeScript);
+            //secureServer->registerNode(nodeStyle);
+            //secureServer->registerNode(nodeScript);
             secureServer->registerNode(node404);
 
             WebsocketNode * chatNode = new WebsocketNode("/chat", &ChatHandler::create);
@@ -661,7 +667,7 @@ void setupServer(void * param){
                 Serial.println("Server ended");
             }
         }
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
@@ -3596,7 +3602,7 @@ void setup(){
     // Notification task
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
     // web server
-    xTaskCreatePinnedToCore(setupServer, "server", 11000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(setupServer, "server", 12000, NULL, 1, NULL, 1);
     announce();
 }
 
