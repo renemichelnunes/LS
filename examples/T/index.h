@@ -820,10 +820,22 @@ const char index_html[] PROGMEM = R"rawliteral(
         });
     });
 
-    function changeStatus(id, status){
+    function changeStatusMessage(id, msg){
         var list = document.querySelector('.name-list ul');
         var count = list.childElementCount;
 
+        for(i = 0; i < count; i++){
+            if(list.children[i].children[0].value === id){
+                list.children[i].children[2].textContent = msg;
+                break;
+            }
+        }
+    }
+
+    function changeStatus(id, status){
+        var list = document.querySelector('.name-list ul');
+        var count = list.childElementCount;
+        
         for(i = 0; i < count; i++){
             if(list.children[i].children[0].value === id){
                 if(status == true)
@@ -839,7 +851,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         const nameList = document.querySelector('.name-list ul');
         nameList.innerHTML = "";
         let selectedListItem = null;
-
+        
         contactList.contacts.forEach(function(c) {
             const name = c.name;
             const id = c.id;
@@ -873,7 +885,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             last_msg.textContent = 'is there a way using only css to limit a text to a fized size?';
             last_msg.classList = 'last_msg';
             listItem.appendChild(last_msg);
-
+            
             // Add event listener to each list item
             listItem.addEventListener('click', function() {
                 // Remove background color from previously selected item
@@ -925,8 +937,9 @@ const char index_html[] PROGMEM = R"rawliteral(
                 if (message !== '') {
                     var currentDate = new Date();
                     var formattedDate = formatDate(currentDate);
-                    sendMesage(meID, message.replace(/<br>/g, '\n'));
+                    sendMesage(contactID, message.replace(/<br>/g, '\n'));
                     add_contact_msg('Me', formattedDate, message);
+                    changeStatusMessage(contactID, 'Me: ' + message);
                     textArea.value = ''; // Clear textarea
                 }
             }
@@ -1074,12 +1087,14 @@ const char index_html[] PROGMEM = R"rawliteral(
                     });
                 }else if(decData.command === "notification"){
                     alert(decData.message);
+                }else if(decData.command === "contact_status"){
+                    changeStatus(decData.contact.id, decData.contact.status);
                 }
             }else{
-                addMessage(data);
+                console.log(data);
             }
         }catch{
-            addMessage(data);
+            console.log(data);
         }
     }
 
@@ -1091,6 +1106,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     function connect(){
         ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + ':443/chat' : 'ws://' + window.location.host + '/chat');
         ws.onopen = function(e){
+            ws.send(JSON.stringify({"command" : "contacts"}));
             console.log(e);
         };
         ws.onerror = function(e){

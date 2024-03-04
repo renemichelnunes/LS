@@ -28,8 +28,10 @@
 #include "index.h"
 #include "style.h"
 #include "script.h"
+#include "ArduinoJson.hpp"
 
 using namespace httpsserver;
+using namespace ArduinoJson;
 
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
@@ -76,6 +78,8 @@ TaskHandle_t task_recv_pkt = NULL,
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
 notification notification_list = notification();
+
+Contact * actual_contact = NULL;
 
 char user_name[50] = "";
 char user_id[7] = "";
@@ -472,6 +476,20 @@ bool checkKb()
     return Wire.read() != -1;
 }
 
+std::string contacts_to_json(){
+    JsonDocument doc;
+    std::string json;
+
+    doc["command"] = "contacts";
+    for(uint32_t i = 0; i < contacts_list.size(); i++){
+        doc["contacts"][i]["id"] = contacts_list.getList()[i].getID();
+        doc["contacts"][i]["name"] = contacts_list.getList()[i].getName();
+        doc["contacts"][i]["status"] = contacts_list.getList()[i].inrange ? "on" : "off";
+    }
+    serializeJson(doc, json);
+    return json;
+}
+
 #define HEADER_USERNAME "X-USERNAME"
 #define HEADER_GROUP    "X-GROUP"
 
@@ -589,6 +607,67 @@ void ChatHandler::onClose() {
     }
 }
 
+void parseCommands(std::string jsonString){
+    JsonDocument doc;
+
+    deserializeJson(doc, jsonString);
+    const char * command = doc["command"];
+    if(strcmp(command, "send") == 0){
+        const char * id = doc["id"];
+        if(strcmp(id, "111111") == 0)
+            return;
+        const char * msg = encrypt(doc["msg"]).c_str();
+        if(hasRadio){
+            lora_packet pkt;
+            strcpy(pkt.id, user_id);
+            strcpy(pkt.status, "send");
+            strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+            strcpy(pkt.msg, msg);
+            
+            while(announcing){
+                Serial.println("announcing");
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+            }
+            while(gotPacket){
+                Serial.println("gotPacket");
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+            }
+            activity(lv_color_hex(0xff0000));
+            transmiting = true;
+            int state = 0;
+            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                state = radio.transmit((uint8_t *)&pkt, sizeof(lora_packet));
+                xSemaphoreGive(xSemaphore);
+            }
+            //activity(lv_color_hex(0xcccccc));
+            transmiting = false;
+
+            if(state != RADIOLIB_ERR_NONE){
+                Serial.print("transmission failed ");
+                Serial.println(state);
+            }else{
+                Serial.println("transmitted");
+                // add the message to the list of messages
+                pkt.me = true;
+                strcpy(pkt.id, actual_contact->getID().c_str());
+                Serial.print("Adding answer to ");
+                Serial.println(pkt.id);
+                Serial.println(pkt.msg);
+                messages_list.addMessage(pkt);
+            }
+        }else
+            Serial.println("Radio not configured");
+    }else if(strcmp(command, "contacts") == 0){
+        activeClients[0]->send(contacts_to_json().c_str(), WebsocketHandler::SEND_TYPE_TEXT);
+    }else if(strcmp(command, "sel_contact") == 0){
+        actual_contact = contacts_list.getContactByID(doc["id"]);
+        if(actual_contact != NULL)
+            Serial.println("Contact selected");
+        else
+            Serial.println("Contact selection failed, id not found");
+    }
+}
+
 void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
     // Get the input message
     std::ostringstream ss;
@@ -597,12 +676,7 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
     msg = ss.str();
 
     Serial.println(msg.c_str());
-    // Send it back to every client
-    for(int i = 0; i < 4; i++) {
-        if (activeClients[i] != nullptr) {
-            activeClients[i]->send(msg, SEND_TYPE_TEXT);
-        }
-    }
+    parseCommands(msg);
 }
 
 void setupServer(void * param){
@@ -1235,7 +1309,6 @@ void show_add_contacts_frm(lv_event_t * e){
     }
 }
 
-Contact * actual_contact = NULL;
 void hide_edit_contacts(lv_event_t * e){
     Contact c;
     const char * name, * id;
@@ -1656,6 +1729,17 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
     }
 }
 
+void sendContactsStatusJson(const char * id, bool status){
+    JsonDocument doc;
+    std::string json;
+
+    doc["command"] = "contact_status";
+    doc["contact"]["id"] = id;
+    doc["contact"]["status"] = status;
+    serializeJson(doc, json);
+    activeClients[0]->send(json.c_str(), httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+}
+
 void check_contacts_in_range(){
     activity(lv_color_hex(0x0095ff));
     contacts_list.check_inrange();
@@ -1669,8 +1753,10 @@ void check_contacts_in_range(){
         strcat(msg, contacts_list.getList()[i].getName().c_str());
         strcat(msg, contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
         strcat(msg, "]");
-        if(activeClients[0] != NULL)
+        if(activeClients[0] != NULL){
             activeClients[0]->send(msg, httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+            sendContactsStatusJson(contacts_list.getList()[i].getID().c_str(), contacts_list.getList()[i].inrange);
+        }
     }
     //activity(lv_color_hex(0xcccccc));
 }
