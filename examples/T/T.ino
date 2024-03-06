@@ -633,6 +633,7 @@ void sendContactMessages(const char * id){
     string json;
 
     doc["command"] = "msg_list";
+    doc["id"] = id;
     if(msgs.size() > 0){
         doc["command"] = "msg_list";
         for(uint32_t i = 0; i < msgs.size(); i++){
@@ -642,12 +643,12 @@ void sendContactMessages(const char * id){
             if(msgs[i].me){
                 doc["messages"][i]["msg"] = msgs[i].msg;
                 if(containsNonPrintableChars(doc["messages"][i]["msg"]))
-                    doc["messages"][i]["msg"] = "[message lost]";
+                    doc["messages"][i]["msg"] = "[corrupted]";
             }
             else{
                 doc["messages"][i]["msg"] = msgs[i].msg;
                 if(containsNonPrintableChars(doc["messages"][i]["msg"]))
-                    doc["messages"][i]["msg"] = "[message lost]";
+                    doc["messages"][i]["msg"] = "[corrupted]";
             }
         }
     }

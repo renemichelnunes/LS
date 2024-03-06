@@ -1080,10 +1080,17 @@ const char index_html[] PROGMEM = R"rawliteral(
                 }else if(decData.command === "msg_list"){
                     document.querySelector('.text-scroller').innerHTML = "";
                     decData.messages.forEach(function(m){
-                        if(m.me === true)
-                            add_contact_msg("Me", m.msg_date, m.msg);
-                        else
-                            add_contact_msg(contactName, m.msg_date, m.msg);
+                        if(contactID !== ""){
+                            if(m.me === true){
+                                add_contact_msg("Me", m.msg_date, m.msg);
+                            }
+                            else{
+                                add_contact_msg(contactName, m.msg_date, m.msg);
+                            }
+                            console.log(decData.id);
+                        }
+                        if(m.msg !== "[received]")
+                            changeStatusMessage(decData.id, m.msg);
                     });
                 }else if(decData.command === "notification"){
                     showNotification('T-Deck', decData.message);
