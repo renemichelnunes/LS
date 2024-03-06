@@ -835,7 +835,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     function changeStatus(id, status){
         var list = document.querySelector('.name-list ul');
         var count = list.childElementCount;
-        
+
         for(i = 0; i < count; i++){
             if(list.children[i].children[0].value === id){
                 if(status == true)
@@ -851,7 +851,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         const nameList = document.querySelector('.name-list ul');
         nameList.innerHTML = "";
         let selectedListItem = null;
-        
+
         contactList.contacts.forEach(function(c) {
             const name = c.name;
             const id = c.id;
@@ -882,10 +882,10 @@ const char index_html[] PROGMEM = R"rawliteral(
             listItemContent.appendChild(statusDiv);
 
             const last_msg = document.createElement('div');
-            last_msg.textContent = 'is there a way using only css to limit a text to a fized size?';
+            last_msg.textContent = '-';
             last_msg.classList = 'last_msg';
             listItem.appendChild(last_msg);
-            
+
             // Add event listener to each list item
             listItem.addEventListener('click', function() {
                 // Remove background color from previously selected item
@@ -1080,13 +1080,13 @@ const char index_html[] PROGMEM = R"rawliteral(
                 }else if(decData.command === "msg_list"){
                     document.querySelector('.text-scroller').innerHTML = "";
                     decData.messages.forEach(function(m){
-                        if(m.id === meID)
+                        if(m.me === true)
                             add_contact_msg("Me", m.msg_date, m.msg);
                         else
                             add_contact_msg(contactName, m.msg_date, m.msg);
                     });
                 }else if(decData.command === "notification"){
-                    alert(decData.message);
+                    showNotification('T-Deck', decData.message);
                 }else if(decData.command === "contact_status"){
                     changeStatus(decData.contact.id, decData.contact.status);
                 }
@@ -1104,7 +1104,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
 
     function connect(){
-        ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + ':443/chat' : 'ws://' + window.location.host + '/chat');
+        ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + '/chat' : 'ws://' + window.location.host + '/chat');
         ws.onopen = function(e){
             ws.send(JSON.stringify({"command" : "contacts"}));
             console.log(e);
@@ -1197,6 +1197,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         x = coordinates.x;
         y = coordinates.y;
     });
+
     </script>
 </body>
 </html>

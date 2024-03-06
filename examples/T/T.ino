@@ -63,6 +63,7 @@ volatile bool announcing = false;
 volatile bool transmiting = false;
 volatile bool processing = false;
 volatile bool gotPacket = false;
+volatile bool sendingJson = false;
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
 TaskHandle_t task_recv_pkt = NULL, 
@@ -607,14 +608,69 @@ void ChatHandler::onClose() {
     }
 }
 
+void sendJSON(string json){
+    sendingJson = true;
+    if(json.length() > 0)
+        for(uint i = 0; i < 4; i++)
+            if(activeClients[i] != NULL)
+                activeClients[i]->send(json, WebsocketHandler::SEND_TYPE_TEXT);
+    sendingJson = false;
+}
+
+bool containsNonPrintableChars(const char *str) {
+    while (*str) {
+        if (*str < 32 || *str > 126) { // ASCII values for printable characters
+            return true;
+        }
+        str++;
+    }
+    return false;
+}
+
+void sendContactMessages(const char * id){
+    vector<lora_packet>msgs = messages_list.getMessages(id);
+    JsonDocument doc;
+    string json;
+
+    doc["command"] = "msg_list";
+    if(msgs.size() > 0){
+        doc["command"] = "msg_list";
+        for(uint32_t i = 0; i < msgs.size(); i++){
+            doc["messages"][i]["me"] = msgs[i].me;
+            doc["messages"][i]["msg_date"] = msgs[i].date_time;
+            
+            if(msgs[i].me){
+                doc["messages"][i]["msg"] = msgs[i].msg;
+                if(containsNonPrintableChars(doc["messages"][i]["msg"]))
+                    doc["messages"][i]["msg"] = "[message lost]";
+            }
+            else{
+                doc["messages"][i]["msg"] = msgs[i].msg;
+                if(containsNonPrintableChars(doc["messages"][i]["msg"]))
+                    doc["messages"][i]["msg"] = "[message lost]";
+            }
+        }
+    }
+    serializeJson(doc, json);
+    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+        while(sendingJson){
+            Serial.println("waiting other json to finish...");
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+        sendJSON(json.c_str());
+        Serial.println(json.c_str());
+        xSemaphoreGive(xSemaphore);
+    }
+}
+
 void parseCommands(std::string jsonString){
     JsonDocument doc;
-
+    
     deserializeJson(doc, jsonString);
     const char * command = doc["command"];
     if(strcmp(command, "send") == 0){
         const char * id = doc["id"];
-        if(strcmp(id, "111111") == 0)
+        if(strcmp(id, "111111") == 0 || actual_contact == NULL)
             return;
         const char * msg = encrypt(doc["msg"]).c_str();
         if(hasRadio){
@@ -650,6 +706,7 @@ void parseCommands(std::string jsonString){
                 // add the message to the list of messages
                 pkt.me = true;
                 strcpy(pkt.id, actual_contact->getID().c_str());
+                strcpy(pkt.msg, doc["msg"]);
                 Serial.print("Adding answer to ");
                 Serial.println(pkt.id);
                 Serial.println(pkt.msg);
@@ -658,11 +715,19 @@ void parseCommands(std::string jsonString){
         }else
             Serial.println("Radio not configured");
     }else if(strcmp(command, "contacts") == 0){
-        activeClients[0]->send(contacts_to_json().c_str(), WebsocketHandler::SEND_TYPE_TEXT);
+        if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+            while(sendingJson){
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+            sendJSON(contacts_to_json().c_str());
+            xSemaphoreGive(xSemaphore);
+        }
     }else if(strcmp(command, "sel_contact") == 0){
         actual_contact = contacts_list.getContactByID(doc["id"]);
-        if(actual_contact != NULL)
+        if(actual_contact != NULL){
             Serial.println("Contact selected");
+            sendContactMessages(actual_contact->getID().c_str());
+        }
         else
             Serial.println("Contact selection failed, id not found");
     }
@@ -732,12 +797,13 @@ void setupServer(void * param){
             }
         }else{
             if(secureServer != NULL){
-                secureServer->~HTTPSServer();
-                secureServer = NULL;
                 for(int i = 0; i < 4; i++){
                     activeClients[i]->close();
                     activeClients[i] = nullptr;
                 }
+                secureServer->~HTTPSServer();
+                secureServer = NULL;
+                
                 Serial.println("Server ended");
             }
         }
@@ -765,8 +831,7 @@ void processReceivedPacket(void * param){
         if(gotPacket){
             processing = true;
             Serial.println("Packet received");
-            if(activeClients[0] != NULL)
-                activeClients[0]->send("[Packet received]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+            
             uint32_t size = 0;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 radio.standby();
@@ -806,8 +871,15 @@ void processReceivedPacket(void * param){
                     strcat(message, pmsg);
                     strcat(message, " dBm]");
                     Serial.println(message);
-                    if(activeClients[0] != NULL)
-                        activeClients[0]->send(message, httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+
+                    while(sendingJson){
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                    }
+                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                        
+                        sendJSON(message);
+                        xSemaphoreGive(xSemaphore);
+                    }
 
                     contact = contacts_list.getContactByID(p.id);
                 
@@ -819,13 +891,21 @@ void processReceivedPacket(void * param){
                             strcpy(p.msg, dec_msg);
                             notify_snd();
                             messages_list.addMessage(p);
+                            sendContactMessages(p.id);
 
-                            if(activeClients[0]){
-                                strcpy(message, contact->getName().c_str());
-                                strcat(message, ": ");
-                                strcat(message, p.msg);
-                                activeClients[0]->send(message, httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+                            
+                            strcpy(message, contact->getName().c_str());
+                            strcat(message, ": ");
+                            strcat(message, p.msg);
+                            while(sendingJson){
+                                vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
+                            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                                
+                                sendJSON(message);
+                                xSemaphoreGive(xSemaphore);
+                            }
+                            
                             
                             strcpy(message, contact->getName().c_str());
                             strcat(message, ": ");
@@ -867,13 +947,15 @@ void processReceivedPacket(void * param){
                         }
 
                         if(strcmp(p.status, "recv") == 0){
+                            strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                            strcpy(p.msg, "[received]");
                             messages_list.addMessage(p);
+                            sendContactMessages(p.id);
                         }
                         
                         if(strcmp(p.status, "ping") == 0){
                             notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
-                            if(activeClients[0] != NULL)
-                                activeClients[0]->send("[ping]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+                            
                             Serial.print("Sending pong...");
                             strcpy(pong.id, user_id);
                             strcpy(pong.status, "pong");
@@ -920,13 +1002,27 @@ void processReceivedPacket(void * param){
                 }
                 else{
                     Serial.println("Packet ignored");
-                    if(activeClients[0] != NULL)
-                        activeClients[0]->send("[Packet ignored]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+                    while(sendingJson){
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                    }
+                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                        
+                        sendJSON("[Packet ignored]");
+                        xSemaphoreGive(xSemaphore);
+                    }
+                    
                 }
             }else{
                 Serial.println("Unknown or malformed packet");
-                if(activeClients[0] != NULL)
-                    activeClients[0]->send("[Unknown or malformed packet]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+                while(sendingJson){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
+                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                    
+                    sendJSON("[Unknown or malformed packet]");
+                    xSemaphoreGive(xSemaphore);
+                }
+                
             }
             gotPacket = false;
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -1183,6 +1279,7 @@ String encrypt(String msg){
     strcpy(k, user_id);
     strcat(k, user_id);
     strcat(k, user_id);
+    k[16] = '\0';
     cipher->setKey(k);
     return cipher->encryptString(msg);
 }
@@ -1193,8 +1290,9 @@ String decrypt(char * contact_id, String msg){
     strcpy(k, contact_id);
     strcat(k, contact_id);
     strcat(k, contact_id);
+    k[16] = '\0';
     cipher->setKey(k);
-    return cipher->decryptBuffer(msg);
+    return cipher->decryptString(msg);
 }
 
 void test(lv_event_t * e){
@@ -1737,7 +1835,13 @@ void sendContactsStatusJson(const char * id, bool status){
     doc["contact"]["id"] = id;
     doc["contact"]["status"] = status;
     serializeJson(doc, json);
-    activeClients[0]->send(json.c_str(), httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+        while(sendingJson){
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+        sendJSON(json.c_str());
+        xSemaphoreGive(xSemaphore);
+    }
 }
 
 void check_contacts_in_range(){
@@ -1746,17 +1850,13 @@ void check_contacts_in_range(){
     char msg[100] = {'\0'};
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
-
         Serial.print(contacts_list.getList()[i].getName());
         Serial.println(contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
         strcpy(msg, "[");
         strcat(msg, contacts_list.getList()[i].getName().c_str());
         strcat(msg, contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
         strcat(msg, "]");
-        if(activeClients[0] != NULL){
-            activeClients[0]->send(msg, httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
-            sendContactsStatusJson(contacts_list.getList()[i].getID().c_str(), contacts_list.getList()[i].inrange);
-        }
+        sendContactsStatusJson(contacts_list.getList()[i].getID().c_str(), contacts_list.getList()[i].inrange);
     }
     //activity(lv_color_hex(0xcccccc));
 }
@@ -3567,13 +3667,11 @@ void announce(){
         status = radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status));
         if(status == RADIOLIB_ERR_NONE){
             Serial.println("Hi!");
-            if(activeClients[0] != NULL)
-                activeClients[0]->send("[Hi!]", httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+            sendJSON("[Hi!]");
         }else{
             Serial.print("announcement failed ");
             Serial.println(status);
-            if(activeClients[0] != NULL)
-                activeClients[0]->send("announcement failed " + status, httpsserver::WebsocketHandler::SEND_TYPE_TEXT);
+            sendJSON("announcement failed");
         }
         xSemaphoreGive(xSemaphore);
     }
