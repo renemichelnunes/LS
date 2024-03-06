@@ -730,6 +730,60 @@ void parseCommands(std::string jsonString){
         }
         else
             Serial.println("Contact selection failed, id not found");
+    }else if(strcmp(command, "edit_contact") == 0){
+        Contact * c = NULL;
+        bool edited = false;
+        if(strcmp(doc["id"], doc["newid"]) != 0){
+            c = contacts_list.getContactByID(doc["newid"]);
+            if(c != NULL){
+                sendJSON("{\"command\" : \"notification\", \"message\" : \"ID in use.\"}");
+            }else{
+                edited = true;
+            }
+        }
+        else
+            edited = true;
+        if(edited){
+            c = contacts_list.getContactByID(doc["id"]);
+            if(c != NULL){
+                c->setID(doc["newid"]);
+                c->setName(doc["newname"]);
+                saveContacts();
+                sendJSON(contacts_to_json());
+                sendJSON("{\"command\" : \"notification\", \"message\" : \"Edited.\"}");
+            }
+        }
+    }else if(strcmp(command, "del_contact") == 0){
+        Contact * c = contacts_list.getContactByID(doc["id"]);
+        if(c != NULL){
+            if(contacts_list.del(*c)){
+                Serial.print("Contact id ");
+                Serial.print((const char*)doc["id"]);
+                Serial.println(" deleted.");
+                saveContacts();
+                sendJSON(contacts_to_json());
+                sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact deleted.\"}");
+            }else
+                sendJSON("{\"command\" : \"notification\", \"message\" : \"Error deleting contact.\"}");
+        }else
+            sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact not found.\"}");
+    }else if(strcmp(command, "new_contact") == 0){
+        Contact * c = contacts_list.getContactByID(doc["id"]);
+        if(c == NULL){
+            c = new Contact(doc["name"], doc["id"]);
+            if(contacts_list.add(*c)){
+                Serial.print("New contact ID ");
+                Serial.print((const char *)doc["id"]);
+                Serial.println(" added.");
+                saveContacts();
+                sendJSON(contacts_to_json());
+                sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact added.\"}");
+            }
+            else
+                sendJSON("{\"command\" : \"notification\", \"message\" : \"Fail to add new contact.\"}");
+        }else{
+            sendJSON("{\"command\" : \"notification\", \"message\" : \"ID in use.\"}");
+        }
     }
 }
 
@@ -872,15 +926,6 @@ void processReceivedPacket(void * param){
                     strcat(message, " dBm]");
                     Serial.println(message);
 
-                    while(sendingJson){
-                        vTaskDelay(10 / portTICK_PERIOD_MS);
-                    }
-                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                        
-                        sendJSON(message);
-                        xSemaphoreGive(xSemaphore);
-                    }
-
                     contact = contacts_list.getContactByID(p.id);
                 
                     if(contact != NULL){
@@ -1002,15 +1047,6 @@ void processReceivedPacket(void * param){
                 }
                 else{
                     Serial.println("Packet ignored");
-                    while(sendingJson){
-                        vTaskDelay(10 / portTICK_PERIOD_MS);
-                    }
-                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                        
-                        sendJSON("[Packet ignored]");
-                        xSemaphoreGive(xSemaphore);
-                    }
-                    
                 }
             }else{
                 Serial.println("Unknown or malformed packet");
@@ -1816,14 +1852,14 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
     
     
     if(in_range){
-        
+        pthread_mutex_lock(&lvgl_mutex);
         lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-        
+        pthread_mutex_unlock(&lvgl_mutex);
     }
     else{
-        
+        pthread_mutex_lock(&lvgl_mutex);
         lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
-        
+        pthread_mutex_unlock(&lvgl_mutex);
     }
 }
 
@@ -3667,11 +3703,9 @@ void announce(){
         status = radio.transmit((uint8_t *)&hi, sizeof(lora_packet_status));
         if(status == RADIOLIB_ERR_NONE){
             Serial.println("Hi!");
-            sendJSON("[Hi!]");
         }else{
             Serial.print("announcement failed ");
             Serial.println(status);
-            sendJSON("announcement failed");
         }
         xSemaphoreGive(xSemaphore);
     }
