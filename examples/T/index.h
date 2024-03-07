@@ -147,7 +147,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         margin-bottom: 5px;
         width: 300px;
         background-color: #ffe4c4;
-        box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 1);
+        box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
     }
 
     .contact_header2 {
@@ -156,7 +156,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         margin-bottom: 5px;
         width: 300px;
         background-color: #bed5de;
-        box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 1);
+        box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
     }
 
     #divNew {
@@ -478,7 +478,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <div class="text-scroller">
 
                 </div>
-                <textarea id="msg-area" class="input-textarea" rows="4" placeholder="Type your message here, use 'Enter' to send and 'Shift + Enter' to add a new line..."></textarea>
+                <textarea id="msg-area" class="input-textarea" rows="4" maxlength="150" placeholder="Type your message here, use 'Enter' to send and 'Shift + Enter' to add a new line..."></textarea>
             </div>
         </div>
         <div class="content" id="tab2" style="display: none;">
@@ -532,7 +532,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     </div>
     <div id="divNew">
         <form id="frmNew">
-            <textarea id="CID" rows="1" placeholder="ID"></textarea>
+            <textarea id="CID" rows="1" maxlength="6" placeholder="ID"></textarea>
             <textarea id="CName" rows="1" placeholder="Name"></textarea>
             <input type="button" value="Confirm" onclick="confirmNew()">
             <input type="button" value="Close" onclick="hideNew()">
@@ -540,7 +540,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     </div>
     <div id="divEdit">
         <form id="frmEdit">
-            <textarea id="CIDedit" rows="1" placeholder="ID"></textarea>
+            <textarea id="CIDedit" rows="1" maxlength="6" placeholder="ID"></textarea>
             <textarea id="CNameedit" rows="1" placeholder="Name"></textarea>
             <input type="button" value="Confirm" onclick="confirmEdit()">
             <input type="button" value="Close" onclick="hideEdit()">
@@ -1071,6 +1071,45 @@ const char index_html[] PROGMEM = R"rawliteral(
         textScroller.scrollTo(0, textScroller.scrollHeight);
     }
 
+    function playNewMessage() {
+        // Play the first tone (440Hz, 100ms)
+        playSineWave(440, 100, 0.5);
+        
+        // Schedule the second tone (600Hz, 100ms) after a delay of 100ms
+        setTimeout(function() {
+            playSineWave(600, 100, 0.5);
+            setTimeout(function() {
+                playSineWave(800, 100, 0.5);
+            }, 100);
+        }, 100);
+    }
+
+    function playSineWave(frequencyInHz, durationInMilliseconds, volume) {
+        // Audio context
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        // Convert duration from milliseconds to seconds
+        const durationInSeconds = durationInMilliseconds / 1000;
+
+        // Create an oscillator node
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain(); // Create a gain node for controlling volume
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequencyInHz, audioCtx.currentTime); // value in hertz
+        oscillator.connect(gainNode); // Connect oscillator to gain node
+        gainNode.connect(audioCtx.destination); // Connect gain node to audio context destination
+
+        // Set volume
+        gainNode.gain.value = volume;
+
+        // Start the oscillator
+        oscillator.start();
+
+        // Stop the oscillator after durationInSeconds seconds
+        oscillator.stop(audioCtx.currentTime + durationInSeconds);
+    }
+
     function parseData(data){
         try{
             let decData = JSON.parse(data);
@@ -1078,6 +1117,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 if(decData.command === "contacts"){
                     loadConstacts(decData);
                 }else if(decData.command === "msg_list"){
+                    console.log(decData.messages);
                     document.querySelector('.text-scroller').innerHTML = "";
                     decData.messages.forEach(function(m){
                         if(contactID !== ""){
@@ -1096,6 +1136,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                     showNotification('T-Deck', decData.message);
                 }else if(decData.command === "contact_status"){
                     changeStatus(decData.contact.id, decData.contact.status);
+                }else if(decData.command === "playNewMessage"){
+                    playNewMessage();
                 }
             }else{
                 console.log(data);

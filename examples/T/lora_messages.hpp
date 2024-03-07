@@ -4,15 +4,17 @@
 #include <exception>
 
 struct lora_packet_status{
-    char id[7] = {'\0'};
+    char sender[7] = {'\0'};
+    char destiny[7] = {'\0'};
     char status[7] = "recv";
 };
 
 struct lora_packet{
-    char id[7] = {'\0'};
+    char sender[7] = {'\0'};
+    char destiny[7] = {'\0'};
     char status[7] = {'\0'};
     bool me = false;
-    char msg[200] = {'\0'};
+    char msg[150] = {'\0'};
     char date_time[30] = {'\0'};
 };
 

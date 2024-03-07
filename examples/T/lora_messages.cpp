@@ -16,11 +16,11 @@ int inc = 0;
 bool lora_incomming_messages::addMessage(lora_packet packet, bool newMsg)
 {   
     try{
-        uint32_t index = find(packet.id);
+        uint32_t index = find(packet.destiny);
         if(index == -1){//New contact
             Serial.println("new contact messages");
             lora_contact_messages a;
-            strcpy(a.id, packet.id);
+            strcpy(a.id, packet.destiny);
             a.newMessages = newMsg;
             a.messages.push_back(packet);
             Serial.println(a.id);
