@@ -833,14 +833,19 @@ void setupServer(void * param){
 
     while(true){
         if(WiFi.isConnected()){
-            
+            char cn[30] = {'\0'};
+            strcpy(cn, "CN=TDECK");
+            strcat(cn, user_id);
+            strcat(cn, ",O=TDECK");
+            strcat(cn, user_id);
+            strcat(cn, ",C=BR");
             Serial.println("Starting server...");
             cert = new SSLCert();
 
             int createCertResult = createSelfSignedCert(
             *cert,
             KEYSIZE_2048,
-            "CN=CLI2,O=CLI2,C=BR",
+            cn,
             "20240302000000",
             "20340302000000"
             );
