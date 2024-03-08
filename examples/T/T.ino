@@ -60,6 +60,7 @@ bool touchDected = false;
 bool kbDected = false;
 bool hasRadio = false; 
 bool wifi_connected = false;
+bool isDX = false;
 volatile bool announcing = false;
 volatile bool transmiting = false;
 volatile bool processing = false;
@@ -86,6 +87,8 @@ Contact * actual_contact = NULL;
 char user_name[50] = "";
 char user_id[7] = "";
 char connected_to[200] = "";
+char ui_primary_color_hex_text[7] = {'\u0000'};
+uint8_t brightness = 1;
 
 struct tm timeinfo;
 
@@ -125,10 +128,12 @@ static void loadSettings(){
         for(uint32_t index = 0; index < v.size(); index++){
             v[index].remove(v[index].length() - 1);
         }
-        if(v.size() > 2){
+        if(v.size() > 3){
             strcpy(user_name, v[0].c_str());
             strcpy(user_id, v[1].c_str());
+            brightness = atoi(v[3].c_str());
             v[2].toUpperCase();
+            strcpy(ui_primary_color_hex_text, v[2].c_str());
             ui_primary_color = strtoul(v[2].c_str(), NULL, 16);
             lv_disp_t *dispp = lv_disp_get_default();
             lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
@@ -157,6 +162,7 @@ static void saveSettings(){
     file.println(lv_textarea_get_text(frm_settings_name));
     file.println(lv_textarea_get_text(frm_settings_id));
     file.println(lv_textarea_get_text(frm_settings_color));
+    file.println(brightness);
     Serial.println("settings saved");
     file.close();
 }
@@ -685,6 +691,27 @@ void sendContactMessages(const char * id){
     }
 }
 
+void setBrightness2(uint8_t level){
+    brightness = level;
+    analogWrite(BOARD_BL_PIN, mapv(brightness, 0, 9, 100, 255));
+    lv_roller_set_selected(frm_settings_brightness_roller, brightness, LV_ANIM_OFF);
+    saveSettings();
+}
+
+string settingsJSON(){
+    JsonDocument doc;
+    string json;
+
+    doc["command"] = "settings";
+    doc["name"] = user_name;
+    doc["id"] = user_id;
+    doc["dx"] = isDX;
+    doc["color"] = ui_primary_color_hex_text;
+    doc["brightness"] = brightness;
+    serializeJson(doc, json);
+    return json;
+}
+
 void parseCommands(std::string jsonString){
     JsonDocument doc;
     
@@ -813,6 +840,37 @@ void parseCommands(std::string jsonString){
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Fail to add new contact.\"}");
         }else{
             sendJSON("{\"command\" : \"notification\", \"message\" : \"ID in use.\"}");
+        }
+    }else if(strcmp(command, "read_settings") == 0){
+        sendJSON(settingsJSON());
+    }else if(strcmp(command, "set_brightness") == 0){
+        setBrightness2((uint8_t)doc["brightness"]);
+    }else if(strcmp(command, "set_ui_color") == 0){
+        char color[7] = "";
+        
+        strcpy(color, doc["color"]);
+        lv_textarea_set_text(frm_settings_color, color);
+        if(strcmp(color, "") == 0)
+            return;
+        ui_primary_color = strtoul(color, NULL, 16);
+        lv_disp_t *dispp = lv_disp_get_default();
+        lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
+        lv_disp_set_theme(dispp, theme);
+    }else if(strcmp(command, "set_name_id") == 0){
+        strcpy(user_id, doc["id"]);
+        strcpy(user_name, doc["name"]);
+        lv_textarea_set_text(frm_settings_name, user_name);
+        lv_textarea_set_text(frm_settings_id, user_id);
+        saveSettings();
+        sendJSON("{\"command\" : \"notification\", \"message\" : \"Name and ID saved.\"}");
+    }else if(strcmp(command, "set_dx_mode") == 0){
+        if(doc["dx"]){
+            if(DXMode())
+                sendJSON("{\"command\" : \"notification\", \"message\" : \"DX mode.\"}");
+        }
+        else{
+            if(normalMode())
+                sendJSON("{\"command\" : \"notification\", \"message\" : \"Normal mode.\"}");
         }
     }
 }
@@ -998,8 +1056,8 @@ void processReceivedPacket(void * param){
                             
                             strcpy(message, contact->getName().c_str());
                             strcat(message, ": ");
-                            if(sizeof(p.msg) > 199){
-                                memcpy(pmsg, dec_msg, 199);
+                            if(sizeof(p.msg) > 149){
+                                memcpy(pmsg, dec_msg, 149);
                                 strcat(message, pmsg);
                             }
                             else
@@ -1465,6 +1523,7 @@ void show_settings(lv_event_t * e){
         lv_textarea_set_text(frm_settings_id, user_id);
         sprintf(color, "%lX", ui_primary_color);
         lv_textarea_set_text(frm_settings_color, color);
+        lv_roller_set_selected(frm_settings_brightness_roller, brightness, LV_ANIM_OFF);
     }
 }
 
@@ -1792,6 +1851,7 @@ void DX(lv_event_t * e){
             if(DXMode()){
                 Serial.println("DX mode on");
                 notification_list.add("DX mode", LV_SYMBOL_SETTINGS);
+                isDX = true;
             }else{
                 notification_list.add("DX mode failed", LV_SYMBOL_SETTINGS);
                 Serial.println("DX mode failed");
@@ -1800,6 +1860,7 @@ void DX(lv_event_t * e){
             if(normalMode()){
                 notification_list.add( "Normal mode", LV_SYMBOL_SETTINGS);
                 Serial.println("DX mode off");
+                isDX = false;
             }else{
                 notification_list.add("Normal mode failed",LV_SYMBOL_SETTINGS);
                 Serial.println("Normal mode failed");
@@ -2484,11 +2545,10 @@ const char * brightness_levels = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10";
 void setBrightness(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * roller = (lv_obj_t *)lv_event_get_target(e);
-    int val = 0;
 
     if(code == LV_EVENT_VALUE_CHANGED){
-        val = lv_roller_get_selected(roller);
-        analogWrite(BOARD_BL_PIN, mapv(val, 0, 9, 100, 255));
+        brightness = lv_roller_get_selected(roller);
+        analogWrite(BOARD_BL_PIN, mapv(brightness, 0, 9, 100, 255));
     }
 }
 
@@ -3861,7 +3921,7 @@ void setup(){
     loadSettings();
     
     // set brightness
-    analogWrite(BOARD_BL_PIN, 100);
+    analogWrite(BOARD_BL_PIN, mapv(brightness, 0, 9, 100, 255));
 
     if(wifi_connected_nets.list.size() > 0)
         xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 1, &task_wifi_auto, 0);

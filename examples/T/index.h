@@ -466,7 +466,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         <div class="content" id="tab1">
             <div class="name-list">
                 <ul>
-
+                    
                 </ul>
             </div>
             <div class="btn-add">
@@ -476,9 +476,9 @@ const char index_html[] PROGMEM = R"rawliteral(
             </div>
             <div class="chat-messages">
                 <div class="text-scroller">
-
+                    
                 </div>
-                <textarea id="msg-area" class="input-textarea" rows="4" maxlength="150" placeholder="Type your message here, use 'Enter' to send and 'Shift + Enter' to add a new line..."></textarea>
+                <textarea id="msg-area" class="input-textarea" rows="4" placeholder="Type your message here, use 'Enter' to send and 'Shift + Enter' to add a new line..."></textarea>
             </div>
         </div>
         <div class="content" id="tab2" style="display: none;">
@@ -487,6 +487,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         <div class="content" id="tab3" style="display: none;">
             <div class="settings_id">
                 My ID
+                <input type="button" id="btn_save" class="input_save" value="Save" onclick="saveConfig()">
                 <input id="settings_name" placeholder="Name">
                 <br>
                 <input id="settings_id" placeholder="ID" maxlength="6">
@@ -507,7 +508,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 DX
             </div>
             <div class="settings_wifi">
-
+                
             </div>
             <div class="settings_ui">
                 UI Color
@@ -527,12 +528,11 @@ const char index_html[] PROGMEM = R"rawliteral(
                 </div>
                 <div id="brightness_value"></div>
             </div>
-            <input type="button" id="btn_save" class="input_save" value="Save" onclick="saveConfig()">
         </div>
     </div>
     <div id="divNew">
         <form id="frmNew">
-            <textarea id="CID" rows="1" maxlength="6" placeholder="ID"></textarea>
+            <textarea id="CID" rows="1" placeholder="ID"></textarea>
             <textarea id="CName" rows="1" placeholder="Name"></textarea>
             <input type="button" value="Confirm" onclick="confirmNew()">
             <input type="button" value="Close" onclick="hideNew()">
@@ -540,7 +540,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     </div>
     <div id="divEdit">
         <form id="frmEdit">
-            <textarea id="CIDedit" rows="1" maxlength="6" placeholder="ID"></textarea>
+            <textarea id="CIDedit" rows="1" placeholder="ID"></textarea>
             <textarea id="CNameedit" rows="1" placeholder="Name"></textarea>
             <input type="button" value="Confirm" onclick="confirmEdit()">
             <input type="button" value="Close" onclick="hideEdit()">
@@ -679,14 +679,12 @@ const char index_html[] PROGMEM = R"rawliteral(
 
     function dxmode(){
         dx = true;
-        console.log(JSON.stringify({"command" : "set_dx_mode", "dx" : dx}));
         if(ws !== null)
             ws.send(JSON.stringify({"command" : "set_dx_mode", "dx" : dx}));
     }
 
     function normalMode(){
         dx = false;
-        console.log(JSON.stringify({"command" : "set_dx_mode", "dx" : dx}));
         if(ws !== null)
             ws.send(JSON.stringify({"command" : "set_dx_mode", "dx" : dx}));
     }
@@ -720,20 +718,18 @@ const char index_html[] PROGMEM = R"rawliteral(
     function sendGeneratedID(){
         var input = document.getElementById('settings_id');
         let id = generateID();
-        window.confirm("Advice your contacts about your new ID or they won't receive your messages. Cancel if you want to maintain your actual ID.");
-        input.value = id;
+        if(window.confirm("Advice your contacts about your new ID or they won't receive your messages. Cancel if you want to maintain your actual ID."))
+            input.value = id;
     }
 
 
     function setBrightness(level) {
-        var brightnessRange = document.getElementById('brightnessRange');
         var brightness_value = document.getElementById('brightness_value');
 
         // Perform actions based on the selected brightness level
         brightness_value.innerHTML = level;
         if(ws !== null)
-            ws.send(JSON.stringify({"command":"set_brightness", "brightness":level}));
-        console.log(JSON.stringify({"command":"set_brightness", "brightness":level}));
+            ws.send(JSON.stringify({"command":"set_brightness", "brightness":level - 1}));
     }
 
     function showContextMenu(event, id, name) {
@@ -1074,7 +1070,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     function playNewMessage() {
         // Play the first tone (440Hz, 100ms)
         playSineWave(440, 100, 0.5);
-        
+
         // Schedule the second tone (600Hz, 100ms) after a delay of 100ms
         setTimeout(function() {
             playSineWave(600, 100, 0.5);
@@ -1139,6 +1135,15 @@ const char index_html[] PROGMEM = R"rawliteral(
                 }else if(decData.command === "disconnect"){
                     console.log("received disconnect command");
                     ws.close();
+                }else if(decData.command === "settings"){
+                    document.getElementById('settings_name').value = decData.name;
+                    document.getElementById('settings_id').value = decData.id;
+                    if(decData.dx === true)
+                        setDxToggle();
+                    document.getElementById('settings_uicolor').value = decData.color;
+                    document.getElementById('color-picker-button').style.backgroundColor = "#" + decData.color;
+                    document.getElementById('brightnessRange').value = parseInt(decData.brightness) + 1;
+                    document.getElementById('brightness_value').value = parseInt(decData.brightness) + 1;
                 }
             }else{
                 console.log(data);
@@ -1154,9 +1159,10 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
 
     function connect(){
-        ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + '/chat' : 'ws://' + window.location.host + '/chat');
+        ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + '/chat' : 'ws://' + window.location.host + ':9501/chat');
         ws.onopen = function(e){
             ws.send(JSON.stringify({"command" : "contacts"}));
+            ws.send(JSON.stringify({"command" : "read_settings"}));
             document.getElementById('btnconnect').disabled = true;
             console.log(e);
         };
@@ -1249,6 +1255,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         x = coordinates.x;
         y = coordinates.y;
     });
+
 
     </script>
 </body>
