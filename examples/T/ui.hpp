@@ -110,6 +110,8 @@ lv_obj_t * frm_settings_wifi_ip;
 lv_obj_t * frm_settings_wifi_mask;
 lv_obj_t * frm_settings_wifi_gateway;
 lv_obj_t * frm_settings_wifi_dns;
+lv_obj_t * frm_settings_wifi_http_btn;
+lv_obj_t * frm_settings_wifi_http_label;
 lv_obj_t * frm_settings_btn_wifi_conf;
 lv_obj_t * frm_settings_btn_wifi_conf_lbl;
 lv_obj_t * frm_settings_brightness_roller;

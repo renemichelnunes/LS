@@ -1117,7 +1117,6 @@ const char index_html[] PROGMEM = R"rawliteral(
                 if(decData.command === "contacts"){
                     loadConstacts(decData);
                 }else if(decData.command === "msg_list"){
-                    console.log(decData.messages);
                     document.querySelector('.text-scroller').innerHTML = "";
                     decData.messages.forEach(function(m){
                         if(contactID !== ""){
@@ -1127,7 +1126,6 @@ const char index_html[] PROGMEM = R"rawliteral(
                             else{
                                 add_contact_msg(contactName, m.msg_date, m.msg);
                             }
-                            console.log(decData.id);
                         }
                         if(m.msg !== "[received]")
                             changeStatusMessage(decData.id, m.msg);
@@ -1138,6 +1136,9 @@ const char index_html[] PROGMEM = R"rawliteral(
                     changeStatus(decData.contact.id, decData.contact.status);
                 }else if(decData.command === "playNewMessage"){
                     playNewMessage();
+                }else if(decData.command === "disconnect"){
+                    console.log("received disconnect command");
+                    ws.close();
                 }
             }else{
                 console.log(data);
@@ -1156,6 +1157,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + '/chat' : 'ws://' + window.location.host + '/chat');
         ws.onopen = function(e){
             ws.send(JSON.stringify({"command" : "contacts"}));
+            document.getElementById('btnconnect').disabled = true;
             console.log(e);
         };
         ws.onerror = function(e){
@@ -1167,6 +1169,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         };
         ws.onclose = function(e){
             clear_contacts_and_messages();
+            document.getElementById('btnconnect').disabled = false;
             console.log("Disconnected");
         }
     };

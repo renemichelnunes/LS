@@ -604,6 +604,9 @@ WebsocketHandler * ChatHandler::create() {
 void ChatHandler::onClose() {
     for(int i = 0; i < 4; i++) {
         if (activeClients[i] == this) {
+            Serial.print("closing websocket no ");
+            Serial.println(i);
+            activeClients[i]->close(1000, "Server shutdown");
             activeClients[i] = nullptr;
         }
     }
@@ -829,7 +832,8 @@ void setupServer(void * param){
     HTTPSServer * secureServer = NULL;
     SSLCert * cert;
 
-    for(int i = 0; i < 4; i++) activeClients[i] = nullptr;
+    for(int i = 0; i < 4; i++) 
+        activeClients[i] = nullptr;
 
     while(true){
         if(WiFi.isConnected()){
@@ -875,6 +879,7 @@ void setupServer(void * param){
 
             secureServer->start();
             if (secureServer->isRunning()) {
+                lv_obj_clear_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
                 Serial.println("Server ready.");
             }
             while(WiFi.isConnected()){
@@ -884,12 +889,15 @@ void setupServer(void * param){
         }else{
             if(secureServer != NULL){
                 for(int i = 0; i < 4; i++){
-                    activeClients[i]->close();
-                    activeClients[i] = nullptr;
+                    if(activeClients[i] != NULL){
+                        activeClients[i]->close(1000, "Server shutdown");
+                        activeClients[i] = nullptr;
+                    }
                 }
+                secureServer->stop();
                 secureServer->~HTTPSServer();
                 secureServer = NULL;
-                
+                lv_obj_add_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
                 Serial.println("Server ended");
             }
         }
@@ -3021,6 +3029,16 @@ void ui(){
     frm_settings_btn_wifi_conf_lbl = lv_label_create(frm_settings_btn_wifi_conf);
     lv_label_set_text(frm_settings_btn_wifi_conf_lbl, "Configure");
     lv_obj_set_align(frm_settings_btn_wifi_conf_lbl, LV_ALIGN_CENTER);
+
+    //Http server status button
+    frm_settings_wifi_http_btn = lv_btn_create(frm_settings_obj_wifi);
+    lv_obj_set_size(frm_settings_wifi_http_btn, 50, 30);
+    lv_obj_align(frm_settings_wifi_http_btn, LV_ALIGN_TOP_LEFT, 130, -10);
+    lv_obj_add_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
+
+    frm_settings_wifi_http_label = lv_label_create(frm_settings_wifi_http_btn);
+    lv_label_set_text(frm_settings_wifi_http_label, "https");
+    lv_obj_set_align(frm_settings_wifi_http_label, LV_ALIGN_CENTER);
 
     //wifi info
     frm_settings_wifi_ssid = lv_label_create(frm_settings_obj_wifi);
