@@ -131,13 +131,13 @@ static void loadSettings(){
         if(v.size() > 3){
             strcpy(user_name, v[0].c_str());
             strcpy(user_id, v[1].c_str());
-            brightness = atoi(v[3].c_str());
             v[2].toUpperCase();
             strcpy(ui_primary_color_hex_text, v[2].c_str());
             ui_primary_color = strtoul(v[2].c_str(), NULL, 16);
             lv_disp_t *dispp = lv_disp_get_default();
             lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
             lv_disp_set_theme(dispp, theme);
+            brightness = atoi(v[3].c_str());
         }
 
 
