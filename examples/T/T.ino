@@ -33,30 +33,39 @@
 using namespace httpsserver;
 using namespace ArduinoJson;
 
+// Using custom fonts
 LV_FONT_DECLARE(clocknum);
 LV_FONT_DECLARE(ubuntu);
+// Using customs images for icons and background
 LV_IMG_DECLARE(icon_brightness);
-LV_IMG_DECLARE(bg2);
 LV_IMG_DECLARE(icon_lora2);
-
+LV_IMG_DECLARE(bg2);
+// List of wifi access points used after a scan
 vector <wifi_info> wifi_list;
+// List that represents a history of wifi nets once connected
 Wifi_connected_nets wifi_connected_nets = Wifi_connected_nets();
 
 #define TOUCH_MODULES_GT911
 #include "TouchLib.h"
 #include <lwip/apps/sntp.h>
-
+// Depending on LoRa module, set the frequency here (433, 868, 915)
 #define RADIO_FREQ 915.0
+// See utilities.h and online documentation about the pins of the esp32s3
 SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
-
+// Used to play sounds like mp3
 Audio audio;
 uint8_t touchAddress = GT911_SLAVE_ADDRESS1;
 TouchLib *touch = NULL;
 TFT_eSPI tft;
+// Used to avoid simultanous access to the same resource, avoids esporadic resets,
+// corrupt data, load prohibited..., use with xSemaphoreTake and release with,
+// xSemaphoreGive, see other parts of this code.
 SemaphoreHandle_t xSemaphore = NULL;
+// Mutexes used to control access, using pthread_mutex_lock.
 static pthread_mutex_t lvgl_mutex = NULL;
 static pthread_mutex_t messages_mutex = NULL;
 static pthread_mutex_t send_json_mutex = NULL;
+// Used to represents the state of some resources
 bool touchDected = false;
 bool kbDected = false;
 bool hasRadio = false; 
@@ -67,43 +76,53 @@ volatile bool transmiting = false;
 volatile bool processing = false;
 volatile bool gotPacket = false;
 volatile bool sendingJson = false;
+// Hardware inputs
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
-TaskHandle_t task_recv_pkt = NULL, 
-             task_check_new_msg = NULL,
-             task_not = NULL,
-             task_date_time = NULL,
-             task_bat = NULL,
-             task_wifi_auto = NULL,
-             task_wifi_scan = NULL,
-             task_play = NULL,
-             task_play_radio = NULL;
-
+// Handles to access tasks in threads
+TaskHandle_t task_recv_pkt = NULL, // when we receive a LoRa packet
+             task_check_new_msg = NULL, // when a new message is detected
+             task_not = NULL, // when we have a new notification
+             task_date_time = NULL, // updates date and time periodically
+             task_bat = NULL, // update the battery status
+             task_wifi_auto = NULL, // as soon as the board boots, connects to a wifi
+             task_wifi_scan = NULL, // to scan without blocking the interface
+             task_play = NULL, // test purpose
+             task_play_radio = NULL; // test purpose
+// List of contacts, LoRa packets and notification
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
 notification notification_list = notification();
-
+// As soon as we select a contact on a contact list, it is pointed to this
+// variable, so other routines like send a message will use this contact
 Contact * actual_contact = NULL;
-
+// Used in UI objects, settings
 char user_name[50] = "";
 char user_id[7] = "";
 char connected_to[200] = "";
 char ui_primary_color_hex_text[7] = {'\u0000'};
-uint8_t brightness = 1;
-
-struct tm timeinfo;
-
 uint32_t ui_primary_color = 0x5c81aa;
+uint8_t brightness = 1;
+// This is where we get and set the date and time
+struct tm timeinfo;
+// A reference to measure the battery vcc
 int vRef = 0;
-
+// Update the battery status on screen
 void update_bat(void * param);
+// Update the date from internet
 void datetime();
+// Used when we touch the wifi button on settings, it is a toggle wich
+// connects to a wifi saved on wifi_connected_nets or disconnects.
 void wifi_auto_toggle();
+// Function to retrieve a string that represents the wifi mode
+// where auth_mode is the code of the mode
 const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode);
+// Just an index representing the position on the last wifi connection on wifi_connected_nets
 volatile int last_wifi_con = -1;
-
+// This object is used to encode and decode the LoRa messages
 Cipher * cipher = new Cipher();
 
+// Loads the user name, id, color of the interface and brightness
 static void loadSettings(){
     char color[7];
     if(!SPIFFS.begin(true)){
@@ -147,7 +166,7 @@ static void loadSettings(){
         Serial.println(ex.what());
     }
 }
-
+// Saves the user name, id, color of the interface and brightness
 static void saveSettings(){
     if(!SPIFFS.begin(true)){
         Serial.println("failed mounting SPIFFS");
@@ -229,39 +248,48 @@ static void saveContacts(){
 }
 
 static void refresh_contact_list(){
-    
+    // Clean the list
     lv_obj_clean(frm_contacts_list);
     
     lv_obj_t * btn;
+    // Populate the list creating buttons based on the contact's info
     for(uint32_t i = 0; i < contacts_list.size(); i++){
-        
+        // Adds a new item on the list with the contact's name and return a pointer to the button
         btn = lv_list_add_btn(frm_contacts_list, LV_SYMBOL_CALL, contacts_list.getContact(i).getName().c_str());
+        // Create a label with the id of the contact, will be used later on
         lv_obj_t * lbl = lv_label_create(btn);
         lv_label_set_text(lbl, contacts_list.getContact(i).getID().c_str());
+        // Create a small square 20 x 20 pixels that represents the online status by color
         lv_obj_t * obj_status = lv_obj_create(btn);
         lv_obj_set_size(obj_status, 20, 20);
+        // Normally the object has scrollbars so we need to hide them
         lv_obj_clear_flag(obj_status, LV_OBJ_FLAG_SCROLLABLE);
-        
+        // If the current contact is near by we set the background color of the status square to green
+        // otherwise to light gray, use the colors you want. Keep in mind, we are creating the label
+        // and the status object with the button as parent, so it will be part of the button as well,
+        // so every contact in the list will have its own id(hidden) and status object(visible). The
+        // list created will be orded the same as the contact_list.
         if(contacts_list.getContact(i).inrange){
-            
             lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-            
         }
         else{
-            
             lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
-            
         }
-        
+        // Align the status object in the right most position
         lv_obj_align(obj_status, LV_ALIGN_RIGHT_MID, 0, 0);
+        // We need to hide the label with the id
         lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN);
+        // Add some events when clicked or long press the contact on the list
         lv_obj_add_event_cb(btn, show_edit_contacts, LV_EVENT_LONG_PRESSED, btn);
         lv_obj_add_event_cb(btn, show_chat, LV_EVENT_SHORT_CLICKED, btn);
         
     }
+    // After this, we save the list o contacts, there are other routines that modifies the contacts info
+    // so for now this is the best place to save the contacts every time its info changes. Not perfect.
     saveContacts();
 }
 
+// Creates a string with a sequence of 6 chars between letters and numbers randomly, the contact's id.
 std::string generate_ID(){
   srand(time(NULL));
   static const char alphanum[] = "0123456789"
@@ -274,33 +302,43 @@ std::string generate_ID(){
   return ss;
 }
 
+// This task runs forever and every 100 ms. We watch for a new message and show in a small area on top of the screen
+// a symbol and a message.
 static void notify(void * param){
-    char n[30] = {'\0'};
-    char b[13] = {'\0'};
+    char n[30] = {'\0'}; // the message
+    char b[13] = {'\0'}; // the symbol
     while(true){
+        // Reusing this task to verify the conectivity of wifi, its just adds or remove the wifi symbol from the main
+        // screen.
         update_wifi_icon();
+        // Every time we got a message on the notification list...
         if(notification_list.size() > 0){
-            //vTaskDelay(1000 / portTICK_PERIOD_MS);
+            // We copy the symbol and the message, also erases from the list.
             notification_list.pop(n, b);
-            
+            // This happen really fast, we show the notification object with his message and symbols empty.
             lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+            // Set the symbol and message on the labels.
             lv_label_set_text(frm_not_lbl, n);
             lv_label_set_text(frm_not_symbol_lbl, b);
+            // The main screen(or home screen) has two labels for its own symbol and message
+            // we could use it to display a message, so we're using it too.
             lv_label_set_text(frm_home_title_lbl, n);
             lv_label_set_text(frm_home_symbol_lbl, b);
-            
+            // We make this task wait a second.
             vTaskDelay(1000 / portTICK_PERIOD_MS);
-            
+            // We clean the labels and hide the notification object.
             lv_label_set_text(frm_not_lbl, "");
+            lv_label_set_text(frm_not_symbol_lbl, "");
             lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
-            
-            strcpy(n, "");
+            // Just for debug
             Serial.println("notified");
         }
+        // Give the cpu core a rest
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
+// T-Deck's hardware routines
 static void disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )
 {
     uint32_t w = ( area->x2 - area->x1 + 1 );
@@ -484,21 +522,26 @@ bool checkKb()
     Wire.requestFrom(0x55, 1);
     return Wire.read() != -1;
 }
-
+// Transforms the contact list in a JSON string 
+// "{"command" : "contacts", "contacts" : [{"id":"abcdef","name":"john doe","status":"on"},
+//                                         {"id":"aaaaaa","name":"joe","status":"off"}]}"
 std::string contacts_to_json(){
     JsonDocument doc;
     std::string json;
 
+    // Fist the command parsed by the javascript on client side.
     doc["command"] = "contacts";
     for(uint32_t i = 0; i < contacts_list.size(); i++){
+        // A list of contacts represented by "contacts", not the command.
         doc["contacts"][i]["id"] = contacts_list.getList()[i].getID();
         doc["contacts"][i]["name"] = contacts_list.getList()[i].getName();
         doc["contacts"][i]["status"] = contacts_list.getList()[i].inrange ? "on" : "off";
     }
+    // This transforms the doc object into a string
     serializeJson(doc, json);
     return json;
 }
-
+// This is the starting point of the http server, it is a work in progress, may have bugs.
 #define HEADER_USERNAME "X-USERNAME"
 #define HEADER_GROUP    "X-GROUP"
 
