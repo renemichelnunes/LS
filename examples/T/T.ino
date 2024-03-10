@@ -56,6 +56,7 @@ TFT_eSPI tft;
 SemaphoreHandle_t xSemaphore = NULL;
 static pthread_mutex_t lvgl_mutex = NULL;
 static pthread_mutex_t messages_mutex = NULL;
+static pthread_mutex_t send_json_mutex = NULL;
 bool touchDected = false;
 bool kbDected = false;
 bool hasRadio = false; 
@@ -159,9 +160,9 @@ static void saveSettings(){
         return;
     }
 
-    file.println(lv_textarea_get_text(frm_settings_name));
-    file.println(lv_textarea_get_text(frm_settings_id));
-    file.println(lv_textarea_get_text(frm_settings_color));
+    file.println(user_name);
+    file.println(user_id);
+    file.println(ui_primary_color_hex_text);
     file.println(brightness);
     Serial.println("settings saved");
     file.close();
@@ -685,7 +686,9 @@ void sendContactMessages(const char * id){
             Serial.println("waiting other json to finish...");
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
+        pthread_mutex_lock(&send_json_mutex);
         sendJSON(json.c_str());
+        pthread_mutex_unlock(&send_json_mutex);
         Serial.println(json.c_str());
         xSemaphoreGive(xSemaphore);
     }
@@ -776,7 +779,9 @@ void parseCommands(std::string jsonString){
             while(sendingJson){
                 vTaskDelay(10 / portTICK_PERIOD_MS);
             }
+            pthread_mutex_lock(&send_json_mutex);
             sendJSON(contacts_to_json().c_str());
+            pthread_mutex_unlock(&send_json_mutex);
             xSemaphoreGive(xSemaphore);
         }
     }else if(strcmp(command, "sel_contact") == 0){
@@ -793,7 +798,9 @@ void parseCommands(std::string jsonString){
         if(strcmp(doc["id"], doc["newid"]) != 0){
             c = contacts_list.getContactByID(doc["newid"]);
             if(c != NULL){
+                pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"ID in use.\"}");
+                pthread_mutex_lock(&send_json_mutex);
             }else{
                 edited = true;
             }
@@ -806,8 +813,10 @@ void parseCommands(std::string jsonString){
                 c->setID(doc["newid"]);
                 c->setName(doc["newname"]);
                 saveContacts();
+                pthread_mutex_lock(&send_json_mutex);
                 sendJSON(contacts_to_json());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Edited.\"}");
+                pthread_mutex_unlock(&send_json_mutex);
             }
         }
     }else if(strcmp(command, "del_contact") == 0){
@@ -818,12 +827,20 @@ void parseCommands(std::string jsonString){
                 Serial.print((const char*)doc["id"]);
                 Serial.println(" deleted.");
                 saveContacts();
+                pthread_mutex_lock(&send_json_mutex);
                 sendJSON(contacts_to_json());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact deleted.\"}");
-            }else
+                pthread_mutex_unlock(&send_json_mutex);
+            }else{
+                pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Error deleting contact.\"}");
-        }else
+                pthread_mutex_unlock(&send_json_mutex);
+            }
+        }else{
+            pthread_mutex_lock(&send_json_mutex);
             sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact not found.\"}");
+            pthread_mutex_unlock(&send_json_mutex);
+        }
     }else if(strcmp(command, "new_contact") == 0){
         Contact * c = contacts_list.getContactByID(doc["id"]);
         if(c == NULL){
@@ -833,16 +850,25 @@ void parseCommands(std::string jsonString){
                 Serial.print((const char *)doc["id"]);
                 Serial.println(" added.");
                 saveContacts();
+                pthread_mutex_lock(&send_json_mutex);
                 sendJSON(contacts_to_json());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact added.\"}");
+                pthread_mutex_unlock(&send_json_mutex);
             }
-            else
+            else{
+                pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Fail to add new contact.\"}");
+                pthread_mutex_unlock(&send_json_mutex);
+            }
         }else{
+            pthread_mutex_lock(&send_json_mutex);
             sendJSON("{\"command\" : \"notification\", \"message\" : \"ID in use.\"}");
+            pthread_mutex_unlock(&send_json_mutex);
         }
     }else if(strcmp(command, "read_settings") == 0){
+        pthread_mutex_lock(&send_json_mutex);
         sendJSON(settingsJSON());
+        pthread_mutex_unlock(&send_json_mutex);
     }else if(strcmp(command, "set_brightness") == 0){
         setBrightness2((uint8_t)doc["brightness"]);
     }else if(strcmp(command, "set_ui_color") == 0){
@@ -862,16 +888,32 @@ void parseCommands(std::string jsonString){
         lv_textarea_set_text(frm_settings_name, user_name);
         lv_textarea_set_text(frm_settings_id, user_id);
         saveSettings();
+        pthread_mutex_lock(&send_json_mutex);
         sendJSON("{\"command\" : \"notification\", \"message\" : \"Name and ID saved.\"}");
+        pthread_mutex_unlock(&send_json_mutex);
     }else if(strcmp(command, "set_dx_mode") == 0){
         if(doc["dx"]){
-            if(DXMode())
+            if(DXMode()){
+                pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"DX mode.\"}");
+                pthread_mutex_unlock(&send_json_mutex);
+            }
         }
         else{
-            if(normalMode())
+            if(normalMode()){
+                pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Normal mode.\"}");
+                pthread_mutex_unlock(&send_json_mutex);
+            }
         }
+    }else if(strcmp(command, "set_date") == 0){
+        lv_textarea_set_text(frm_settings_day, doc["d"]);
+        lv_textarea_set_text(frm_settings_month, doc["m"]);
+        lv_textarea_set_text(frm_settings_year, doc["y"]);
+        lv_textarea_set_text(frm_settings_hour, doc["hh"]);
+        lv_textarea_set_text(frm_settings_minute, doc["mm"]);
+        setDateTime();
+        sendJSON("{\"command\" : \"notification\", \"message\" : \"Date and time set.\"}");
     }
 }
 
@@ -969,7 +1011,9 @@ void processReceivedPacket(void * param){
     lora_packet_status c;
     lora_packet_status pong;
     Contact * contact = NULL;
-    char message[200] = {'\0'}, pmsg [200] = {'\0'}, dec_msg[200] = {'\0'};
+    char message[200] = {'\0'}, pmsg [200] = {'\0'}, dec_msg[200] = {'\0'},
+        rssi[10] = {'\u0000'}, snr[10] = {'\u0000'};
+    JsonDocument doc;
 
     while(true){
         while(announcing){
@@ -995,8 +1039,26 @@ void processReceivedPacket(void * param){
             if(size > 0 and size <= sizeof(lora_packet)){
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                     radio.readData((uint8_t *)&p, size);
+                    sprintf(rssi, "%.2f", radio.getRSSI());
+                    sprintf(snr, "%.2f", radio.getSNR());
                     xSemaphoreGive(xSemaphore);
                 }
+                string json;
+                strcpy(message, "[RSSI:");
+                strcat(message, rssi);
+                strcat(message, " dBm");
+                strcat(message, " SNR:");
+                strcat(message, snr);
+                strcat(message, " dBm]");
+                Serial.println(message);
+
+                doc["command"] = "rssi_snr";
+                doc["rssi"] = rssi;
+                doc["snr"] = snr;
+                serializeJson(doc, json);
+                pthread_mutex_lock(&send_json_mutex);
+                sendJSON(json);
+                pthread_mutex_unlock(&send_json_mutex);
 
                 if(strcmp(p.destiny, user_id) == 0){
                     activity(lv_color_hex(0x00ff00));
@@ -1011,21 +1073,6 @@ void processReceivedPacket(void * param){
                     Serial.println(p.status);
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
-                    strcpy(message, "[RSSI:");
-                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                        sprintf(pmsg, "%.2f", radio.getRSSI());
-                        xSemaphoreGive(xSemaphore);
-                    }
-                    strcat(message, pmsg);
-                    strcat(message, " dBm");
-                    strcat(message, " SNR:");
-                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                        sprintf(pmsg, "%.2f", radio.getSNR());
-                        xSemaphoreGive(xSemaphore);
-                    }
-                    strcat(message, pmsg);
-                    strcat(message, " dBm]");
-                    Serial.println(message);
 
                     contact = contacts_list.getContactByID(p.sender);
 
@@ -1047,12 +1094,9 @@ void processReceivedPacket(void * param){
                             while(sendingJson){
                                 vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
-                            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                                
+                            pthread_mutex_lock(&send_json_mutex);
                                 sendJSON("{\"command\" : \"playNewMessage\"}");
-                                xSemaphoreGive(xSemaphore);
-                            }
-                            
+                            pthread_mutex_unlock(&send_json_mutex);
                             
                             strcpy(message, contact->getName().c_str());
                             strcat(message, ": ");
@@ -1437,7 +1481,8 @@ void test(lv_event_t * e){
     lora_packet_status my_packet;
     notify_snd();
     strcpy(my_packet.sender, user_id);
-    strcpy(my_packet.destiny, actual_contact->getID().c_str());
+    if(actual_contact != NULL)
+        strcpy(my_packet.destiny, actual_contact->getID().c_str());
     strcpy(my_packet.status, "ping");
     
     if(hasRadio){
@@ -1705,21 +1750,6 @@ void copy_text(lv_event_t * e){
     }
 }
 
-void check_new_msg_(void * param){
-    while(true){
-        for(int i = 0; i < 10; i++){
-            pthread_mutex_lock(&lvgl_mutex);
-            lv_list_add_text(frm_chat_list, "test");
-            lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK," ");
-            pthread_mutex_unlock(&lvgl_mutex);
-        }
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        pthread_mutex_lock(&lvgl_mutex);
-        lv_obj_clean(frm_chat_list);
-        pthread_mutex_unlock(&lvgl_mutex);
-    }
-}
-
 void clean_chat_list(lv_obj_t * list){
     lv_obj_del(frm_chat_list);
     frm_chat_list = NULL;
@@ -1981,13 +2011,12 @@ void sendContactsStatusJson(const char * id, bool status){
     doc["contact"]["id"] = id;
     doc["contact"]["status"] = status;
     serializeJson(doc, json);
-    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        while(sendingJson){
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-        sendJSON(json.c_str());
-        xSemaphoreGive(xSemaphore);
+    while(sendingJson){
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
+    pthread_mutex_lock(&send_json_mutex);
+    sendJSON(json.c_str());
+    pthread_mutex_unlock(&send_json_mutex);
 }
 
 void check_contacts_in_range(){
@@ -2936,7 +2965,7 @@ void ui(){
     frm_chat_text_ans = lv_textarea_create(frm_chat);
     lv_obj_set_size(frm_chat_text_ans, 260, 50);
     lv_obj_align(frm_chat_text_ans, LV_ALIGN_BOTTOM_LEFT, -15, 15);
-    lv_textarea_set_max_length(frm_chat_text_ans, 199);
+    lv_textarea_set_max_length(frm_chat_text_ans, 120);
     lv_textarea_set_placeholder_text(frm_chat_text_ans, "Answer");
     lv_obj_set_style_text_font(frm_chat_text_ans, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -3899,6 +3928,7 @@ void setup(){
 
     pthread_mutex_init(&lvgl_mutex, NULL);
     pthread_mutex_init(&messages_mutex, NULL);
+    pthread_mutex_init(&send_json_mutex, NULL);
 
     Wire.beginTransmission(touchAddress);
     ret = Wire.endTransmission() == 0;
