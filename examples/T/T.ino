@@ -1129,7 +1129,7 @@ void setupServer(void * param){
     // In case when a external routine ends this task.
     vTaskDelete(NULL);
 }
-
+// This task runs forever, process a LoRa packet as soons as received.
 void processReceivedPacket(void * param){
     lora_packet p;
     lora_packet_status c;
@@ -1140,6 +1140,7 @@ void processReceivedPacket(void * param){
     JsonDocument doc;
 
     while(true){
+        // Wait for the radio module to become available.
         while(announcing){
             //Serial.println("waiting announcing to finish");
             vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1148,26 +1149,38 @@ void processReceivedPacket(void * param){
             //Serial.println("waiting transmission to finish");
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
-        if(gotPacket){
+        if(gotPacket){// This bool is true every time a new LoRa packet is captured. After the processing this is set to false.
             processing = true;
             Serial.println("Packet received");
             
             uint32_t size = 0;
+            // Ensure access to the radio module through SPI shared also with the screen.
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                // The RadioLib documentation recomends put the radio on standby before getting any data.
                 radio.standby();
+                // This is used to help to obtain the right size of a LoRa packet. We use two different types of packet.
+                // One comes with the message, date..., the other only have 3 fields(sender, destiny and status).
                 size = radio.getPacketLength();
                 Serial.print("Size ");
                 Serial.println(size);
                 xSemaphoreGive(xSemaphore);
             }
+            // Avoids processing a empty LoRa packet.
             if(size > 0 and size <= sizeof(lora_packet)){
+                // Get the data. We are using a normal LoRa packet variable to hold the two types. The only difference is the size,
+                // both packets begins with the same sender, destiny and status, so the data always matches.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                    // Its possible to read strings direcly, but we need to ensure is a valid LoRa packet, so we cast it,
+                    // to a unsigned byte pointer.
                     radio.readData((uint8_t *)&p, size);
+                    // Convert the info to a exact representation on a string.
                     sprintf(rssi, "%.2f", radio.getRSSI());
                     sprintf(snr, "%.2f", radio.getSNR());
                     xSemaphoreGive(xSemaphore);
                 }
+                
                 string json;
+                // Lets print this statistics on console.
                 strcpy(message, "[RSSI:");
                 strcat(message, rssi);
                 strcat(message, " dBm");
@@ -1175,7 +1188,7 @@ void processReceivedPacket(void * param){
                 strcat(message, snr);
                 strcat(message, " dBm]");
                 Serial.println(message);
-
+                // The client side has a javascript to plot a graphic about the rssi and s/n ratio. So we send it also as JSON.
                 doc["command"] = "rssi_snr";
                 doc["rssi"] = rssi;
                 doc["snr"] = snr;
@@ -1183,21 +1196,25 @@ void processReceivedPacket(void * param){
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON(json);
                 pthread_mutex_unlock(&send_json_mutex);
-
+                // If the received packet is for the owner, process it. If not, drop it(basically do nothing).
                 if(strcmp(p.destiny, user_id) == 0){
+                    // This is a small square on top of the home screen, depending on the activity it changes colors.
+                    // Lets change to green.
                     activity(lv_color_hex(0x00ff00));
+                    // Reset this flag to false, we have processed the packet.
                     gotPacket = false;
+                    // Prints some info on console for debug purposes.
                     Serial.print("sender ");
                     Serial.println(p.sender);
                     Serial.print("destiny ");
                     Serial.println(p.destiny);
                     Serial.print("msg ");
-                    Serial.println(p.msg);
+                    Serial.println(p.msg);// This message is still encrypted.
                     Serial.print("status ");
                     Serial.println(p.status);
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
-
+                    // If our packet has a sender wich is not on the contacts list, the processing ends here.
                     contact = contacts_list.getContactByID(p.sender);
 
                     if(contact != NULL){
