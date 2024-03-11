@@ -99,6 +99,7 @@ Contact * actual_contact = NULL;
 // Used in UI objects, settings
 char user_name[50] = "";
 char user_id[7] = "";
+char http_admin_pass[50] = "admin";
 char connected_to[200] = "";
 char ui_primary_color_hex_text[7] = {'\u0000'};
 uint32_t ui_primary_color = 0x5c81aa;
@@ -544,7 +545,8 @@ std::string contacts_to_json(){
 // This is the starting point of the http server, it is a work in progress, may have bugs.
 #define HEADER_USERNAME "X-USERNAME"
 #define HEADER_GROUP    "X-GROUP"
-
+// This reads a http response from the client, extract the user and password and compare
+// if is equal to the configuration, if not the server sends a 401 and a warning.
 void middlewareAuthentication(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
     req->setHeader(HEADER_USERNAME, "");
     req->setHeader(HEADER_GROUP, "");
@@ -555,7 +557,7 @@ void middlewareAuthentication(HTTPRequest * req, HTTPResponse * res, std::functi
     if (reqUsername.length() > 0 && reqPassword.length() > 0) {
         bool authValid = true;
         std::string group = "";
-        if (reqUsername == "admin" && reqPassword == "admin") {
+        if (reqUsername == "admin" && strcmp(reqPassword.c_str(), http_admin_pass) == 0) {
             group = "ADMIN";
         } else if (reqUsername == "user" && reqPassword == "user") {
             group = "USER";
@@ -578,7 +580,7 @@ void middlewareAuthentication(HTTPRequest * req, HTTPResponse * res, std::functi
         next();
     }
 }
-
+// This checks is the client provided a valid user, if not a warning is sent.
 void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
     std::string username = req->getHeader(HEADER_USERNAME);
 
@@ -593,7 +595,7 @@ void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::functio
         next();
     }
 }
-
+// This is used to send the index.html stored on the variable index_html, se index.h.
 void handleRoot(HTTPRequest * req, HTTPResponse * res) {
     Serial.println("Sending main page");
     res->setHeader("Content-Type", "text/html");
@@ -601,7 +603,7 @@ void handleRoot(HTTPRequest * req, HTTPResponse * res) {
     res->setStatusText("OK");
     res->println(index_html);
 }
-
+// Same as above, see style.h
 void handleStyle(HTTPRequest * req, HTTPResponse * res) {
     Serial.println("Sending style.css");
     res->setHeader("Content-Type", "text/css");
@@ -609,7 +611,7 @@ void handleStyle(HTTPRequest * req, HTTPResponse * res) {
     res->setStatusText("OK");
     res->println(style_css);
 }
-
+// Same as above, see script.h
 void handleScript(HTTPRequest * req, HTTPResponse * res) {
     Serial.println("Sending script.js");
     res->setHeader("Content-Type", "application/javascript");
@@ -617,7 +619,7 @@ void handleScript(HTTPRequest * req, HTTPResponse * res) {
     res->setStatusText("OK");
     res->println(script_js);
 }
-
+// This is sent in case when index.html has a resource that is not available in the server.
 void handle404(HTTPRequest * req, HTTPResponse * res) {
     req->discardRequestBody();
     res->setStatusCode(404);
@@ -629,20 +631,23 @@ void handle404(HTTPRequest * req, HTTPResponse * res) {
     res->println("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>");
     res->println("</html>");
 }
-
+// This class represents a chat object. It is a WebSocket handler wich is open when a client connects.
 class ChatHandler : public WebsocketHandler{
     public:
         static WebsocketHandler * create();
         void onMessage(WebsocketInputStreambuf * input);
         void onClose();
 };
-
-ChatHandler * activeClients[4];
-
+// Max number of clients connected
+const uint8_t maxClients = 4;
+// List of clients
+ChatHandler * activeClients[maxClients];
+// Constructor for a new client WebSocket
 WebsocketHandler * ChatHandler::create() {
     Serial.println("Creating new chat client!");
     ChatHandler * handler = new ChatHandler();
-    for(int i = 0; i < 4; i++) {
+    // Put the handler on a vacant index of the list
+    for(int i = 0; i < maxClients; i++) {
         if (activeClients[i] == nullptr) {
             activeClients[i] = handler;
             break;
@@ -650,27 +655,27 @@ WebsocketHandler * ChatHandler::create() {
     }
     return handler;
 }
-
+// Search and close the client instance
 void ChatHandler::onClose() {
-    for(int i = 0; i < 4; i++) {
+    for(int i = 0; i < maxClients; i++) {
         if (activeClients[i] == this) {
             Serial.print("closing websocket no ");
             Serial.println(i);
-            activeClients[i]->close(1000, "Server shutdown");
             activeClients[i] = nullptr;
         }
     }
 }
-
+// This gets a JSON string built with seralizeJSON and send it through the websockets
 void sendJSON(string json){
     sendingJson = true;
     if(json.length() > 0)
-        for(uint i = 0; i < 4; i++)
+        for(uint i = 0; i < maxClients; i++)
             if(activeClients[i] != NULL)
                 activeClients[i]->send(json, WebsocketHandler::SEND_TYPE_TEXT);
     sendingJson = false;
 }
-
+// This is for debug purposes, a received decrypted message sometimes could bring non-printable
+// chars and it was making the board reboot.
 bool containsNonPrintableChars(const char *str) {
     while (*str) {
         if (*str < 32 || *str > 126) { // ASCII values for printable characters
@@ -680,9 +685,10 @@ bool containsNonPrintableChars(const char *str) {
     }
     return false;
 }
-
+// For debug purposes.
 void printMessages(const char * id){
     vector<lora_packet> msgs;
+    // A mutex is used here to prevent concurrent access and memory corruption.
     pthread_mutex_lock(&messages_mutex);
         msgs = messages_list.getMessages(id);
     pthread_mutex_unlock(&messages_mutex);
@@ -693,25 +699,27 @@ void printMessages(const char * id){
     }
     Serial.println("=================================");
 }
-
+// This creates and sends a JSON to the client with the list of messages from a selected contact.
 void sendContactMessages(const char * id){
     vector<lora_packet>msgs;
     JsonDocument doc;
     string json;
-
+    // Mutex to avoid concurrent access and memory corruption.
     pthread_mutex_lock(&messages_mutex);
         msgs = messages_list.getMessages(id);
     pthread_mutex_unlock(&messages_mutex);
+    // Command and id for the requested contact.
     doc["command"] = "msg_list";
     doc["id"] = id;
+    // Creating a list of messages. 'Me' is a bool that represents when the message is from the sender, if false
+    // so the message is from the destination. We also add the date and time of the message.
     if(msgs.size() > 0){
-        doc["command"] = "msg_list";
         for(uint32_t i = 0; i < msgs.size(); i++){
             doc["messages"][i]["me"] = msgs[i].me;
             doc["messages"][i]["msg_date"] = msgs[i].date_time;
             
             if(msgs[i].me){
-                doc["messages"][i]["msg"] = msgs[i].msg;
+                doc["messages"][i]["msg"] = msgs[i].msg; // Here was a example of detecting non-printable chars.
                 //if(containsNonPrintableChars(msgs[i].msg))
                 //    doc["messages"][i]["msg"] = "[corrupted]";
             }
@@ -722,28 +730,31 @@ void sendContactMessages(const char * id){
             }
         }
     }
-    
+    // Transform the doc in JSON string.
     serializeJson(doc, json);
-    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        while(sendingJson){
-            Serial.println("waiting other json to finish...");
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-        pthread_mutex_lock(&send_json_mutex);
-        sendJSON(json.c_str());
-        pthread_mutex_unlock(&send_json_mutex);
-        Serial.println(json.c_str());
-        xSemaphoreGive(xSemaphore);
+    // This is a simple way to wait other tasks to finish using sendJSON.
+    while(sendingJson){
+        Serial.println("waiting other json to finish...");
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
+    // Mutex to avoid concurrent access and memory corruption.
+    pthread_mutex_lock(&send_json_mutex);
+    sendJSON(json.c_str());
+    pthread_mutex_unlock(&send_json_mutex);
+    Serial.println(json.c_str());
 }
-
+// Sets the brightness of the screen
 void setBrightness2(uint8_t level){
+    // Store the level.
     brightness = level;
+    // Apply to the backlight pin.
     analogWrite(BOARD_BL_PIN, mapv(brightness, 0, 9, 100, 255));
+    // Update the value displayed on settings.
     lv_roller_set_selected(frm_settings_brightness_roller, brightness, LV_ANIM_OFF);
+    // Save the settings.
     saveSettings();
 }
-
+// Returns a JSON with some settings.
 string settingsJSON(){
     JsonDocument doc;
     string json;
@@ -757,88 +768,109 @@ string settingsJSON(){
     serializeJson(doc, json);
     return json;
 }
-
+// This is used to parse commands and redirect data received or sent through a websocket.
 void parseCommands(std::string jsonString){
     JsonDocument doc;
-    
+    // Transform a JSON string in a JSON object.
     deserializeJson(doc, jsonString);
+    // Extract the command string.
     const char * command = doc["command"];
     if(strcmp(command, "send") == 0){
+        // Send means a message to be sent to a destination.
+        // We need to ensure id and msg are strings.
         const char * id = (const char*)doc["id"];
         const char * msg = (const char*)doc["msg"];
+        // This will hold the message after being encrypted.
         char enc_msg[150] = {'\u0000'};
+        // If the id of the sender is the default on client's javascript or the contact wasn't selected, return.
         if(strcmp(id, "111111") == 0 || actual_contact == NULL)
             return;
-        
+        // Encrypting the message and copying to enc_msg. This one will be sent.
         strcpy(enc_msg, encryptMsg(msg).c_str());
+        // For debug purposes.
         Serial.println(enc_msg);
+        // It will send only if the LoRa module is configured.
         if(hasRadio){
+            // We need a new LoRa packet.
             lora_packet pkt;
             strcpy(pkt.sender, user_id);
             strcpy(pkt.destiny, id);
+            // There are two statuses, send when sending to a destination, and recv when we received a confirmation
+            // from the destination. This is how we know the destination received the message. Not guaranteed.
             strcpy(pkt.status, "send");
             strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
             strcpy(pkt.msg, enc_msg);
-            
-            while(announcing){
+            // Here we wait for the radio module to become available.
+            while(transmiting){// When using the board.
                 Serial.println("announcing");
                 vTaskDelay(100 / portTICK_PERIOD_MS);
             }
-            while(gotPacket){
+            while(announcing){// Periodically the board transmit a beacon packet.
+                Serial.println("announcing");
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+            }
+            while(gotPacket){// When receiving.
                 Serial.println("gotPacket");
                 vTaskDelay(100 / portTICK_PERIOD_MS);
             }
             activity(lv_color_hex(0xff0000));
+            // Flag for transmitting
             transmiting = true;
             int state = 0;
+            // Mutex to avoid concurrency, transmitting or receiving, and get the exclusive use of the SPI transfer shared
+            // with the screen.
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 Serial.print("tamanho de pkt ");
                 Serial.println(sizeof(pkt));
                 state = radio.transmit((uint8_t *)&pkt, sizeof(pkt));
                 xSemaphoreGive(xSemaphore);
             }
-            //activity(lv_color_hex(0xcccccc));
             transmiting = false;
-
+            // Radio module error handling, see online documentation about error codes.
             if(state != RADIOLIB_ERR_NONE){
                 Serial.print("transmission failed ");
                 Serial.println(state);
             }else{
                 Serial.println("transmitted");
-                // add the message to the list of messages
+                // add the message to the list of messages.
+                // We change me to true, so the list of messages can distinguish in between the destination and sender.
                 pkt.me = true;
+                // And add the unencrypted message.
                 strcpy(pkt.msg, msg);
                 Serial.print("Adding answer to ");
                 Serial.println(pkt.destiny);
                 Serial.println(pkt.msg);
+                // Mutex to avoid errors, curruptions and concurrency.
                 pthread_mutex_lock(&messages_mutex);
                     messages_list.addMessage(pkt);
                 pthread_mutex_unlock(&messages_mutex);
             }
         }else
             Serial.println("Radio not configured");
-    }else if(strcmp(command, "contacts") == 0){
-        if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-            while(sendingJson){
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-            }
-            pthread_mutex_lock(&send_json_mutex);
-            sendJSON(contacts_to_json().c_str());
-            pthread_mutex_unlock(&send_json_mutex);
-            xSemaphoreGive(xSemaphore);
+    }else if(strcmp(command, "contacts") == 0){// When we are asked to send the contacts list.
+        // Wait if sendJSON is being used.
+        while(sendingJson){
+            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
-    }else if(strcmp(command, "sel_contact") == 0){
+        // Obtain the exclusive access to sendJSON
+        pthread_mutex_lock(&send_json_mutex);
+        sendJSON(contacts_to_json().c_str());
+        pthread_mutex_unlock(&send_json_mutex);
+    }else if(strcmp(command, "sel_contact") == 0){// As soons as the client selects a contact on the list.
+        // actual_contact points to the selected contact on the client side list of contacts.
         actual_contact = contacts_list.getContactByID(doc["id"]);
         if(actual_contact != NULL){
             Serial.println("Contact selected");
+            // Send it's messages.
             sendContactMessages(actual_contact->getID().c_str());
         }
         else
             Serial.println("Contact selection failed, id not found");
-    }else if(strcmp(command, "edit_contact") == 0){
+    }else if(strcmp(command, "edit_contact") == 0){// Edit contacts info.
         Contact * c = NULL;
         bool edited = false;
-        if(strcmp(doc["id"], doc["newid"]) != 0){
+        if(strcmp(doc["id"], doc["newid"]) != 0){// If the new id is different, we need to ensure nobody is using it.
+            // Search for a contact using the new id. If NULL we enable edition.
             c = contacts_list.getContactByID(doc["newid"]);
             if(c != NULL){
                 pthread_mutex_lock(&send_json_mutex);
@@ -848,14 +880,18 @@ void parseCommands(std::string jsonString){
                 edited = true;
             }
         }
-        else
+        else // If the ids are the same, maybe the user wants to change the name only.
             edited = true;
         if(edited){
+            // c is pointing to the contact, so we have direct access to the contact info.
             c = contacts_list.getContactByID(doc["id"]);
             if(c != NULL){
+                // Set new id and name.
                 c->setID(doc["newid"]);
                 c->setName(doc["newname"]);
+                // Save the contact list.
                 saveContacts();
+                // We need to send the contacts list again and a notification, so lock on it.
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON(contacts_to_json());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Edited.\"}");
@@ -863,42 +899,53 @@ void parseCommands(std::string jsonString){
             }
         }
     }else if(strcmp(command, "del_contact") == 0){
+        // Verify if the contact exists.
         Contact * c = contacts_list.getContactByID(doc["id"]);
         if(c != NULL){
+            // Erase it.
             if(contacts_list.del(*c)){
+                // For debug purposes.
                 Serial.print("Contact id ");
                 Serial.print((const char*)doc["id"]);
                 Serial.println(" deleted.");
+                // Save the contacts list.
                 saveContacts();
+                // Lock and send the contacts list and a JSON notification.
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON(contacts_to_json());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact deleted.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
-            }else{
+            }else{// If it was impossible to delete.
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Error deleting contact.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }
-        }else{
+        }else{// If contact not found.
             pthread_mutex_lock(&send_json_mutex);
             sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact not found.\"}");
             pthread_mutex_unlock(&send_json_mutex);
         }
     }else if(strcmp(command, "new_contact") == 0){
+        // Verify if the contact id already exists.
         Contact * c = contacts_list.getContactByID(doc["id"]);
         if(c == NULL){
+            // Creating a new contact.
             c = new Contact(doc["name"], doc["id"]);
+            // Add it to the list of contacts.
             if(contacts_list.add(*c)){
+                // Print some info on console.
                 Serial.print("New contact ID ");
                 Serial.print((const char *)doc["id"]);
                 Serial.println(" added.");
+                // Save the contacts list.
                 saveContacts();
+                // Lock and send the contacts list and notification.
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON(contacts_to_json());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact added.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }
-            else{
+            else{// If adding fails.
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Fail to add new contact.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
@@ -908,78 +955,102 @@ void parseCommands(std::string jsonString){
             sendJSON("{\"command\" : \"notification\", \"message\" : \"ID in use.\"}");
             pthread_mutex_unlock(&send_json_mutex);
         }
-    }else if(strcmp(command, "read_settings") == 0){
+    }else if(strcmp(command, "read_settings") == 0){ // Send a JSON string with the settings
         pthread_mutex_lock(&send_json_mutex);
         sendJSON(settingsJSON());
         pthread_mutex_unlock(&send_json_mutex);
-    }else if(strcmp(command, "set_brightness") == 0){
+    }else if(strcmp(command, "set_brightness") == 0){// Sets the screen brightness, note the cast.
         setBrightness2((uint8_t)doc["brightness"]);
     }else if(strcmp(command, "set_ui_color") == 0){
         char color[7] = "";
         
         strcpy(color, doc["color"]);
-        lv_textarea_set_text(frm_settings_color, color);
+        // We don't need to do any change if the client side sends a empty string.
         if(strcmp(color, "") == 0)
             return;
+        // Update the text area on the settings.
+        lv_textarea_set_text(frm_settings_color, color);
+        // To change the color of the objects lets convert the string to a hex value.
         ui_primary_color = strtoul(color, NULL, 16);
+        // Get the default display object.
         lv_disp_t *dispp = lv_disp_get_default();
+        // Initialize a new theme with the default display, the color, a main palette, a light theme(true for dark mode)
+        // and the default font type and size.
         lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
+        // Set the new theme. As soons as this runs the color of the objects changes instantly.
         lv_disp_set_theme(dispp, theme);
-    }else if(strcmp(command, "set_name_id") == 0){
+    }else if(strcmp(command, "set_name_id") == 0){// Sets the new name and id for the sender(T-Deck owner).
+        // Set the id and name of the sender(T-Deck owner).
         strcpy(user_id, doc["id"]);
         strcpy(user_name, doc["name"]);
+        // Update the text areas on settings.
         lv_textarea_set_text(frm_settings_name, user_name);
         lv_textarea_set_text(frm_settings_id, user_id);
+        // The owner's info make part of settings.
         saveSettings();
+        // Send a notification
         pthread_mutex_lock(&send_json_mutex);
         sendJSON("{\"command\" : \"notification\", \"message\" : \"Name and ID saved.\"}");
         pthread_mutex_unlock(&send_json_mutex);
-    }else if(strcmp(command, "set_dx_mode") == 0){
+    }else if(strcmp(command, "set_dx_mode") == 0){// This toggles between DX and normal mode of LoRa transmission.
         if(doc["dx"]){
-            if(DXMode()){
+            if(DXMode()){ // If dx mode is configured successfully, send a notification.
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"DX mode.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }
         }
         else{
-            if(normalMode()){
+            if(normalMode()){// Same as above. Doesn't need to reset the device.
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Normal mode.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }
         }
-    }else if(strcmp(command, "set_date") == 0){
+    }else if(strcmp(command, "set_date") == 0){// Sets manually the date and time.
+        // Gather from the client side all related to date and time, separately, and update all the text areas
+        // on settings(click and see the cog wheel at the feet of the astronaut :p).
         lv_textarea_set_text(frm_settings_day, doc["d"]);
         lv_textarea_set_text(frm_settings_month, doc["m"]);
         lv_textarea_set_text(frm_settings_year, doc["y"]);
         lv_textarea_set_text(frm_settings_hour, doc["hh"]);
         lv_textarea_set_text(frm_settings_minute, doc["mm"]);
+        // setDateTime will retrieve from the settings and update the date and time.
         setDateTime();
+        // Notify the client.
+        pthread_mutex_lock(&send_json_mutex);
         sendJSON("{\"command\" : \"notification\", \"message\" : \"Date and time set.\"}");
+        pthread_mutex_unlock(&send_json_mutex);
     }
 }
-
+// This event is used by the websocket object when a message is received from the client.
 void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
-    // Get the input message
+    // Get the input message.
     std::ostringstream ss;
     std::string msg;
     ss << inbuf;
     msg = ss.str();
-
+    // For debug purposes.
     Serial.println(msg.c_str());
+    // By now this server only receives JSON strings over the websocket, so parse them. 
     parseCommands(msg);
 }
-
+// This task runs a basic https server with websocket capabilities.
 void setupServer(void * param){
     HTTPSServer * secureServer = NULL;
     SSLCert * cert;
-
-    for(int i = 0; i < 4; i++) 
+    // Work in progress. The plan is to get up to 4 clients connected.
+    // Before start a new server, close all the sockets.
+    for(int i = 0; i < maxClients; i++){
+        activeClients[i]->close();
         activeClients[i] = nullptr;
-
+    }
+    // The server will be up as soons as the board gets connected through wifi.
+    // If the wifi is turned off the server also will be terminated. Useful
+    // when the http service gets busy or unresponsive. It needs refinement.
     while(true){
         if(WiFi.isConnected()){
+            // Create a self signed certificate using the owner's id as part of the config.
             char cn[30] = {'\0'};
             strcpy(cn, "CN=TDECK");
             strcat(cn, user_id);
@@ -1001,37 +1072,45 @@ void setupServer(void * param){
                 Serial.printf("Error generating certificate");
                 return; 
             }
-
-            secureServer = new HTTPSServer(cert, 443, 4);
+            // Create the server object, port 443 and limit the clients;
+            secureServer = new HTTPSServer(cert, 443, maxClients);
+            // A resource is like a file like index.html, style.css..., represented by a node.
+            // The server sends the content of the string that holds the web page on index_html,
+            // style_css and script_js. For now, the style and javascript is already on index.html.
+            // nodeRoot is the equivalent as the index.html, the other nodes corresponds to the other files.
             ResourceNode * nodeRoot = new ResourceNode("/", "GET", &handleRoot);
             //ResourceNode * nodeStyle = new ResourceNode("/style.css", "GET", &handleStyle);
             //ResourceNode * nodeScript = new ResourceNode("/script.js", "GET", &handleScript);
+            // If the client request a inexistent resource, send a 404 content.
             ResourceNode * node404 = new ResourceNode("", "GET", &handle404);
-
+            // Register the nodes.
             secureServer->registerNode(nodeRoot);
             //secureServer->registerNode(nodeStyle);
             //secureServer->registerNode(nodeScript);
             secureServer->registerNode(node404);
-
+            // Create a websocket node (wss://server_address/chat on client side).
             WebsocketNode * chatNode = new WebsocketNode("/chat", &ChatHandler::create);
             secureServer->registerNode(chatNode);
             secureServer->setDefaultNode(node404);
-
+            // Adds browser authentication.
             secureServer->addMiddleware(&middlewareAuthentication);
             secureServer->addMiddleware(&middlewareAuthorization);
-
+            // Start the service.
             secureServer->start();
             if (secureServer->isRunning()) {
+                // If all good, show a button with 'https' on settings, see wifi section.
                 lv_obj_clear_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
                 Serial.println("Server ready.");
             }
+            // The server needs to run in loop and rest 10ms forever, similar to lvgl's.
             while(WiFi.isConnected()){
                 secureServer->loop();
                 vTaskDelay(10 / portTICK_PERIOD_MS);
             }
         }else{
+            // If the wifi was turned off, shut down the server.
             if(secureServer != NULL){
-                for(int i = 0; i < 4; i++){
+                for(int i = 0; i < maxClients; i++){
                     if(activeClients[i] != NULL){
                         activeClients[i]->close(1000, "Server shutdown");
                         activeClients[i] = nullptr;
@@ -1040,12 +1119,14 @@ void setupServer(void * param){
                 secureServer->stop();
                 secureServer->~HTTPSServer();
                 secureServer = NULL;
+                // Hide the https button on settings.
                 lv_obj_add_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
                 Serial.println("Server ended");
             }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
+    // In case when a external routine ends this task.
     vTaskDelete(NULL);
 }
 
