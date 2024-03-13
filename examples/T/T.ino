@@ -1214,45 +1214,57 @@ void processReceivedPacket(void * param){
                     Serial.println(p.status);
                     Serial.print("me ");
                     Serial.println(p.me ? "true": "false");
-                    // If our packet has a sender wich is not on the contacts list, the processing ends here.
+                    // If our packet has a sender which is not on the contacts list, the processing ends here.
                     contact = contacts_list.getContactByID(p.sender);
 
                     if(contact != NULL){
                         Serial.println("Contact found");
                         if(strcmp(p.status, "send") == 0){
+                            // Lets add a date time of arrival.
                             strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                            // Decrypt the message.
                             strcpy(dec_msg, decryptMsg(p.sender, p.msg).c_str());
                             Serial.print("mensagem ");
                             Serial.println(dec_msg);
+                            // Copy the decrypted message back to the packet.
                             strcpy(p.msg, dec_msg);
+                            // The addMessage function sort the messages by destiny(contacts), so we trade places with the sender.
                             strcpy(p.destiny, p.sender);
+                            // The board can play sounds however it uses SPI to transfer to the DAC and it slows the board, 
+                            // the routine is commented so it does nothing for now. Needs more testing and refining.
                             notify_snd();
+                            // messages_list is accessed by other routines so we need to get exclusive access.
                             pthread_mutex_lock(&messages_mutex);
                                 messages_list.addMessage(p);
                             pthread_mutex_unlock(&messages_mutex);
+                            // This send a JSON representation of the messages list of the contact.
                             sendContactMessages(p.sender);
 
                             while(sendingJson){
                                 vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
+                            // On client side there is a javascript function that reproduces a sound when a message is received.
                             pthread_mutex_lock(&send_json_mutex);
                                 sendJSON("{\"command\" : \"playNewMessage\"}");
                             pthread_mutex_unlock(&send_json_mutex);
-                            
+                            // Now w prepare a string to be shown on the notification area.
                             strcpy(message, contact->getName().c_str());
                             strcat(message, ": ");
+                            // This ensure the message is 149 bytes long.
                             if(sizeof(p.msg) > 149){
                                 memcpy(pmsg, dec_msg, 149);
                                 strcat(message, pmsg);
                             }
                             else
                                 strcat(message, p.msg);
+                            // Eclipse the message if bigger then 30 bytes.
                             message[30] = '.';
                             message[31] = '.';
                             message[32] = '.';
                             message[33] = '\0';
+                            // Add to the notification list, there is a task to process it.
                             notification_list.add(message, LV_SYMBOL_ENVELOPE);
-                            // Send confirmation
+                            // Send confirmation. We use a small LoRa packet.
                             strcpy(c.sender, user_id);
                             strcpy(c.destiny, p.sender);
                             strcpy(c.status, "recv");
@@ -1266,8 +1278,10 @@ void processReceivedPacket(void * param){
                                 //Serial.println("waiting transmission to finish");
                                 vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
+                            // Change the squared status on home screen to red.
                             activity(lv_color_hex(0xff0000));
                             transmiting = true;
+                            // Get exclusive access through SPI.
                             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                                 if(radio.transmit((uint8_t*)&c, sizeof(c)) == RADIOLIB_ERR_NONE)
                                     Serial.println("Confirmation sent");
@@ -1275,18 +1289,24 @@ void processReceivedPacket(void * param){
                                     Serial.println("Confirmation not sent");
                                 xSemaphoreGive(xSemaphore);
                             }
+                            // Change to green.
                             activity(lv_color_hex(0x00ff00));
                             transmiting = false;
                             contact = NULL;
                         }
-
+                        // If we receive a delivered message confirmation.
                         if(strcmp(p.status, "recv") == 0){
+                            // Trade places with the sender.
                             strcpy(p.destiny, p.sender);
+                            // Adds date and time.
                             strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                            // This is used on the client side.
                             strcpy(p.msg, "[received]");
+                            // Add to the sender's list of messages.
                             pthread_mutex_lock(&messages_mutex);
                                 messages_list.addMessage(p);
                             pthread_mutex_unlock(&messages_mutex);
+                            // Send his messages back to the client side. This updates the chat history.
                             sendContactMessages(p.sender);
                         }
                         
