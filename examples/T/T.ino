@@ -89,6 +89,8 @@ TaskHandle_t task_recv_pkt = NULL, // when we receive a LoRa packet
              task_wifi_scan = NULL, // to scan without blocking the interface
              task_play = NULL, // test purpose
              task_play_radio = NULL; // test purpose
+// Holds how many messages a selected contact have.
+uint32_t msg_count = 0;
 // List of contacts, LoRa packets and notification
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
@@ -979,6 +981,8 @@ void parseCommands(std::string jsonString){
         lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
         // Set the new theme. As soons as this runs the color of the objects changes instantly.
         lv_disp_set_theme(dispp, theme);
+        // Save the settings.
+        saveSettings();
     }else if(strcmp(command, "set_name_id") == 0){// Sets the new name and id for the sender(T-Deck owner).
         // Set the id and name of the sender(T-Deck owner).
         strcpy(user_id, doc["id"]);
@@ -1309,10 +1313,11 @@ void processReceivedPacket(void * param){
                             // Send his messages back to the client side. This updates the chat history.
                             sendContactMessages(p.sender);
                         }
-                        
+                        // If we receive a ping solicitation.
                         if(strcmp(p.status, "ping") == 0 && strcmp(p.destiny, user_id) == 0){
+                            // Display a simple sotification.
                             notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
-                            
+                            // We'll send back a pong status.
                             Serial.print("Sending pong...");
                             strcpy(pong.sender, user_id);
                             strcpy(pong.destiny, p.sender);
@@ -1325,8 +1330,10 @@ void processReceivedPacket(void * param){
                                 //Serial.println("waiting transmission to finish before send confirmation...");
                                 vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
+                            // Change the activity square to red.
                             activity(lv_color_hex(0xff0000));
                             transmiting = true;
+                            // Get exclusive use of the SPI connection.
                             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                                 if(radio.transmit((uint8_t*)&pong, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
                                     Serial.println("done");
@@ -1334,28 +1341,37 @@ void processReceivedPacket(void * param){
                                     Serial.print("failed");
                                 xSemaphoreGive(xSemaphore);
                             }
+                            // Change the activity square to green.
                             activity(lv_color_hex(0x00ff00));
                             transmiting = false;
                         }
+                        // If we receive a confirmation ping.
                         if(strcmp(p.status, "pong") == 0 && strcmp(p.destiny, user_id) == 0){
+                            // Reproduce a sound(disabled by now).
                             notify_snd();
                             Serial.println("pong");
+                            // Format a message with rssi and s/n ratio statistics.
                             strcpy(message, "pong ");
                             sprintf(pmsg, "RSSI %.2f", radio.getRSSI());
                             strcat(message, pmsg);
                             sprintf(pmsg, " S/N %.2f", radio.getSNR());
                             strcat(message, pmsg);
+                            // Adds the message to the notification, we'll see on top of the screen.
                             notification_list.add(message, LV_SYMBOL_DOWNLOAD);
                         }
                     }
-                }else if(strcmp(p.status, "show") == 0){
+                }else if(strcmp(p.status, "show") == 0){// This is a beacon type packet.
+                    // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
                     Contact * d = contacts_list.getContactByID(p.sender);
                     if(d != NULL){
+                        // Set this to true if the contact is in range.
                         d->inrange = true;
                         //strcpy(message, LV_SYMBOL_CALL " ");
                         //strcat(message, contact->getName().c_str());
                         //strcat(message, " hi!");
                         //notification_list.add(message);
+                        // There's a time out in minutes, if the contacts don't send a "show" status in time they will be
+                        // shown as out of range with a greyish squared mark after their names.
                         d->timeout = millis();
                         Serial.println("Announcement packet received");
                         d = NULL;
@@ -1367,25 +1383,29 @@ void processReceivedPacket(void * param){
                 Serial.println("Unknown or malformed packet");
                 
             }
+            // After the packet being processed, set to false so we signalize other routines we're done.
             gotPacket = false;
+            // Put the radio mudule to listen for packets again.
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 radio.startReceive();
                 xSemaphoreGive(xSemaphore);
             }
+            // After the packet being processed, set to false so we signalize other routines we're done.
             processing = false;
         }
+        // Could be less, but we don't need to stress the cpu.
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
-
+// This is called every time the radio gets a packet, see radio.setPacketReceivedAction(onListen).
 void onListen(){
     gotPacket = true;
 }
-
+// The same thing as above but when the radio finishes a transmission. By now, not used.
 void onTransmit(){
     transmiting = false;
 }
-
+// This sets a more modest configuration for the radio, less power, more broadband, less distance, faster.
 bool normalMode(){
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         radio.sleep(false);
@@ -1449,7 +1469,7 @@ bool normalMode(){
     }
     return true;
 }
-
+// This sets a more performance like configuration for the radio, more power, less broadband, more distance, slower.
 bool DXMode()
 {
     /*
@@ -1528,7 +1548,7 @@ bool DXMode()
     return true;
     
 }
-
+// This is the initial setup as soon as the board boots.
 void setupRadio(lv_event_t * e)
 {
     digitalWrite(BOARD_SDCARD_CS, HIGH);
@@ -1603,22 +1623,29 @@ void setupRadio(lv_event_t * e)
         //return false;
     }
     int32_t code = 0;
+    // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. So we're using core 1
+    // to run this task forever.
     xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 20000, NULL, 1, &task_recv_pkt, 1);
+    // The function onListen will be called every time a packet is received.
     radio.setPacketReceivedAction(onListen);
+    // The onTransmit function is called every time when the radio finishes a transmission.
     //radio.setPacketSentAction(onTransmit);
+    // Put the radio module to listen for LoRa packets.
     code = radio.startReceive();
     Serial.print("setup radio start receive code ");
     Serial.println(code);
+    // Check if the radio is up.
     if(code == RADIOLIB_ERR_NONE){
+        // This can be used everywhere to check if the radio module is ready.
         hasRadio = true;
     }
     //return true;
 
 }
-
+// This encrypt a message using the owner id as key.
 String encryptMsg(String msg){
     char k[19] = {'\0'};
-    //Minimum cipher key must be 16 bytes long, or the default key will be used
+    //Minimum cipher key must be 16 bytes long, or the default key will be used.
     strcpy(k, user_id);
     strcat(k, user_id);
     strcat(k, user_id);
@@ -1626,7 +1653,7 @@ String encryptMsg(String msg){
     cipher->setKey(k);
     return cipher->encryptString(msg);
 }
-
+// This decrypt a received message using the id of the sender.
 String decryptMsg(char * contact_id, String msg){
     char k[19] = {'\0'};
 
@@ -1637,15 +1664,19 @@ String decryptMsg(char * contact_id, String msg){
     cipher->setKey(k);
     return cipher->decryptString(msg);
 }
-
-void test(lv_event_t * e){
+// This sends a ping packet.
+void ping(lv_event_t * e){
+    // Lets send a status packet type 'ping'.
     lora_packet_status my_packet;
     notify_snd();
     strcpy(my_packet.sender, user_id);
+    // We need to select a contact first, if not this does nothing.
     if(actual_contact != NULL)
         strcpy(my_packet.destiny, actual_contact->getID().c_str());
+    else
+        return;
     strcpy(my_packet.status, "ping");
-    
+    // Check is the radio is up.
     if(hasRadio){
         while(transmiting){
             //Serial.println("waiting transmition to finish");
@@ -1658,12 +1689,14 @@ void test(lv_event_t * e){
         transmiting = true;
         int state = 0;
         activity(lv_color_hex(0xff0000));
+        // Get exclusive use of SPI.
         if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
             state = radio.transmit((uint8_t *)&my_packet, sizeof(lora_packet_status));
             xSemaphoreGive(xSemaphore);
         }
         transmiting = false;
         //activity(lv_color_hex(0xcccccc));
+        // If all went ok show a notification, if not print the error code.
         if(state != RADIOLIB_ERR_NONE){
             Serial.print("transmission failed ");
             Serial.println(state);
@@ -1673,17 +1706,18 @@ void test(lv_event_t * e){
         }
     }
 }
-
+// This hides the contact list.
 void hide_contacts_frm(lv_event_t * e){
+    // Get the event type.
     lv_event_code_t code = lv_event_get_code(e);
-
+    // If the event is whats we're expecting, set the hidden flag on the window object.
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_contacts != NULL){
             lv_obj_add_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
-
+// Just like the above, now showing the list.
 void show_contacts_form(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     
@@ -1693,16 +1727,22 @@ void show_contacts_form(lv_event_t * e){
         }
     }
 }
-
+// This hides the settings menu.
 void hide_settings(lv_event_t * e){
+    // Get the event code.
     lv_event_code_t code = lv_event_get_code(e);
+    // Get the button the user clicked.
     lv_obj_t * obj = lv_event_get_target(e);
+    // Get the menu. Could be more menus, se we need to know what is used.
     lv_obj_t * menu = (lv_obj_t*)lv_event_get_user_data(e);
     bool isroot = false;
     if(code == LV_EVENT_SHORT_CLICKED){
+        // We need to know if the button on menu is the one which closes it.
         isroot = lv_menu_back_btn_is_root(menu, obj);
         if(isroot) {
+            // Hides the menu.
             lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
+            // Save the modified data.
             saveSettings();
         }
     }
@@ -1710,16 +1750,21 @@ void hide_settings(lv_event_t * e){
 
 void show_settings(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
+    // Used on text areas on Date tab.
     char year[5], month[3], day[3], hour[3], minute[3], color[7];
 
     if(code == LV_EVENT_SHORT_CLICKED){
+        // Show the menu.
         lv_obj_clear_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
+        // Load the system settings.
         loadSettings();
+        // Get the date and time segments from the RTC and convert them to string.
         itoa(timeinfo.tm_year + 1900, year, 10);
         itoa(timeinfo.tm_mon + 1, month, 10);
         itoa(timeinfo.tm_mday, day, 10);
         itoa(timeinfo.tm_hour, hour, 10);
         itoa(timeinfo.tm_min, minute, 10);
+        // Set the date and time segments strings on the text areas of the Date tab in Settings..
         lv_textarea_set_text(frm_settings_year, year);
         lv_textarea_set_text(frm_settings_month, month);
         lv_textarea_set_text(frm_settings_day, day);
@@ -1727,8 +1772,11 @@ void show_settings(lv_event_t * e){
         lv_textarea_set_text(frm_settings_minute, minute);
         lv_textarea_set_text(frm_settings_name, user_name);
         lv_textarea_set_text(frm_settings_id, user_id);
+        // Convert the color from int to his HEX representation as string.
         sprintf(color, "%lX", ui_primary_color);
+        // Set the color text area with the HEX string.
         lv_textarea_set_text(frm_settings_color, color);
+        // Set the brightness roller object value.
         lv_roller_set_selected(frm_settings_brightness_roller, brightness, LV_ANIM_OFF);
     }
 }
@@ -1752,91 +1800,108 @@ void show_add_contacts_frm(lv_event_t * e){
         }
     }
 }
-
+// This alters the info of a contact pointed by actual_contact.
 void hide_edit_contacts(lv_event_t * e){
-    Contact c;
     const char * name, * id;
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_edit_contacts != NULL){
+            // Get name and ID from the text areas.
             name = lv_textarea_get_text(frm_edit_text_name);
             id = lv_textarea_get_text(frm_edit_text_ID);
-            c.setName(lv_textarea_get_text(frm_edit_text_name));
+            // We only do alter the info a contact if the fields ars not empty, otherwise print a warnig.
             if(strcmp(name, "") != 0 && strcmp(id, "") != 0){
+                // Set the ID and name on the contact pointed by actual_contact.
                 actual_contact->setID(id);
-                Serial.println("ID updated");
-                if(strcmp(name, actual_contact->getName().c_str()) != 0)
-                    if(!contacts_list.find(c))
-                        actual_contact->setName(name);
-                    else{
-                        Serial.println("Name already exists");
-                    }
+                actual_contact->setName(name);
+                Serial.println("ID and name updated");
+                // Lets point this out of the contacts list.
                 actual_contact = NULL;
+                // Hide the edit dialog.
                 lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
                 Serial.println("Contact updated");
+                // Rebuild the contacts list(contacts list dialog).
                 refresh_contact_list();
             }else
                 Serial.println("Name or ID empty");
         }
     }
 }
-
+// Press and hold a contact's name on the list.
 void show_edit_contacts(lv_event_t * e){
-    const char * name;
+    char id[7] = {'\u0000'};
+    // Get the code of the event.
     lv_event_code_t code = lv_event_get_code(e);
+    // Get the data object represented by the item of the list(button).
     lv_obj_t * btn = (lv_obj_t * )lv_event_get_user_data(e);
-    lv_obj_t * lbl = lv_obj_get_child(btn, 1);
+    // Extract the hidden id label.
+    lv_obj_t * lbl_id = lv_obj_get_child(btn, 2);
 
     if(code == LV_EVENT_LONG_PRESSED){
         if(frm_edit_contacts != NULL){
-            name = lv_label_get_text(lbl);
-            actual_contact = contacts_list.getContactByName(name);
+            // Get the id saved on the label.
+            strcpy(id, lv_label_get_text(lbl_id));
+            // Search for the contact using his id. This pointer allow us to modify the info was soon as we close the dialog.
+            actual_contact = contacts_list.getContactByID(id);
+            // Show the edit dialog.
             lv_obj_clear_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
+            // Populate the text areas with ID and name of the actual_contact.
             lv_textarea_set_text(frm_edit_text_name, actual_contact->getName().c_str());
             lv_textarea_set_text(frm_edit_text_ID, actual_contact->getID().c_str());
         }
     }
 }
-
-uint32_t msg_count = 0;
+// Hides the chat dialog and delete the task_check_new_msg.
 void hide_chat(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_chat != NULL){
             if(task_check_new_msg != NULL){
+                // Closes the task.
                 vTaskDelete(task_check_new_msg);
                 task_check_new_msg = NULL;
                 Serial.println("task_check_new_msg deleted");
             }
-            
+            // Set this counter to 0.
             msg_count = 0;
+            // Hide the chat dialog.
             lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
+            // This is temporary, closing the chat returns to the contact list and the contact continues selected
+            // to be used to ping to him.
             //actual_contact = NULL;
         }
     }
 }
-
+// Show a chat dialog for the contact selected.
 void show_chat(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_SHORT_CLICKED){
-        
+        // Get the entire button from the list.
         lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
+        // Get its label with the contact's name.
         lv_obj_t * lbl = lv_obj_get_child(btn, 1);
+        // Get the contact's ID label.
         lv_obj_t * lbl_id = lv_obj_get_child(btn, 2);
+        // Extract the name and ID.
         const char * name = lv_label_get_text(lbl);
         const char * id = lv_label_get_text(lbl_id);
-        
+        // Get a pointer to the contact by his ID.
         actual_contact = contacts_list.getContactByID(id);
+        // Biuld a string title.
         char title[60] = "Chat with ";
         strcat(title, name);
         if(frm_chat != NULL){
+            // Show the chat dialog.
             lv_obj_clear_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
+            // Set the title.
             lv_label_set_text(frm_chat_btn_title_lbl, title);
+            // Send the focus to the answer text area.
             lv_group_focus_obj(frm_chat_text_ans);
             
             if(task_check_new_msg == NULL){
+                // Load a task which watches for a new message related to the selected contact.
                 xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 11000, NULL, 1, &task_check_new_msg, 1);
                 Serial.println("task_check_new_msg created");
             }
@@ -1845,56 +1910,71 @@ void show_chat(lv_event_t * e){
         }
     }
 }
-
+// Transmits a message through the LoRa module. Used with the chat dialog.
 void send_message(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     String enc_msg;
     char msg[200] = {'\0'};
     
     if(code == LV_EVENT_SHORT_CLICKED){
+        // Lets assemble a lora packet.
         lora_packet pkt;
+        // The sender is the owner.
         strcpy(pkt.sender, user_id);
+        // The destiny is the selected contact.
         strcpy(pkt.destiny, actual_contact->getID().c_str());
+        // 'send' to a normal packet, we'll expect to receive a 'recv' packet from the contact(not guaranteed).
         strcpy(pkt.status, "send");
+        // Put the actual date and time.
         strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
         
         if(hasRadio){
+            // We won't send an empty message.
             if(strcmp(lv_textarea_get_text(frm_chat_text_ans), "") != 0){
+                // Get the message from the answer text area.
                 strcpy(msg, lv_textarea_get_text(frm_chat_text_ans));
+                // Encrypt the message with our key.
                 enc_msg = encryptMsg(lv_textarea_get_text(frm_chat_text_ans));
                 strcpy(pkt.msg, enc_msg.c_str());
                 while(announcing){
-                    Serial.println("announcing");
-                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
                 }
                 while(gotPacket){
-                    Serial.println("gotPacket");
-                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
                 }
+                while(transmiting){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
+                // Set the activity to red.
                 activity(lv_color_hex(0xff0000));
                 transmiting = true;
                 int state = 0;
+                // Get exclusive use of the SPI and send the packet.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                     state = radio.transmit((uint8_t *)&pkt, sizeof(pkt));
                     xSemaphoreGive(xSemaphore);
                 }
                 //activity(lv_color_hex(0xcccccc));
                 transmiting = false;
-
+                // Check the status returned from the radio module.
                 if(state != RADIOLIB_ERR_NONE){
                     Serial.print("transmission failed ");
                     Serial.println(state);
                 }else{
                     Serial.println("transmitted");
-                    // add the message to the list of messages
+                    // add the message to the contact's list of messages.
+                    // This is used when we are assembling the chat messages list, every time we found me = true we are 
+                    // creating a new button with the messages created by us with the title 'Me - Date time'. 
                     pkt.me = true;
                     strcpy(pkt.msg, msg);
                     Serial.print("Adding answer to ");
                     Serial.println(pkt.destiny);
                     Serial.println(pkt.msg);
+                    // Get exclusive access to the messages_list.
                     pthread_mutex_lock(&messages_mutex);
                         messages_list.addMessage(pkt);
                     pthread_mutex_unlock(&messages_mutex);
+                    // Clear the asnwer text area, if fails for some reason you don't need to retype.
                     lv_textarea_set_text(frm_chat_text_ans, "");
                 }
             }
@@ -1902,7 +1982,8 @@ void send_message(lv_event_t * e){
             Serial.println("Radio not configured");
     }
 }
-
+// This is an event driven by touch and hold over a message on the messages list. It will copy the message to the
+// answer text area, avoiding retyping on that tini tiny keyboard.
 void copy_text(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * lbl = (lv_obj_t *)lv_event_get_user_data(e);
@@ -1910,50 +1991,55 @@ void copy_text(lv_event_t * e){
         lv_textarea_add_text(frm_chat_text_ans, lv_label_get_text(lbl));
     }
 }
-
-void clean_chat_list(lv_obj_t * list){
-    lv_obj_del(frm_chat_list);
-    frm_chat_list = NULL;
-    frm_chat_list = lv_list_create(frm_chat);
-    lv_obj_set_size(frm_chat_list, 320, 170);
-    lv_obj_align(frm_chat_list, LV_ALIGN_TOP_MID, 0, 5);
-    
-}
-
+// Task that runs when a contact is selected through the contacts list.
 void check_new_msg(void * param){
+    // Vector that holds the contact's mesages.
     vector<lora_packet> caller_msg;
+    // Save the actual messages count.
     uint32_t actual_count = 0;
     lv_obj_t * btn = NULL, * lbl = NULL;
     char date[60] = {'\0'};
     char name[100] = {'\0'};
-    
-    //clean_chat_list(frm_chat_list);
+    // Clear the chat messages. LVGL documentation says the functions are not thread safe, so we need a mutex.
     pthread_mutex_lock(&lvgl_mutex);
     lv_obj_clean(frm_chat_list);
     pthread_mutex_unlock(&lvgl_mutex);
     while(true){
+        // Get the contact's messages on a vector.
         pthread_mutex_lock(&messages_mutex);
             caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
         pthread_mutex_unlock(&messages_mutex);
+        // Save the count.
         actual_count = caller_msg.size();
+        // When actual_count is bigger than msg_count means that we have new messages.
         if(actual_count > msg_count){
             Serial.println("new messages");
+            // We only need the newest messages.
             for(uint32_t i = msg_count; i < actual_count; i++){
+                // We create a new entry on the messages list based on sender and destiny messages.
+                // If the message was sent by us we'll create a button with 'Me date time' on title.
                 if(caller_msg[i].me){
+                    // The title 'Me date time'.
                     strcpy(name, "Me");
                     strcat(name, caller_msg[i].date_time);
                     Serial.println(name);
+                    // Add on the list a simple text, there's a visual difference between a button.
                     pthread_mutex_lock(&lvgl_mutex);
                     lv_list_add_text(frm_chat_list, name);
                     pthread_mutex_unlock(&lvgl_mutex);
                 }else{
+                    // If it is a confirmation message, show a 'V' like symbol(ok the contact received the last message).
+                    // The messages will be buttons, the title will be text type.
                     if(strcmp(caller_msg[i].status, "recv") == 0){
+                        // LVGL's unsave thread access functions.
                         pthread_mutex_lock(&lvgl_mutex);
                         btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
                         pthread_mutex_unlock(&lvgl_mutex);
                     }else{
+                        // If it is a message from the destination, create a text item with the title 'Contact name date time'.
                         strcpy(name, actual_contact->getName().c_str());
                         strcat(name, caller_msg[i].date_time);
+                        // LVGL's unsave thread access functions.
                         pthread_mutex_lock(&lvgl_mutex);
                         lv_list_add_text(frm_chat_list, name);
                         pthread_mutex_unlock(&lvgl_mutex);
@@ -1961,44 +2047,62 @@ void check_new_msg(void * param){
                     }
                 }
                 Serial.println(caller_msg[i].msg);
+                // The 'recv' status packets doen't have messages, so if the packet is 'send' type we extract he message
+                // and create a button with it. lv_list_add_btn returns an instance of the button created with the message.
+                // We'll need to remove the scroll bars and add word wrap.
                 if(strcmp(caller_msg[i].status, "recv") != 0){
+                    // LVGL's unsave thread access functions.
                     pthread_mutex_lock(&lvgl_mutex);
+                    // Crete a new instance on a button with the message.
                     btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
+                    // Add the event 'copy message to answer text area'.
                     lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
                     pthread_mutex_unlock(&lvgl_mutex);
                 }
+                // Get the label of the button which holds the message.
                 pthread_mutex_lock(&lvgl_mutex);
                 lbl = lv_obj_get_child(btn, 0);
                 pthread_mutex_unlock(&lvgl_mutex);
+                // Test again if its not a recv packet type. If so, we pass through.
                 if(strcmp(caller_msg[i].status, "recv") != 0){
                     pthread_mutex_lock(&lvgl_mutex);
+                    // Set the font type, this one includes accents and latin chars.
                     lv_obj_set_style_text_font(lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    // This configures the label to do a word wrap and hide the scroll bars in case the message is too long.
                     lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
                     pthread_mutex_unlock(&lvgl_mutex);
                 }
+                // Force a scroll to the last message added on the list.
                 pthread_mutex_lock(&lvgl_mutex);
                 lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
                 pthread_mutex_unlock(&lvgl_mutex);
             }
+            // Update the message count.
             msg_count = actual_count;
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
-
+// This event adds a contact to the contacts list.
 void add_contact(lv_event_t * e){
     const char * name, * id;
     lv_event_code_t code = lv_event_get_code(e);
     
     if(code == LV_EVENT_SHORT_CLICKED){
+        // Get the name and ID from the text areas.
         id = lv_textarea_get_text(frm_add_contact_textarea_id);
         name = lv_textarea_get_text(frm_add_contact_textarea_name);
+        // These fields cannot be empty, otherwise do nothing.
         if(name != "" && id != ""){
+            // Create a contact.
             Contact c = Contact(name, id);
+            // Verify if exists someone with the same ID. If not, add it.
             if(!contacts_list.find(c)){
                 if(contacts_list.add(c)){
                     Serial.println("Contact added");
+                    // Rebuild the contacts list dialog.
                     refresh_contact_list();
+                    // Hide the add dialog.
                     lv_obj_add_flag(frm_add_contact, LV_OBJ_FLAG_HIDDEN);
                 }
                 else      
@@ -2008,18 +2112,24 @@ void add_contact(lv_event_t * e){
         }
     }
 }
-
+// This event deletes a contact from the list.
 void del_contact(lv_event_t * e){
-    const char * name;
+    char id[7] = {'\u0000'};
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
-        name = lv_textarea_get_text(frm_edit_text_name);
-        if(name != ""){
-            Contact * c = contacts_list.getContactByName(name);
+        // Get the ID from the text area.
+        strcpy(id, lv_textarea_get_text(frm_edit_text_ID));
+        // We'll continue only if the ID is not empty.
+        if(strcmp(id, "") != 0){
+            // Search for the contact using his ID.
+            Contact * c = contacts_list.getContactByID(id);
             if(c != NULL){
+                // Delete the contact.
                 if(contacts_list.del(*c)){
+                    // Rebuild the list dialog.
                     refresh_contact_list();
+                    // Hide the delete dialog.
                     lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
                     Serial.println("Contact deleted");
                 }
@@ -2027,17 +2137,18 @@ void del_contact(lv_event_t * e){
                 Serial.println("Contact not found");
         }
     }else
-        Serial.println("Name is empty");
+        Serial.println("ID is empty");
 }
-
+// This event calls for generate_ID and set the string returned into the text area.
 void generateID(lv_event_t * e){
     lv_textarea_set_text(frm_settings_id, generate_ID().c_str());
 }
-
+// This event checks the DX toggle switch and apply the apropriate configuration on the radio module.
 void DX(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_VALUE_CHANGED){
+        // Verify the state of the switch. If checked, DX mode, if not, normal mode.
         if(lv_obj_has_state(frm_settings_switch_dx, LV_STATE_CHECKED)){
             if(DXMode()){
                 Serial.println("DX mode on");
@@ -2937,7 +3048,7 @@ void ui(){
     lv_obj_set_style_text_font(lbl_btn_test, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(lbl_btn_test, "Ping");
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(btn_test, test, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_obj_add_event_cb(btn_test, ping, LV_EVENT_SHORT_CLICKED, NULL);
 
     // Activity led 
     frm_home_activity_led = lv_obj_create(frm_home);

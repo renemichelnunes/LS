@@ -1170,7 +1170,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     document.getElementById('settings_uicolor').value = decData.color;
                     document.getElementById('color-picker-button').style.backgroundColor = "#" + decData.color;
                     document.getElementById('brightnessRange').value = parseInt(decData.brightness) + 1;
-                    document.getElementById('brightness_value').value = parseInt(decData.brightness) + 1;
+                    document.getElementById('brightness_value').innerHTML = parseInt(decData.brightness) + 1;
                 }else if(decData.command === "rssi_snr"){
                     add_rssi_snr(decData.rssi, decData.snr);
                 }

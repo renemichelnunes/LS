@@ -12,13 +12,16 @@ class Contact{
         bool operator==( Contact other);
         String getName();
         String getID();
+        String getKey();
         void setName(String name);
         void setID(String id);
+        void setKey(String key);
         bool inrange = false;
         uint32_t timeout = 0;
     private:
         String name;
         String id;
+        String key;
 };
 
 class Contact_list{

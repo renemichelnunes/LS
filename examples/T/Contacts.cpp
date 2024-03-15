@@ -21,6 +21,10 @@ String Contact::getID(){
     return this->id;
 }
 
+String Contact::getKey(){
+    return this->key;
+}
+
 bool Contact::operator==( Contact other){
     return (name == other.name);
 }
@@ -31,6 +35,10 @@ void Contact::setName(String name){
 
 void Contact::setID(String id){
     this->id = id;
+}
+
+void Contact::setKey(String key){
+    this->key = key;
 }
 
 static bool cmp_name( Contact &c1,  Contact &c2){
