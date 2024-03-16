@@ -101,6 +101,7 @@ Contact * actual_contact = NULL;
 // Used in UI objects, settings
 char user_name[50] = "";
 char user_id[7] = "";
+char user_key[17] = "";
 char http_admin_pass[50] = "admin";
 char connected_to[200] = "";
 char ui_primary_color_hex_text[7] = {'\u0000'};
@@ -125,7 +126,7 @@ volatile int last_wifi_con = -1;
 // This object is used to encode and decode the LoRa messages
 Cipher * cipher = new Cipher();
 
-// Loads the user name, id, color of the interface and brightness
+// Loads the user name, id, key, color of the interface and brightness
 static void loadSettings(){
     char color[7];
     if(!SPIFFS.begin(true)){
@@ -151,25 +152,22 @@ static void loadSettings(){
         for(uint32_t index = 0; index < v.size(); index++){
             v[index].remove(v[index].length() - 1);
         }
-        if(v.size() > 3){
+        if(v.size() > 4){
             strcpy(user_name, v[0].c_str());
             strcpy(user_id, v[1].c_str());
             v[2].toUpperCase();
             strcpy(ui_primary_color_hex_text, v[2].c_str());
-            ui_primary_color = strtoul(v[2].c_str(), NULL, 16);
-            lv_disp_t *dispp = lv_disp_get_default();
-            lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
-            lv_disp_set_theme(dispp, theme);
+            lv_textarea_set_text(frm_settings_color, ui_primary_color_hex_text);
+            apply_color(NULL);
             brightness = atoi(v[3].c_str());
+            strcpy(user_key, v[4].c_str());
         }
-
-
         Serial.println("Settings loaded");
     }catch (exception &ex){
         Serial.println(ex.what());
     }
 }
-// Saves the user name, id, color of the interface and brightness
+// Saves the user name, id, key, color of the interface and brightness
 static void saveSettings(){
     if(!SPIFFS.begin(true)){
         Serial.println("failed mounting SPIFFS");
@@ -186,6 +184,7 @@ static void saveSettings(){
     file.println(user_id);
     file.println(ui_primary_color_hex_text);
     file.println(brightness);
+    file.println(user_key);
     Serial.println("settings saved");
     file.close();
 }
@@ -293,13 +292,13 @@ static void refresh_contact_list(){
 }
 
 // Creates a string with a sequence of 6 chars between letters and numbers randomly, the contact's id.
-std::string generate_ID(){
+std::string generate_ID(uint8_t size){
   srand(time(NULL));
   static const char alphanum[] = "0123456789"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   std::string ss;
 
-  for (int i = 0; i < 6; ++i) {
+  for (int i = 0; i < size; ++i) {
     ss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
   }
   return ss;
@@ -538,6 +537,7 @@ std::string contacts_to_json(){
         // A list of contacts represented by "contacts", not the command.
         doc["contacts"][i]["id"] = contacts_list.getList()[i].getID();
         doc["contacts"][i]["name"] = contacts_list.getList()[i].getName();
+        doc["contacts"][i]["key"] = contacts_list.getList()[i].getKey();
         doc["contacts"][i]["status"] = contacts_list.getList()[i].inrange ? "on" : "off";
     }
     // This transforms the doc object into a string
@@ -764,6 +764,7 @@ string settingsJSON(){
     doc["command"] = "settings";
     doc["name"] = user_name;
     doc["id"] = user_id;
+    doc["key"] = user_key;
     doc["dx"] = isDX;
     doc["color"] = ui_primary_color_hex_text;
     doc["brightness"] = brightness;
@@ -774,6 +775,7 @@ string settingsJSON(){
 void parseCommands(std::string jsonString){
     JsonDocument doc;
     // Transform a JSON string in a JSON object.
+    Serial.println(jsonString.c_str());
     deserializeJson(doc, jsonString);
     // Extract the command string.
     const char * command = doc["command"];
@@ -882,15 +884,16 @@ void parseCommands(std::string jsonString){
                 edited = true;
             }
         }
-        else // If the ids are the same, maybe the user wants to change the name only.
+        else // If the ids are the same, maybe the user wants to change the name or key.
             edited = true;
         if(edited){
             // c is pointing to the contact, so we have direct access to the contact info.
             c = contacts_list.getContactByID(doc["id"]);
             if(c != NULL){
                 // Set new id and name.
-                c->setID(doc["newid"]);
-                c->setName(doc["newname"]);
+                c->setID((const char *)doc["newid"]);
+                c->setName((const char *)doc["newname"]);
+                c->setKey((const char *)doc["newkey"]);
                 // Save the contact list.
                 saveContacts();
                 // We need to send the contacts list again and a notification, so lock on it.
@@ -933,6 +936,7 @@ void parseCommands(std::string jsonString){
         if(c == NULL){
             // Creating a new contact.
             c = new Contact(doc["name"], doc["id"]);
+            c->setKey(doc["key"]);
             // Add it to the list of contacts.
             if(contacts_list.add(*c)){
                 // Print some info on console.
@@ -972,29 +976,24 @@ void parseCommands(std::string jsonString){
             return;
         // Update the text area on the settings.
         lv_textarea_set_text(frm_settings_color, color);
-        // To change the color of the objects lets convert the string to a hex value.
-        ui_primary_color = strtoul(color, NULL, 16);
-        // Get the default display object.
-        lv_disp_t *dispp = lv_disp_get_default();
-        // Initialize a new theme with the default display, the color, a main palette, a light theme(true for dark mode)
-        // and the default font type and size.
-        lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
-        // Set the new theme. As soons as this runs the color of the objects changes instantly.
-        lv_disp_set_theme(dispp, theme);
+        // Lets use the event to apply color.
+        apply_color(NULL);
         // Save the settings.
         saveSettings();
     }else if(strcmp(command, "set_name_id") == 0){// Sets the new name and id for the sender(T-Deck owner).
         // Set the id and name of the sender(T-Deck owner).
         strcpy(user_id, doc["id"]);
         strcpy(user_name, doc["name"]);
+        strcpy(user_key, doc["key"]);
         // Update the text areas on settings.
         lv_textarea_set_text(frm_settings_name, user_name);
         lv_textarea_set_text(frm_settings_id, user_id);
+        lv_textarea_set_text(frm_settings_key, user_key);
         // The owner's info make part of settings.
         saveSettings();
         // Send a notification
         pthread_mutex_lock(&send_json_mutex);
-        sendJSON("{\"command\" : \"notification\", \"message\" : \"Name and ID saved.\"}");
+        sendJSON("{\"command\" : \"notification\", \"message\" : \"Name, ID and key saved.\"}");
         pthread_mutex_unlock(&send_json_mutex);
     }else if(strcmp(command, "set_dx_mode") == 0){// This toggles between DX and normal mode of LoRa transmission.
         if(doc["dx"]){
@@ -1046,7 +1045,7 @@ void setupServer(void * param){
     // Work in progress. The plan is to get up to 4 clients connected.
     // Before start a new server, close all the sockets.
     for(int i = 0; i < maxClients; i++){
-        activeClients[i]->close();
+        //activeClients[i]->close();
         activeClients[i] = nullptr;
     }
     // The server will be up as soons as the board gets connected through wifi.
@@ -1740,6 +1739,14 @@ void hide_settings(lv_event_t * e){
         // We need to know if the button on menu is the one which closes it.
         isroot = lv_menu_back_btn_is_root(menu, obj);
         if(isroot) {
+            // The ID section of menu has no save button. We save the ID info when we close
+            // the menu. First, we need to update user_name, user_id and user_key.
+            // Copy the name of the user to user_name.
+            strcpy(user_name, lv_textarea_get_text(frm_settings_name));
+            // Copy the ID of the user to user_id.
+            strcpy(user_id, lv_textarea_get_text(frm_settings_id));
+            // Copy the ky of the user to user_key.
+            strcpy(user_key, lv_textarea_get_text(frm_settings_key));
             // Hides the menu.
             lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
             // Save the modified data.
@@ -1772,6 +1779,7 @@ void show_settings(lv_event_t * e){
         lv_textarea_set_text(frm_settings_minute, minute);
         lv_textarea_set_text(frm_settings_name, user_name);
         lv_textarea_set_text(frm_settings_id, user_id);
+        lv_textarea_set_text(frm_settings_key, user_key);
         // Convert the color from int to his HEX representation as string.
         sprintf(color, "%lX", ui_primary_color);
         // Set the color text area with the HEX string.
@@ -1802,7 +1810,7 @@ void show_add_contacts_frm(lv_event_t * e){
 }
 // This alters the info of a contact pointed by actual_contact.
 void hide_edit_contacts(lv_event_t * e){
-    const char * name, * id;
+    const char * name, * id, * key;
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
@@ -1810,11 +1818,13 @@ void hide_edit_contacts(lv_event_t * e){
             // Get name and ID from the text areas.
             name = lv_textarea_get_text(frm_edit_text_name);
             id = lv_textarea_get_text(frm_edit_text_ID);
+            key = lv_textarea_get_text(frm_edit_text_key);
             // We only do alter the info a contact if the fields ars not empty, otherwise print a warnig.
             if(strcmp(name, "") != 0 && strcmp(id, "") != 0){
-                // Set the ID and name on the contact pointed by actual_contact.
+                // Set the ID, key and name on the contact pointed by actual_contact.
                 actual_contact->setID(id);
                 actual_contact->setName(name);
+                actual_contact->setKey(key);
                 Serial.println("ID and name updated");
                 // Lets point this out of the contacts list.
                 actual_contact = NULL;
@@ -1823,8 +1833,10 @@ void hide_edit_contacts(lv_event_t * e){
                 Serial.println("Contact updated");
                 // Rebuild the contacts list(contacts list dialog).
                 refresh_contact_list();
+                // Save the contacts list.
+                saveContacts();
             }else
-                Serial.println("Name or ID empty");
+                Serial.println("Name or ID cannot be empty");
         }
     }
 }
@@ -1849,6 +1861,7 @@ void show_edit_contacts(lv_event_t * e){
             // Populate the text areas with ID and name of the actual_contact.
             lv_textarea_set_text(frm_edit_text_name, actual_contact->getName().c_str());
             lv_textarea_set_text(frm_edit_text_ID, actual_contact->getID().c_str());
+            lv_textarea_set_text(frm_edit_text_key, actual_contact->getKey().c_str());
         }
     }
 }
@@ -2085,17 +2098,19 @@ void check_new_msg(void * param){
 }
 // This event adds a contact to the contacts list.
 void add_contact(lv_event_t * e){
-    const char * name, * id;
+    const char * name, * id, * key;
     lv_event_code_t code = lv_event_get_code(e);
     
     if(code == LV_EVENT_SHORT_CLICKED){
-        // Get the name and ID from the text areas.
+        // Get the name, ID and key from the text areas.
         id = lv_textarea_get_text(frm_add_contact_textarea_id);
         name = lv_textarea_get_text(frm_add_contact_textarea_name);
+        key = lv_textarea_get_text(frm_add_contact_textarea_key);
         // These fields cannot be empty, otherwise do nothing.
-        if(name != "" && id != ""){
+        if(strcmp(name, "") != 0 && strcmp(id, "") != 0){
             // Create a contact.
             Contact c = Contact(name, id);
+            c.setKey(key);
             // Verify if exists someone with the same ID. If not, add it.
             if(!contacts_list.find(c)){
                 if(contacts_list.add(c)){
@@ -2109,7 +2124,8 @@ void add_contact(lv_event_t * e){
                     Serial.println("failed to add contact");
             }else
                 Serial.println("Contact already exists");
-        }
+        }else
+            Serial.println("Name, ID or KEY cannot be emty");
     }
 }
 // This event deletes a contact from the list.
@@ -2141,8 +2157,15 @@ void del_contact(lv_event_t * e){
 }
 // This event calls for generate_ID and set the string returned into the text area.
 void generateID(lv_event_t * e){
-    lv_textarea_set_text(frm_settings_id, generate_ID().c_str());
+    uint8_t size = (int)lv_event_get_user_data(e);
+    lv_textarea_set_text(frm_settings_id, generate_ID(size).c_str());
 }
+// This event calls for generate_ID and set the string returned into the text area.
+void generateKEY(lv_event_t * e){
+    uint8_t size = (int)lv_event_get_user_data(e);
+    lv_textarea_set_text(frm_settings_key, generate_ID(size).c_str());
+}
+
 // This event checks the DX toggle switch and apply the apropriate configuration on the radio module.
 void DX(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
@@ -2170,28 +2193,26 @@ void DX(lv_event_t * e){
         }
     }
 }
-
+// This task runs every minute. Updates the time and date widget.
 void update_time(void *timeStruct) {
     char hourMin[6];
     char date[12];
     while(true){
-        
         if(getLocalTime((struct tm*)timeStruct)){
-            
+            // Format the time like 00:00
             strftime(hourMin, 6, "%H:%M %p", (struct tm *)timeStruct);
             lv_label_set_text(frm_home_time_lbl, hourMin);
-        
+            // Format the date like Fri, Mar 15.
             strftime(date, 12, "%a, %b %d", (struct tm *)timeStruct);
             lv_label_set_text(frm_home_date_lbl, date);
-            
         }
-        
         vTaskDelay(60000 / portTICK_RATE_MS);
+        // Send a beacon signal packet.
         announce();
     }
     vTaskDelete(task_date_time);
 }
-
+// This function is used to set the time and date manually.
 void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst){
     timeinfo.tm_year = yr - 1900;   // Set date
     timeinfo.tm_mon = month-1;
@@ -2206,50 +2227,45 @@ void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst
     settimeofday(&now, NULL);
     notification_list.add("date & time updated", LV_SYMBOL_SETTINGS);
 }
-
+// This function gets the date time segments on settings, convert into int and set the date time on the RTC.
 void setDateTime(){
     char day[3] = {'\0'}, month[3] = {'\0'}, year[5] = {'\0'}, hour[3] = {'\0'}, minute[3] = {'\0'};
-    
+    // Get the date and time segments from the text areas.
     strcpy(day, lv_textarea_get_text(frm_settings_day));
     strcpy(month, lv_textarea_get_text(frm_settings_month));
     strcpy(year, lv_textarea_get_text(frm_settings_year));
     strcpy(hour, lv_textarea_get_text(frm_settings_hour));
     strcpy(minute, lv_textarea_get_text(frm_settings_minute));
     
-
+    // Check if the fields are not empty.
     if(strcmp(day, "") != 0 && strcmp(month, "") != 0 && strcmp(year, "") != 0 && strcmp(hour, "") != 0 && strcmp(minute, "") != 0){
         try{
+            // Convert the strings into ints and set the date.
             setDate(atoi(year), atoi(month), atoi(day), atoi(hour), atoi(minute), 0, 0);
         }
         catch(exception &ex){
+            // In case of error.
             Serial.println(ex.what());
         }
     }
 }
-
+// This is used in settings after the user inform the date and time parameters.
 void applyDate(lv_event_t * e){
     char hourMin[6];
     char date[12];
-
+    // Set the date, format the text and show on the date time widget.
     setDateTime();
     strftime(hourMin, 6, "%H:%M %p", (struct tm *)&timeinfo);
-    
     lv_label_set_text(frm_home_time_lbl, hourMin);
-    
-
     strftime(date, 12, "%a, %b %d", (struct tm *)&timeinfo);
-    
     lv_label_set_text(frm_home_date_lbl, date);
-    
 }
 
 void apply_color(lv_event_t * e){
-    char color[7] = "";
-
-    strcpy(color, lv_textarea_get_text(frm_settings_color));
-    if(strcmp(color, "") == 0)
+    strcpy(ui_primary_color_hex_text, lv_textarea_get_text(frm_settings_color));
+    if(strcmp(ui_primary_color_hex_text, "") == 0)
         return;
-    ui_primary_color = strtoul(color, NULL, 16);
+    ui_primary_color = strtoul(ui_primary_color_hex_text, NULL, 16);
     lv_disp_t *dispp = lv_disp_get_default();
     lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
     lv_disp_set_theme(dispp, theme);
@@ -3130,6 +3146,12 @@ void ui(){
     lv_obj_align(frm_add_contact_textarea_name, LV_ALIGN_TOP_LEFT, 0, 60);
     lv_textarea_set_placeholder_text(frm_add_contact_textarea_name, "Name");
 
+    // Key text input
+    frm_add_contact_textarea_key = lv_textarea_create(frm_add_contact);
+    lv_obj_set_size(frm_add_contact_textarea_key, 240, 30);
+    lv_obj_align(frm_add_contact_textarea_key, LV_ALIGN_TOP_LEFT, 0, 95);
+    lv_textarea_set_placeholder_text(frm_add_contact_textarea_key, "KEY");
+
     // add button
     frm_add_contacts_btn_add = lv_btn_create(frm_add_contact);
     lv_obj_set_size(frm_add_contacts_btn_add, 50, 20);
@@ -3200,6 +3222,12 @@ void ui(){
     lv_obj_set_size(frm_edit_text_name, 240, 30);
     lv_obj_align(frm_edit_text_name, LV_ALIGN_TOP_LEFT, 0, 60);
     lv_textarea_set_placeholder_text(frm_edit_text_name, "Name");
+
+    // KEY text input
+    frm_edit_text_key = lv_textarea_create(frm_edit_contacts);
+    lv_obj_set_size(frm_edit_text_key, 240, 30);
+    lv_obj_align(frm_edit_text_key, LV_ALIGN_TOP_LEFT, 0, 95);
+    lv_textarea_set_placeholder_text(frm_edit_text_key, "KEY");
 
     lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
 
@@ -3328,6 +3356,7 @@ void ui(){
     frm_settings_id = lv_textarea_create(frm_settings_obj_id);
     lv_textarea_set_one_line(frm_settings_id, true);
     lv_obj_set_size(frm_settings_id, 90, 30);
+    lv_textarea_set_max_length(frm_settings_id, 6);
     lv_textarea_set_placeholder_text(frm_settings_id, "ID");
     lv_obj_align(frm_settings_id, LV_ALIGN_TOP_LEFT, 0, 20);
 
@@ -3335,12 +3364,29 @@ void ui(){
     frm_settings_btn_generate = lv_btn_create(frm_settings_obj_id);
     lv_obj_set_size(frm_settings_btn_generate, 80, 20);
     lv_obj_align(frm_settings_btn_generate, LV_ALIGN_TOP_LEFT, 100, 25);
-    lv_textarea_set_max_length(frm_settings_id, 6);
-    lv_obj_add_event_cb(frm_settings_btn_generate, generateID, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_obj_add_event_cb(frm_settings_btn_generate, generateID, LV_EVENT_SHORT_CLICKED, (void*)6);
 
     frm_settings_btn_generate_lbl = lv_label_create(frm_settings_btn_generate);
     lv_label_set_text(frm_settings_btn_generate_lbl, "Generate");
     lv_obj_set_align(frm_settings_btn_generate_lbl, LV_ALIGN_CENTER);
+
+    // Key text area
+    frm_settings_key = lv_textarea_create(frm_settings_obj_id);
+    lv_textarea_set_one_line(frm_settings_key, true);
+    lv_obj_set_size(frm_settings_key, 180, 30);
+    lv_textarea_set_max_length(frm_settings_key, 16);
+    lv_textarea_set_placeholder_text(frm_settings_key, "KEY");
+    lv_obj_align(frm_settings_key, LV_ALIGN_TOP_LEFT, 0, 50);
+
+    // Generate key button
+    frm_settings_btn_generate_key = lv_btn_create(frm_settings_obj_id);
+    lv_obj_set_size(frm_settings_btn_generate_key, 80, 20);
+    lv_obj_align(frm_settings_btn_generate_key, LV_ALIGN_TOP_LEFT, 0, 85);
+    lv_obj_add_event_cb(frm_settings_btn_generate_key, generateKEY, LV_EVENT_SHORT_CLICKED, (void*)16);
+
+    frm_settings_btn_generate_key_lbl = lv_label_create(frm_settings_btn_generate_key);
+    lv_label_set_text(frm_settings_btn_generate_key_lbl, "Generate");
+    lv_obj_set_align(frm_settings_btn_generate_key_lbl, LV_ALIGN_CENTER);
 
     //dx section
     frm_settings_dx_section;

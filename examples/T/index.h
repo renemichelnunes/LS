@@ -10,7 +10,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>T-Deck</title>
     <style>
-            body, html {
+        body, html {
             margin: 0;
             padding: 0;
         }
@@ -50,7 +50,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         }
 
         .selected {
-            background-color: #ddd; 
+            background-color: #ddd;
         }
 
         .name-list {
@@ -167,7 +167,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             top: 50%;
             transform: translate(-50%, -50%);
             width: 150px;
-            height: 90px;
+            height: 120px;
             background-color: #f0f0f0;
             border: 1px solid #ccc;
             padding: 20px;
@@ -190,7 +190,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             top: 50%;
             transform: translate(-50%, -50%);
             width: 150px;
-            height: 90px;
+            height: 120px;
             background-color: #f0f0f0;
             border: 1px solid #ccc;
             padding: 20px;
@@ -224,7 +224,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         .settings_id {
             padding: 5px;
             width: 155px;
-            height: 75px;
+            height: 120px;
             border: solid 1px #b5b5b5;
         }
 
@@ -234,11 +234,21 @@ const char index_html[] PROGMEM = R"rawliteral(
         }
 
         #settings_id {
-            width: 50px;
+            width: 60px;
+            border-style: hidden;
+        }
+
+        #settings_key {
+            width: 145px;
             border-style: hidden;
         }
 
         #btngenerate {
+            border-radius: 0;
+            border-style: hidden;
+        }
+
+        #btngenerate16 {
             border-radius: 0;
             border-style: hidden;
         }
@@ -381,7 +391,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         .input_save {
             border-style: hidden;
         }
-        
+
         #notification-button {
             position: fixed;
             right: 10px;
@@ -491,7 +501,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         <div class="content" id="tab1">
             <div class="name-list">
                 <ul>
-                    
+
                 </ul>
             </div>
             <div class="btn-add">
@@ -501,7 +511,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             </div>
             <div class="chat-messages">
                 <div class="text-scroller">
-                    
+
                 </div>
                 <textarea id="msg-area" class="input-textarea" rows="4" maxlength="120" placeholder="Type your message here, use 'Enter' to send and 'Shift + Enter' to add a new line..."></textarea>
             </div>
@@ -514,11 +524,14 @@ const char index_html[] PROGMEM = R"rawliteral(
         <div class="content" id="tab3" style="display: none;">
             <div class="settings_id">
                 My ID
-                <input type="button" id="btn_save" class="input_save" value="Save" onclick="saveConfig()">
                 <input id="settings_name" placeholder="Name">
                 <br>
                 <input id="settings_id" placeholder="ID" maxlength="6">
                 <input type="button" id="btngenerate" value="Generate" onclick="sendGeneratedID()">
+                <br>
+                <input id="settings_key" placeholder="KEY" maxlength="16">
+                <input type="button" id="btngenerate16" value="Generate" onclick="sendGeneratedKEY()">
+                <input type="button" id="btn_save" class="input_save" value="Save" onclick="saveConfig()">
             </div>
             <div class="settings_date">
                 Date
@@ -535,7 +548,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 DX
             </div>
             <div class="settings_wifi">
-                
+
             </div>
             <div class="settings_ui">
                 UI Color
@@ -561,6 +574,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         <form id="frmNew">
             <textarea id="CID" rows="1" placeholder="ID"></textarea>
             <textarea id="CName" rows="1" placeholder="Name"></textarea>
+            <textarea id="Ckey" rows="1" placeholder="KEY"></textarea>
             <input type="button" value="Confirm" onclick="confirmNew()">
             <input type="button" value="Close" onclick="hideNew()">
         </form>
@@ -569,12 +583,13 @@ const char index_html[] PROGMEM = R"rawliteral(
         <form id="frmEdit">
             <textarea id="CIDedit" rows="1" placeholder="ID"></textarea>
             <textarea id="CNameedit" rows="1" placeholder="Name"></textarea>
+            <textarea id="Ckeyedit" rows="1" placeholder="KEY"></textarea>
             <input type="button" value="Confirm" onclick="confirmEdit()">
             <input type="button" value="Close" onclick="hideEdit()">
         </form>
     </div>
     <script>
-        let ws = null;
+    let ws = null;
     let contactID = "";
     let editContactID = "";
     let contactName = "";
@@ -678,14 +693,16 @@ const char index_html[] PROGMEM = R"rawliteral(
     function saveConfig(){
         var name = document.getElementById('settings_name').value;
         var id = document.getElementById('settings_id').value;
+        var key = document.getElementById('settings_key').value;
 
         if(name === '' || id === ''){
             alert('Name or ID cannot be empty.');
             return;
         }
-        console.log(JSON.stringify({"command" : "set_name_id", "name" : name, "id" : id}));
+        var json = JSON.stringify({"command" : "set_name_id", "name" : name, "id" : id, "key" : key});
+        console.log(json);
         if(ws !== null){
-            ws.send(JSON.stringify({"command" : "set_name_id", "name" : name, "id" : id}));
+            ws.send(json);
         }
     }
 
@@ -732,11 +749,11 @@ const char index_html[] PROGMEM = R"rawliteral(
         console.log(JSON.stringify({"command" : "set_ui_color", "color" : input.value}));
     }
 
-    function generateID() {
+    function generateID(size) {
         const alphanum = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
         let id = '';
 
-        for (let i = 0; i < 6; ++i) {
+        for (let i = 0; i < size; ++i) {
             id += alphanum.charAt(Math.floor(Math.random() * alphanum.length));
         }
         return id;
@@ -744,11 +761,17 @@ const char index_html[] PROGMEM = R"rawliteral(
 
     function sendGeneratedID(){
         var input = document.getElementById('settings_id');
-        let id = generateID();
+        let id = generateID(6);
         if(window.confirm("Advice your contacts about your new ID or they won't receive your messages. Cancel if you want to maintain your actual ID."))
             input.value = id;
     }
 
+    function sendGeneratedKEY(){
+        var input = document.getElementById('settings_key');
+        let id = generateID(16);
+        if(window.confirm("Advice your contacts about your new key or they won't decode your messages. Cancel if you want to maintain your actual key."))
+            input.value = id;
+    }
 
     function setBrightness(level) {
         var brightness_value = document.getElementById('brightness_value');
@@ -759,7 +782,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             ws.send(JSON.stringify({"command":"set_brightness", "brightness":level - 1}));
     }
 
-    function showContextMenu(event, id, name) {
+    function showContextMenu(event, id, name, key) {
         event.preventDefault();
         currentTarget = event.currentTarget;
         contextMenu.style.display = 'block';
@@ -767,6 +790,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         contextMenu.style.top = event.clientY + 'px';
         contextMenu.setAttribute('data-id', id);
         contextMenu.setAttribute('data-name', name);
+        contextMenu.setAttribute('data-key', key);
         console.log("id " + id + " " + name);
         document.addEventListener('mousedown', handleOutsideClick);
     }
@@ -786,7 +810,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         event.stopPropagation();
         let id = contextMenu.getAttribute('data-id');
         let name = contextMenu.getAttribute('data-name');
-        editContact(id, name);
+        let key = contextMenu.getAttribute('data-key');
+        editContact(id, name, key);
         hideContextMenu();
     }
 
@@ -878,11 +903,12 @@ const char index_html[] PROGMEM = R"rawliteral(
         contactList.contacts.forEach(function(c) {
             const name = c.name;
             const id = c.id;
+            const key = c.key !== null ? c.key : "";
             const status = c.status;
 
             const listItem = document.createElement('li');
             listItem.oncontextmenu = function(event){
-                showContextMenu(event, id, name);
+                showContextMenu(event, id, name, key);
             };
             const listItemContent = document.createElement('div'); // Create a div for the content
             listItemContent.textContent = name;
@@ -1165,6 +1191,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 }else if(decData.command === "settings"){
                     document.getElementById('settings_name').value = decData.name;
                     document.getElementById('settings_id').value = decData.id;
+                    document.getElementById('settings_key').value = decData.key;
                     if(decData.dx === true)
                         setDxToggle();
                     document.getElementById('settings_uicolor').value = decData.color;
@@ -1232,6 +1259,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     function confirmNew() {
         let id = document.getElementById("CID").value;
         let name = document.getElementById("CName").value;
+        let key = document.getElementById("Ckey").value;
         if(id === '' || name === ''){
             alert('ID or Name cannot be empty.');
             return;
@@ -1239,7 +1267,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         if(ws !== null)
             ws.send(JSON.stringify({"command" : "new_contact",
                                     "id" : id,
-                                    "name" : name}));
+                                    "name" : name,
+                                    "key" : key}));
         hideNew(); // For demonstration, hiding modal after confirmation
     }
 
@@ -1247,12 +1276,13 @@ const char index_html[] PROGMEM = R"rawliteral(
         showNew();
     }
 
-    function showEdit(id, name){
+    function showEdit(id, name, key){
         document.getElementById("divEdit").style.display = "block";
         document.getElementById("divEdit").style.left = x + 'px';
         document.getElementById("divEdit").style.top = y + 'px';
         document.getElementById("CIDedit").value = id;
         document.getElementById("CNameedit").value = name;
+        document.getElementById("Ckeyedit").value = key;
         editContactID = id;
     }
 
@@ -1265,14 +1295,15 @@ const char index_html[] PROGMEM = R"rawliteral(
             ws.send(JSON.stringify({"command" : "edit_contact",
                                     "id" : editContactID,
                                     "newid" : document.getElementById("CIDedit").value,
-                                    "newname" : document.getElementById("CNameedit").value}));
+                                    "newname" : document.getElementById("CNameedit").value,
+                                    "newkey" : document.getElementById("Ckeyedit").value}));
         }
         editContactID = "";
         hideEdit();
     }
 
-    function editContact(id, name){
-        showEdit(id, name);
+    function editContact(id, name, key){
+        showEdit(id, name, key);
     }
 
     function getMouseCoordinates(event) {
