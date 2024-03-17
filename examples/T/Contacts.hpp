@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 using namespace std;
-
+/// @brief Class that represents a LoRa contact.
 class Contact{
     public:
         Contact( String name,  String id);
@@ -23,7 +23,7 @@ class Contact{
         String id;
         String key;
 };
-
+/// @brief Class that provides a list of contacts.
 class Contact_list{
     private:
         vector <Contact> list;

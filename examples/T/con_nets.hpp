@@ -4,7 +4,7 @@
 #include <SPIFFS.h>
 #include "Arduino.h"
 #include <vector>
-
+/// @brief Struct to hold the wifi info as SSID, password, auth mode and channel.
 struct wifi_info{
     char SSID[50] = {'\0'};
     wifi_auth_mode_t auth_type = WIFI_AUTH_OPEN;
@@ -13,7 +13,7 @@ struct wifi_info{
     char login[100] = {'\0'};
     char pass[100] = {'\0'};
 };
-
+/// @brief Class to define a list of wifi_info structs.
 class Wifi_connected_nets{
     private:
 

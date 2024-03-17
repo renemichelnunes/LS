@@ -7,7 +7,9 @@ Wifi_connected_nets::Wifi_connected_nets(){
 Wifi_connected_nets::~Wifi_connected_nets(){
     
 }
-
+/// @brief Find a network and return a wifi_info * structure pointer.
+/// @param ssid 
+/// @return wifi_info *
 wifi_info * Wifi_connected_nets::find(char * ssid){
     if(list.size() > 0){
         for(uint32_t i = 0; i < list.size(); i++)
@@ -16,7 +18,9 @@ wifi_info * Wifi_connected_nets::find(char * ssid){
     }
     return NULL;
 }
-
+/// @brief Add a wifi_info structure to the list.
+/// @param wi 
+/// @return bool
 bool Wifi_connected_nets::add(wifi_info wi){
     wifi_info * w = find(wi.SSID);
     if(w == NULL){
@@ -25,7 +29,8 @@ bool Wifi_connected_nets::add(wifi_info wi){
     }
     return false;
 }
-
+/// @brief Save the wifi history to a file in SPIFFS.
+/// @return 
 bool Wifi_connected_nets::save(){
     if(!SPIFFS.begin(true)){
         Serial.println("failed mounting SPIFFS");
@@ -51,7 +56,8 @@ bool Wifi_connected_nets::save(){
     }
     return false;
 }
-
+/// @brief Load the wifi history from SPIFFS.
+/// @return bool
 bool Wifi_connected_nets::load(){
     wifi_info wi;
 
@@ -90,7 +96,9 @@ bool Wifi_connected_nets::load(){
     else
         return false;
 }
-
+/// @brief Delete a network from the history.
+/// @param ssid 
+/// @return bool
 bool Wifi_connected_nets::del(char * ssid){
     uint index = -1;
 
