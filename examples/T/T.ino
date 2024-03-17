@@ -126,7 +126,7 @@ volatile int last_wifi_con = -1;
 // This object is used to encode and decode the LoRa messages
 Cipher * cipher = new Cipher();
 
-// Loads the user name, id, key, color of the interface and brightness
+/// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
     char color[7];
     if(!SPIFFS.begin(true)){
@@ -167,7 +167,7 @@ static void loadSettings(){
         Serial.println(ex.what());
     }
 }
-// Saves the user name, id, key, color of the interface and brightness
+/// @brief Saves the user name, id, key, color of the interface and brightness.
 static void saveSettings(){
     if(!SPIFFS.begin(true)){
         Serial.println("failed mounting SPIFFS");
@@ -188,7 +188,7 @@ static void saveSettings(){
     Serial.println("settings saved");
     file.close();
 }
-
+/// @brief Load the contacts list.
 static void loadContacts(){
     if(!SPIFFS.begin(true)){
         Serial.println("failed mounting SPIFFS");
@@ -214,9 +214,10 @@ static void loadContacts(){
 
     Serial.println("Loading contacts...");
     Contact c;
-    for(uint32_t index = 0; index < v.size(); index += 2){
+    for(uint32_t index = 0; index < v.size(); index += 3){
         c.setName(v[index]);
         c.setID(v[index + 1]);
+        c.setKey(v[index + 2]);
         Serial.println(c.getID());
         Serial.println(c.getName());
         contacts_list.add(c);
@@ -224,7 +225,7 @@ static void loadContacts(){
     Serial.print(contacts_list.size());
     Serial.println(" contacts found");
 }
-
+/// @brief Saves the contacts.
 static void saveContacts(){
   if(!SPIFFS.begin(true)){
     Serial.println("failed mounting SPIFFS");
@@ -243,12 +244,13 @@ static void saveContacts(){
     c = contacts_list.getContact(index);
     file.println(c.getName());
     file.println(c.getID());
+    file.println(c.getKey());
   }
   Serial.print(contacts_list.size());
   Serial.println(" contacts saved");
   file.close();
 }
-
+/// @brief Refreshes the contacts list object.
 static void refresh_contact_list(){
     // Clean the list
     lv_obj_clean(frm_contacts_list);
@@ -291,7 +293,9 @@ static void refresh_contact_list(){
     saveContacts();
 }
 
-// Creates a string with a sequence of 6 chars between letters and numbers randomly, the contact's id.
+/// @brief Creates a string with a sequence of 6 chars between letters and numbers randomly, the contact's id.
+/// @param size 
+/// @return std::string
 std::string generate_ID(uint8_t size){
   srand(time(NULL));
   static const char alphanum[] = "0123456789"
@@ -304,8 +308,9 @@ std::string generate_ID(uint8_t size){
   return ss;
 }
 
-// This task runs forever and every 100 ms. We watch for a new message and show in a small area on top of the screen
-// a symbol and a message.
+/// @brief This task runs forever and every 100 ms. We watch for a new message and show in a small area on top of the screen
+/// @brief a symbol and a message.
+/// @param param 
 static void notify(void * param){
     char n[30] = {'\0'}; // the message
     char b[13] = {'\0'}; // the symbol
@@ -340,7 +345,10 @@ static void notify(void * param){
     }
 }
 
-// T-Deck's hardware routines
+/// @brief T-Deck's routine to update the screen.
+/// @param disp 
+/// @param area 
+/// @param color_p 
 static void disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )
 {
     uint32_t w = ( area->x2 - area->x1 + 1 );
@@ -354,7 +362,10 @@ static void disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *
         xSemaphoreGive( xSemaphore );
     }
 }
-
+/// @brief Gets the touch coodinates.
+/// @param x 
+/// @param y 
+/// @return 
 static bool getTouch(int16_t &x, int16_t &y)
 {
     uint8_t rotation = tft.getRotation();
@@ -383,12 +394,16 @@ static bool getTouch(int16_t &x, int16_t &y)
     //Serial.printf("R:%d X:%d Y:%d\n", rotation, x, y);
     return true;
 }
-
+/// @brief T-Deck's routine.
+/// @param indev_driver 
+/// @param data 
 static void touchpad_read( lv_indev_drv_t *indev_driver, lv_indev_data_t *data )
 {
     data->state = getTouch(data->point.x, data->point.y) ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
 }
-
+/// @brief Reuturns a char typed on physical keyboard.
+/// @param  
+/// @return 
 static uint32_t keypad_get_key(void)
 {
     char key_ch = 0;
@@ -399,7 +414,9 @@ static uint32_t keypad_get_key(void)
     }
     return key_ch;
 }
-
+/// @brief T-Deck's routine.
+/// @param indev_drv 
+/// @param data 
 static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
     static uint32_t last_key = 0;
@@ -414,7 +431,7 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
     }
     data->key = last_key;
 }
-
+/// @brief Sets up the lvgl's objects, drivers, interfaces...
 void setupLvgl()
 {
     static lv_disp_draw_buf_t draw_buf;
@@ -481,7 +498,8 @@ void setupLvgl()
     }
 
 }
-
+/// @brief Handy way to get i2c address of the modules on the board.
+/// @param w 
 void scanDevices(TwoWire *w)
 {
     uint8_t err, addr;
@@ -518,15 +536,17 @@ void scanDevices(TwoWire *w)
     if (nDevices == 0)
         Serial.println("No I2C devices found\n");
 }
-
+/// @brief Used to detect the presence of the physical keyboard.
+/// @return 
 bool checkKb()
 {
     Wire.requestFrom(0x55, 1);
     return Wire.read() != -1;
 }
-// Transforms the contact list in a JSON string 
-// "{"command" : "contacts", "contacts" : [{"id":"abcdef","name":"john doe","status":"on"},
-//                                         {"id":"aaaaaa","name":"joe","status":"off"}]}"
+/// @brief  Transforms the contact list in a JSON string 
+/// @brief  "{"command" : "contacts", "contacts" : [{"id":"abcdef","name":"john doe","status":"on"},
+/// @brief                                          {"id":"aaaaaa","name":"joe","status":"off"}]}"
+/// @return 
 std::string contacts_to_json(){
     JsonDocument doc;
     std::string json;
@@ -582,7 +602,10 @@ void middlewareAuthentication(HTTPRequest * req, HTTPResponse * res, std::functi
         next();
     }
 }
-// This checks is the client provided a valid user, if not a warning is sent.
+/// @brief This checks is the client provided a valid user, if not a warning is sent.
+/// @param req 
+/// @param res 
+/// @param next 
 void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::function<void()> next) {
     std::string username = req->getHeader(HEADER_USERNAME);
 
@@ -597,7 +620,9 @@ void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::functio
         next();
     }
 }
-// This is used to send the index.html stored on the variable index_html, se index.h.
+/// @brief This is used to send the index.html stored on the variable index_html, se index.h.
+/// @param req 
+/// @param res 
 void handleRoot(HTTPRequest * req, HTTPResponse * res) {
     Serial.println("Sending main page");
     res->setHeader("Content-Type", "text/html");
@@ -605,7 +630,9 @@ void handleRoot(HTTPRequest * req, HTTPResponse * res) {
     res->setStatusText("OK");
     res->println(index_html);
 }
-// Same as above, see style.h
+/// @brief This is used to send the style.css stored on the variable style_css, se style.h.
+/// @param req 
+/// @param res 
 void handleStyle(HTTPRequest * req, HTTPResponse * res) {
     Serial.println("Sending style.css");
     res->setHeader("Content-Type", "text/css");
@@ -613,7 +640,9 @@ void handleStyle(HTTPRequest * req, HTTPResponse * res) {
     res->setStatusText("OK");
     res->println(style_css);
 }
-// Same as above, see script.h
+/// @brief This is used to send the script.js stored on the variable script_js, se script.h.
+/// @param req 
+/// @param res 
 void handleScript(HTTPRequest * req, HTTPResponse * res) {
     Serial.println("Sending script.js");
     res->setHeader("Content-Type", "application/javascript");
@@ -621,7 +650,9 @@ void handleScript(HTTPRequest * req, HTTPResponse * res) {
     res->setStatusText("OK");
     res->println(script_js);
 }
-// This is sent in case when index.html has a resource that is not available in the server.
+/// @brief This is sent in case when index.html has a resource that is not available in the server.
+/// @param req 
+/// @param res 
 void handle404(HTTPRequest * req, HTTPResponse * res) {
     req->discardRequestBody();
     res->setStatusCode(404);
@@ -633,7 +664,7 @@ void handle404(HTTPRequest * req, HTTPResponse * res) {
     res->println("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>");
     res->println("</html>");
 }
-// This class represents a chat object. It is a WebSocket handler wich is open when a client connects.
+/// @brief This class represents a chat object. It is a WebSocket handler wich is open when a client connects.
 class ChatHandler : public WebsocketHandler{
     public:
         static WebsocketHandler * create();
@@ -657,7 +688,7 @@ WebsocketHandler * ChatHandler::create() {
     }
     return handler;
 }
-// Search and close the client instance
+/// @brief Search and close the client instance.
 void ChatHandler::onClose() {
     for(int i = 0; i < maxClients; i++) {
         if (activeClients[i] == this) {
@@ -667,7 +698,8 @@ void ChatHandler::onClose() {
         }
     }
 }
-// This gets a JSON string built with seralizeJSON and send it through the websockets
+/// @brief This gets a JSON string built with seralizeJSON and send it through the websockets.
+/// @param json 
 void sendJSON(string json){
     sendingJson = true;
     if(json.length() > 0)
@@ -676,8 +708,10 @@ void sendJSON(string json){
                 activeClients[i]->send(json, WebsocketHandler::SEND_TYPE_TEXT);
     sendingJson = false;
 }
-// This is for debug purposes, a received decrypted message sometimes could bring non-printable
-// chars and it was making the board reboot.
+/// @brief This is for debug purposes, a received decrypted message sometimes could bring non-printable
+/// @brief chars and it was making the board reboot.
+/// @param str 
+/// @return bool
 bool containsNonPrintableChars(const char *str) {
     while (*str) {
         if (*str < 32 || *str > 126) { // ASCII values for printable characters
@@ -701,7 +735,8 @@ void printMessages(const char * id){
     }
     Serial.println("=================================");
 }
-// This creates and sends a JSON to the client with the list of messages from a selected contact.
+/// @brief This creates and sends a JSON to the client with the list of messages from a selected contact.
+/// @param id 
 void sendContactMessages(const char * id){
     vector<lora_packet>msgs;
     JsonDocument doc;
@@ -745,7 +780,8 @@ void sendContactMessages(const char * id){
     pthread_mutex_unlock(&send_json_mutex);
     Serial.println(json.c_str());
 }
-// Sets the brightness of the screen
+/// @brief Set the brightness of the screen.
+/// @param level 
 void setBrightness2(uint8_t level){
     // Store the level.
     brightness = level;
@@ -756,7 +792,8 @@ void setBrightness2(uint8_t level){
     // Save the settings.
     saveSettings();
 }
-// Returns a JSON with some settings.
+/// @brief Returns a JSON with the settings.
+/// @return 
 string settingsJSON(){
     JsonDocument doc;
     string json;
@@ -771,11 +808,12 @@ string settingsJSON(){
     serializeJson(doc, json);
     return json;
 }
-// This is used to parse commands and redirect data received or sent through a websocket.
+/// @brief This is used to parse commands and redirect data received or sent through a websocket.
+/// @param jsonString 
 void parseCommands(std::string jsonString){
     JsonDocument doc;
     // Transform a JSON string in a JSON object.
-    Serial.println(jsonString.c_str());
+    //Serial.println(jsonString.c_str());
     deserializeJson(doc, jsonString);
     // Extract the command string.
     const char * command = doc["command"];
@@ -790,7 +828,7 @@ void parseCommands(std::string jsonString){
         if(strcmp(id, "111111") == 0 || actual_contact == NULL)
             return;
         // Encrypting the message and copying to enc_msg. This one will be sent.
-        strcpy(enc_msg, encryptMsg(msg).c_str());
+        strcpy(enc_msg, encryptMsg(user_key, msg).c_str());
         // For debug purposes.
         Serial.println(enc_msg);
         // It will send only if the LoRa module is configured.
@@ -1026,7 +1064,8 @@ void parseCommands(std::string jsonString){
         pthread_mutex_unlock(&send_json_mutex);
     }
 }
-// This event is used by the websocket object when a message is received from the client.
+/// @brief This event is used by the websocket object when a message is received from the client.
+/// @param inbuf 
 void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
     // Get the input message.
     std::ostringstream ss;
@@ -1038,7 +1077,8 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
     // By now this server only receives JSON strings over the websocket, so parse them. 
     parseCommands(msg);
 }
-// This task runs a basic https server with websocket capabilities.
+/// @brief This task runs a basic https server with websocket capabilities.
+/// @param param 
 void setupServer(void * param){
     HTTPSServer * secureServer = NULL;
     SSLCert * cert;
@@ -1077,7 +1117,7 @@ void setupServer(void * param){
             }
             // Create the server object, port 443 and limit the clients;
             secureServer = new HTTPSServer(cert, 443, maxClients);
-            // A resource is like a file like index.html, style.css..., represented by a node.
+            // A resource is a file like index.html, style.css..., represented by a node.
             // The server sends the content of the string that holds the web page on index_html,
             // style_css and script_js. For now, the style and javascript is already on index.html.
             // nodeRoot is the equivalent as the index.html, the other nodes corresponds to the other files.
@@ -1132,7 +1172,8 @@ void setupServer(void * param){
     // In case when a external routine ends this task.
     vTaskDelete(NULL);
 }
-// This task runs forever, process a LoRa packet as soons as received.
+/// @brief This task runs forever, process a LoRa packet as soons as is received.
+/// @param param 
 void processReceivedPacket(void * param){
     lora_packet p;
     lora_packet_status c;
@@ -1226,7 +1267,7 @@ void processReceivedPacket(void * param){
                             // Lets add a date time of arrival.
                             strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                             // Decrypt the message.
-                            strcpy(dec_msg, decryptMsg(p.sender, p.msg).c_str());
+                            strcpy(dec_msg, decryptMsg((char*)contact->getKey().c_str(), p.msg).c_str());
                             Serial.print("mensagem ");
                             Serial.println(dec_msg);
                             // Copy the decrypted message back to the packet.
@@ -1396,15 +1437,16 @@ void processReceivedPacket(void * param){
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
-// This is called every time the radio gets a packet, see radio.setPacketReceivedAction(onListen).
+/// @brief This is called every time the radio gets a packet, see radio.setPacketReceivedAction(onListen).
 void onListen(){
     gotPacket = true;
 }
-// The same thing as above but when the radio finishes a transmission. By now, not used.
+/// @brief The same thing as above but when the radio finishes a transmission. By now, not used.
 void onTransmit(){
     transmiting = false;
 }
-// This sets a more modest configuration for the radio, less power, more broadband, less distance, faster.
+/// @brief This sets a more modest configuration for the radio, less power, more broadband, less distance, faster.
+/// @return bool
 bool normalMode(){
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         radio.sleep(false);
@@ -1468,7 +1510,8 @@ bool normalMode(){
     }
     return true;
 }
-// This sets a more performance like configuration for the radio, more power, less broadband, more distance, slower.
+/// @brief This sets a more performance like configuration for the radio, more power, less broadband, more distance, slower.
+/// @return bool
 bool DXMode()
 {
     /*
@@ -1547,7 +1590,8 @@ bool DXMode()
     return true;
     
 }
-// This is the initial setup as soon as the board boots.
+/// @brief This is the initial setup as soon as the board boots.
+/// @param e 
 void setupRadio(lv_event_t * e)
 {
     digitalWrite(BOARD_SDCARD_CS, HIGH);
@@ -1641,29 +1685,25 @@ void setupRadio(lv_event_t * e)
     //return true;
 
 }
-// This encrypt a message using the owner id as key.
-String encryptMsg(String msg){
-    char k[19] = {'\0'};
+/// @brief This encrypt a message using a key.
+/// @param key 
+/// @param msg 
+/// @return String
+String encryptMsg(char * key, String msg){
     //Minimum cipher key must be 16 bytes long, or the default key will be used.
-    strcpy(k, user_id);
-    strcat(k, user_id);
-    strcat(k, user_id);
-    k[16] = '\0';
-    cipher->setKey(k);
+    cipher->setKey(key);
     return cipher->encryptString(msg);
 }
-// This decrypt a received message using the id of the sender.
-String decryptMsg(char * contact_id, String msg){
-    char k[19] = {'\0'};
-
-    strcpy(k, contact_id);
-    strcat(k, contact_id);
-    strcat(k, contact_id);
-    k[16] = '\0';
-    cipher->setKey(k);
+/// @brief This decrypt a received message using a key.
+/// @param key 
+/// @param msg 
+/// @return String
+String decryptMsg(char * key, String msg){
+    cipher->setKey(key);
     return cipher->decryptString(msg);
 }
-// This sends a ping packet.
+/// @brief This sends a ping packet.
+/// @param e 
 void ping(lv_event_t * e){
     // Lets send a status packet type 'ping'.
     lora_packet_status my_packet;
@@ -1705,7 +1745,8 @@ void ping(lv_event_t * e){
         }
     }
 }
-// This hides the contact list.
+/// @brief This hides the contact list.
+/// @param e 
 void hide_contacts_frm(lv_event_t * e){
     // Get the event type.
     lv_event_code_t code = lv_event_get_code(e);
@@ -1716,7 +1757,8 @@ void hide_contacts_frm(lv_event_t * e){
         }
     }
 }
-// Just like the above, now showing the list.
+/// @brief This shows the contact list.
+/// @param e 
 void show_contacts_form(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     
@@ -1726,7 +1768,8 @@ void show_contacts_form(lv_event_t * e){
         }
     }
 }
-// This hides the settings menu.
+/// @brief This hides the settings menu.
+/// @param e 
 void hide_settings(lv_event_t * e){
     // Get the event code.
     lv_event_code_t code = lv_event_get_code(e);
@@ -1754,7 +1797,8 @@ void hide_settings(lv_event_t * e){
         }
     }
 }
-
+/// @brief Shows the settings menu with pre loaded info.
+/// @param e 
 void show_settings(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     // Used on text areas on Date tab.
@@ -1788,7 +1832,8 @@ void show_settings(lv_event_t * e){
         lv_roller_set_selected(frm_settings_brightness_roller, brightness, LV_ANIM_OFF);
     }
 }
-
+/// @brief Hides the add contact dialog.
+/// @param e 
 void hide_add_contacts_frm(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -1798,7 +1843,8 @@ void hide_add_contacts_frm(lv_event_t * e){
         }
     }
 }
-
+/// @brief Shows the add contact dialog.
+/// @param e 
 void show_add_contacts_frm(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -1808,7 +1854,8 @@ void show_add_contacts_frm(lv_event_t * e){
         }
     }
 }
-// This alters the info of a contact pointed by actual_contact.
+/// @brief This alters the info of a contact pointed by actual_contact.
+/// @param e 
 void hide_edit_contacts(lv_event_t * e){
     const char * name, * id, * key;
     lv_event_code_t code = lv_event_get_code(e);
@@ -1840,7 +1887,8 @@ void hide_edit_contacts(lv_event_t * e){
         }
     }
 }
-// Press and hold a contact's name on the list.
+/// @brief Shows the edit contact info dialog when press and hold a contact's name on the list.
+/// @param e 
 void show_edit_contacts(lv_event_t * e){
     char id[7] = {'\u0000'};
     // Get the code of the event.
@@ -1865,7 +1913,8 @@ void show_edit_contacts(lv_event_t * e){
         }
     }
 }
-// Hides the chat dialog and delete the task_check_new_msg.
+/// @brief Hides the chat dialog and delete the task_check_new_msg.
+/// @param e 
 void hide_chat(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -1887,16 +1936,21 @@ void hide_chat(lv_event_t * e){
         }
     }
 }
-// Show a chat dialog for the contact selected.
+/// @brief Show a chat dialog when selecting a contact.
+/// @param e 
 void show_chat(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_SHORT_CLICKED){
         // Get the entire button from the list.
         lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
         // Get its label with the contact's name.
+        pthread_mutex_lock(&lvgl_mutex);
         lv_obj_t * lbl = lv_obj_get_child(btn, 1);
+        pthread_mutex_unlock(&lvgl_mutex);
         // Get the contact's ID label.
+        pthread_mutex_lock(&lvgl_mutex);
         lv_obj_t * lbl_id = lv_obj_get_child(btn, 2);
+        pthread_mutex_unlock(&lvgl_mutex);
         // Extract the name and ID.
         const char * name = lv_label_get_text(lbl);
         const char * id = lv_label_get_text(lbl_id);
@@ -1923,7 +1977,8 @@ void show_chat(lv_event_t * e){
         }
     }
 }
-// Transmits a message through the LoRa module. Used with the chat dialog.
+/// @brief Transmits a message through the LoRa module. Used with the chat dialog.
+/// @param e 
 void send_message(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     String enc_msg;
@@ -1947,7 +2002,7 @@ void send_message(lv_event_t * e){
                 // Get the message from the answer text area.
                 strcpy(msg, lv_textarea_get_text(frm_chat_text_ans));
                 // Encrypt the message with our key.
-                enc_msg = encryptMsg(lv_textarea_get_text(frm_chat_text_ans));
+                enc_msg = encryptMsg(user_key, lv_textarea_get_text(frm_chat_text_ans));
                 strcpy(pkt.msg, enc_msg.c_str());
                 while(announcing){
                     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1995,8 +2050,9 @@ void send_message(lv_event_t * e){
             Serial.println("Radio not configured");
     }
 }
-// This is an event driven by touch and hold over a message on the messages list. It will copy the message to the
+/// @brief This is an event driven by touch and hold over a message on the messages list. It will copy the message to the
 // answer text area, avoiding retyping on that tini tiny keyboard.
+/// @param e 
 void copy_text(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * lbl = (lv_obj_t *)lv_event_get_user_data(e);
@@ -2004,7 +2060,8 @@ void copy_text(lv_event_t * e){
         lv_textarea_add_text(frm_chat_text_ans, lv_label_get_text(lbl));
     }
 }
-// Task that runs when a contact is selected through the contacts list.
+/// @brief Task that runs when a contact is selected through the contacts list.
+/// @param param 
 void check_new_msg(void * param){
     // Vector that holds the contact's mesages.
     vector<lora_packet> caller_msg;
@@ -2020,7 +2077,7 @@ void check_new_msg(void * param){
     while(true){
         // Get the contact's messages on a vector.
         pthread_mutex_lock(&messages_mutex);
-            caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
+        caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
         pthread_mutex_unlock(&messages_mutex);
         // Save the count.
         actual_count = caller_msg.size();
@@ -2096,7 +2153,8 @@ void check_new_msg(void * param){
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
-// This event adds a contact to the contacts list.
+/// @brief This event adds a contact to the contacts list.
+/// @param e 
 void add_contact(lv_event_t * e){
     const char * name, * id, * key;
     lv_event_code_t code = lv_event_get_code(e);
@@ -2128,7 +2186,8 @@ void add_contact(lv_event_t * e){
             Serial.println("Name, ID or KEY cannot be emty");
     }
 }
-// This event deletes a contact from the list.
+/// @brief This event deletes a contact from the list.
+/// @param e 
 void del_contact(lv_event_t * e){
     char id[7] = {'\u0000'};
     lv_event_code_t code = lv_event_get_code(e);
@@ -2155,18 +2214,21 @@ void del_contact(lv_event_t * e){
     }else
         Serial.println("ID is empty");
 }
-// This event calls for generate_ID and set the string returned into the text area.
+/// @brief This event calls for generate_ID and set the string returned into the text area.
+/// @param e 
 void generateID(lv_event_t * e){
     uint8_t size = (int)lv_event_get_user_data(e);
     lv_textarea_set_text(frm_settings_id, generate_ID(size).c_str());
 }
-// This event calls for generate_ID and set the string returned into the text area.
+/// @brief This event calls for generate_ID and set the string returned into the text area.
+/// @param e 
 void generateKEY(lv_event_t * e){
     uint8_t size = (int)lv_event_get_user_data(e);
     lv_textarea_set_text(frm_settings_key, generate_ID(size).c_str());
 }
 
-// This event checks the DX toggle switch and apply the apropriate configuration on the radio module.
+/// @brief This event checks the DX toggle switch and apply the apropriate configuration on the radio module.
+/// @param e 
 void DX(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2193,7 +2255,8 @@ void DX(lv_event_t * e){
         }
     }
 }
-// This task runs every minute. Updates the time and date widget.
+/// @brief This task runs every minute. Updates the time and date widget.
+/// @param timeStruct 
 void update_time(void *timeStruct) {
     char hourMin[6];
     char date[12];
@@ -2212,7 +2275,14 @@ void update_time(void *timeStruct) {
     }
     vTaskDelete(task_date_time);
 }
-// This function is used to set the time and date manually.
+/// @brief This function is used to set the time and date manually.
+/// @param yr 
+/// @param month 
+/// @param mday 
+/// @param hr 
+/// @param minute 
+/// @param sec 
+/// @param isDst 
 void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst){
     timeinfo.tm_year = yr - 1900;   // Set date
     timeinfo.tm_mon = month-1;
@@ -2227,7 +2297,7 @@ void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst
     settimeofday(&now, NULL);
     notification_list.add("date & time updated", LV_SYMBOL_SETTINGS);
 }
-// This function gets the date time segments on settings, convert into int and set the date time on the RTC.
+/// @brief This function gets the date time segments on settings, convert into int and set the date time on the RTC.
 void setDateTime(){
     char day[3] = {'\0'}, month[3] = {'\0'}, year[5] = {'\0'}, hour[3] = {'\0'}, minute[3] = {'\0'};
     // Get the date and time segments from the text areas.
@@ -2249,7 +2319,8 @@ void setDateTime(){
         }
     }
 }
-// This is used in settings after the user inform the date and time parameters.
+/// @brief This is used in settings after the user inform the date and time parameters.
+/// @param e 
 void applyDate(lv_event_t * e){
     char hourMin[6];
     char date[12];
@@ -2260,26 +2331,43 @@ void applyDate(lv_event_t * e){
     strftime(date, 12, "%a, %b %d", (struct tm *)&timeinfo);
     lv_label_set_text(frm_home_date_lbl, date);
 }
-
+/// @brief This event changes the color of the objects.
+/// @param e 
 void apply_color(lv_event_t * e){
+    // Get the hex representation of a 565 rgb color.
     strcpy(ui_primary_color_hex_text, lv_textarea_get_text(frm_settings_color));
+    // If empty do nothing.
     if(strcmp(ui_primary_color_hex_text, "") == 0)
         return;
+    // The hex representation is a string, convert to int.
     ui_primary_color = strtoul(ui_primary_color_hex_text, NULL, 16);
+    // Get the default display object, we can configure various displays.
     lv_disp_t *dispp = lv_disp_get_default();
+    // Create a theme based on the color.
     lv_theme_t *theme = lv_theme_default_init(dispp, lv_color_hex(ui_primary_color), lv_palette_main(LV_PALETTE_RED), false, &lv_font_montserrat_14);
+    // Apply the new theme, the changes happens instantaneously.
     lv_disp_set_theme(dispp, theme);
 }
-
+/// @brief This function verify the status of each contact on the list and change the status indicator accordingly.
+/// @param index 
+/// @param in_range 
 void update_frm_contacts_status(uint16_t index, bool in_range){
+    //No contacts, no update, return.
     if(index > contacts_list.size() - 1 || index < 0)
         return;
-    
+    // This gets the entire onject on the list of contacts by its position(index).
+    pthread_mutex_lock(&lvgl_mutex);
     lv_obj_t * btn = lv_obj_get_child(frm_contacts_list, index);
+    pthread_mutex_unlock(&lvgl_mutex);
+    // Strangely this was causing loadProhibited, as the lvgl functions are not thread safe, we need to get exclusive access.
+    // In other places could make the interface freeze, we need more study on this.
+    pthread_mutex_lock(&lvgl_mutex);
     lv_obj_t * obj_status = lv_obj_get_child(btn, 3);
-    
-    
+    pthread_mutex_unlock(&lvgl_mutex);
+    // Based on the contact status passed through, change the color of the status indicator, green for near, 
+    // light gray for out of range. You can modify at your will.
     if(in_range){
+        // As the lvgl functions are not thread safe, we need to get exclusive access.
         pthread_mutex_lock(&lvgl_mutex);
         lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
         pthread_mutex_unlock(&lvgl_mutex);
@@ -2290,55 +2378,73 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
         pthread_mutex_unlock(&lvgl_mutex);
     }
 }
-
+/// @brief This sends a json with a especific contact status to be updated on the contacts list on the client side.
+/// @param id 
+/// @param status 
 void sendContactsStatusJson(const char * id, bool status){
     JsonDocument doc;
     std::string json;
-
+    // Populate the doc.
     doc["command"] = "contact_status";
     doc["contact"]["id"] = id;
     doc["contact"]["status"] = status;
+    // Convert to a json string.
     serializeJson(doc, json);
     while(sendingJson){
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
+    // Avoids parallel calls of sendJSON, memory corruption...
     pthread_mutex_lock(&send_json_mutex);
     sendJSON(json.c_str());
     pthread_mutex_unlock(&send_json_mutex);
 }
-
+/// @brief Loops through the contacts to analyse the statuses and sends them to the client side.
 void check_contacts_in_range(){
+    // Change the activity indicator to light blue.
     activity(lv_color_hex(0x0095ff));
+    // Verify if someone got timeout.
     contacts_list.check_inrange();
-    char msg[100] = {'\0'};
+    // Loop through the contacts.
     for(uint32_t i = 0; i < contacts_list.size(); i++){
+        // Update the status indicator.
         update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
+        // For debug purposes.
         Serial.print(contacts_list.getList()[i].getName());
         Serial.println(contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
-        strcpy(msg, "[");
-        strcat(msg, contacts_list.getList()[i].getName().c_str());
-        strcat(msg, contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
-        strcat(msg, "]");
+        // Sends the current status to the client side.
         sendContactsStatusJson(contacts_list.getList()[i].getID().c_str(), contacts_list.getList()[i].inrange);
     }
     //activity(lv_color_hex(0xcccccc));
 }
-
+/// @brief Initialize the battery monitoring routine.
 void initBat(){
+    // Structure used to hold the characteristics related to ADC calibration.
     esp_adc_cal_characteristics_t adc_bat;
+    // Calibrate the ADC (Analog-to-Digital Converter) for battery voltage measurement.
+    // The esp32 has two adcs, ADC_UNIT_1 and ADC_UNIT_2.
+    // ADC_ATTEN_DB_11 sets the attenuation level to 11dB, or voltage range 0-3.9v.
+    // ADC_WIDTH_BIT_12 sets the resolution to 4096 voltage levels.
+    // The reference voltage is 1.1v(1100).
     esp_adc_cal_value_t type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_bat);
-
+    // Checks if we are using the reference voltage from eFuse, if not, 1.1 volts will be used.
     if (type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
         vRef = adc_bat.vref;
     } else {
         vRef = 1100;
     }
 }
-
+/// @brief Same as the map function in arduino stuff.
+/// @param x 
+/// @param in_min 
+/// @param in_max 
+/// @param out_min 
+/// @param out_max 
+/// @return 
 long mapv(long x, long in_min, long in_max, long out_min, long out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-
+/// @brief Gets the voltage readings from the adc1 and outputs as percentage. 4.2 volts means the battery is full, 3.3v is empty.
+/// @return 
 uint32_t read_bat(){
     uint16_t v = analogRead(BOARD_BAT_ADC);
     double vBat = ((double)v / 4095.0) * 2.0 * 3.3 * (vRef / 1000.0);
@@ -2352,7 +2458,9 @@ uint32_t read_bat(){
 
     return batPercent;
 }
-
+/// @brief This returns a string which represents the battery symbol, see lvgl's symbols table.
+/// @param percentage 
+/// @return 
 char * get_battery_icon(uint32_t percentage) {
   if (percentage >= 90) {
     return LV_SYMBOL_BATTERY_FULL;
@@ -2366,7 +2474,8 @@ char * get_battery_icon(uint32_t percentage) {
     return LV_SYMBOL_BATTERY_EMPTY;
   }
 }
-
+/// @brief This task verify the battery level every 30 seconds.
+/// @param param 
 void update_bat(void * param){
     char icon[12] = {'\0'};
     uint32_t p = read_bat();
@@ -2384,7 +2493,8 @@ void update_bat(void * param){
         vTaskDelay(30000 / portTICK_PERIOD_MS);
     }
 }
-
+/// @brief This event hides the wifi configuration dialog.
+/// @param e 
 void hide_wifi(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2394,7 +2504,8 @@ void hide_wifi(lv_event_t * e){
         }
     }
 }
-
+/// @brief This event shows the wifi configuration dialog.
+/// @param e 
 void show_wifi(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2404,26 +2515,35 @@ void show_wifi(lv_event_t * e){
         }
     }
 }
-
+/// @brief This event configures the wifi to connect to a network.
+/// @param e 
 void wifi_apply(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
+    // i is the index of the wifi_list where the selected network is.
     int i = (int)lv_event_get_user_data(e);
     uint32_t count = 0;
     char msg[100] = {'\0'};
 
     if(code == LV_EVENT_SHORT_CLICKED){
+        // Check through some types of auth methods.
         if(wifi_list[i].auth_type == WIFI_AUTH_WPA2_PSK || 
            wifi_list[i].auth_type == WIFI_AUTH_WPA_WPA2_PSK || 
            wifi_list[i].auth_type == WIFI_AUTH_WEP){
+            // Get the password.
             strcpy(wifi_list[i].pass, lv_textarea_get_text(frm_wifi_simple_ta_pass));
             if(strcmp(wifi_list[i].pass, "") == 0){
                 Serial.println("Provide a password");
                 return;
             }
+            // Set the title.
             lv_label_set_text(frm_wifi_simple_title_lbl, "Connecting...");
+            // Disconnect from previous network.
             WiFi.disconnect(true);
+            // Set wifi mode to wireless client. 
             WiFi.mode(WIFI_STA);
+            // Connect to the selected wifi AP.
             WiFi.begin(wifi_list[i].SSID, wifi_list[i].pass);
+            // Try to connect within 30 seconds.
             while(!WiFi.isConnected()){
                 Serial.print(".");
                 count++;
@@ -2434,23 +2554,28 @@ void wifi_apply(lv_event_t * e){
                 delay(1000);
             }
         }else if(wifi_list[i].auth_type == WIFI_AUTH_WPA2_ENTERPRISE){
+            // wpa enterprise require a login type auth. So get the password and login.
             strcpy(wifi_list[i].pass, lv_textarea_get_text(frm_wifi_login_ta_pass));
             strcpy(wifi_list[i].login, lv_textarea_get_text(frm_wifi_login_ta_login));
+            // Continue only if the fields are not empty.
             if(strcmp(wifi_list[i].pass, "") == 0 || strcmp(wifi_list[i].login, "") == 0){
                 Serial.println("Provide a login and passwod");
                 return;
             }
             lv_label_set_text(frm_wifi_login_title_lbl, "Connecting...");
+            // Disconnect from previous connection.
             WiFi.disconnect(true);
+            // Set the mode to wifi client.
             WiFi.mode(WIFI_STA);
-            
+            // Set the wpa enterprise parameters.
             esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_list[i].login, strlen(wifi_list[i].login));
             esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_list[i].login, strlen(wifi_list[i].login));
             esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_list[i].pass, strlen(wifi_list[i].pass));
+            // Enable the configuration.
             esp_wifi_sta_wpa2_ent_enable();
-            
+            // Connect.
             WiFi.begin(wifi_list[i].SSID, wifi_list[i].pass);
-
+            // 30 seconds timeout.
             while(!WiFi.isConnected()){
                 Serial.print(".");
                 count++;
@@ -2461,6 +2586,7 @@ void wifi_apply(lv_event_t * e){
                 delay(1000);
             }
         }else if(wifi_list[i].auth_type == WIFI_AUTH_OPEN){
+            // Connect without auth.
             WiFi.disconnect();
             WiFi.mode(WIFI_STA);
             WiFi.begin(wifi_list[i].SSID);
@@ -2477,17 +2603,24 @@ void wifi_apply(lv_event_t * e){
             Serial.println("auth type not implemented");
         
         if(WiFi.isConnected()){
+            // Store the last wifi network connected index of the wifi_list.
             last_wifi_con = i;
+            // Add to the list of once connected wifi APs.
             wifi_connected_nets.add(wifi_list[i]);
+            // Save the list.
             wifi_connected_nets.save();
             Serial.println("wifi network saved");
+            // In settings, on wifi tab there is a button with a wifi symbol, change the color to green.
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
             Serial.println(WiFi.localIP().toString());
+            // Update the status in wifi tab.
             strcpy(connected_to, wifi_list[i].SSID);
             strcat(connected_to, " ");
             strcat(connected_to, WiFi.localIP().toString().c_str());
+            // Hide the auth dialogs for each type of connection.
             lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN); 
             lv_obj_add_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
+            // Update the date and time through the internet.
             datetime();
         }else{
             Serial.println("Connection failed");
@@ -2495,17 +2628,23 @@ void wifi_apply(lv_event_t * e){
         }
     }
 }
-
+/// @brief Event used to disconnect from wifi and delete the connection from history.
+/// @param e 
 void forget_net(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
+    // Index of the conection on wifi_connected_nets.
     uint i = (int)lv_event_get_user_data(e);
 
     if(code == LV_EVENT_LONG_PRESSED){
-        if(wifi_connected_nets.del(wifi_list[i].SSID)){
+        if(wifi_connected_nets.del(wifi_list[i].SSID)){ // If erased from the list.
+            // Update the status.
             lv_label_set_text(frm_wifi_connected_to_lbl, "forgoten");
             Serial.println("SSID deleted from connected nets");
+            // Disconnect from it if so.
             WiFi.disconnect(true);
+            // Change the wifi icon color on settings to black.
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+            // Save the list.
             if(wifi_connected_nets.save()){
                 Serial.println("connected nets list save failed");
             }
@@ -2514,7 +2653,8 @@ void forget_net(lv_event_t * e){
         }
     }
 }
-
+/// @brief Selects the apropriate auth type dialog during a wifi configuration.
+/// @param e 
 void wifi_select(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     uint i = (int)lv_event_get_user_data(e);
@@ -2524,32 +2664,41 @@ void wifi_select(lv_event_t * e){
         Serial.println(wifi_list[i].SSID);
         Serial.println(wifi_list[i].RSSI);
         Serial.println(wifi_list[i].auth_type);
-        
+        // Change the connect button event accordingly to the auth type, this also changes the auth dialog type.
         switch(wifi_list[i].auth_type){
             case WIFI_AUTH_WPA2_PSK:
+                // This is for password only dialog.
+                // Remove the previous event.
                 lv_obj_remove_event_cb(frm_wifi_simple_btn_connect, wifi_apply);
+                // Sets a simple password dialog and auth event calling wifi_apply.
                 lv_obj_add_event_cb(frm_wifi_simple_btn_connect, wifi_apply, LV_EVENT_SHORT_CLICKED, (void *)i);
+                // Show the auth dialog.
                 lv_obj_clear_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
                 break;
             case WIFI_AUTH_WPA_WPA2_PSK:
+                // Same as above.
                 lv_obj_remove_event_cb(frm_wifi_simple_btn_connect, wifi_apply);
                 lv_obj_add_event_cb(frm_wifi_simple_btn_connect, wifi_apply, LV_EVENT_SHORT_CLICKED, (void *)i);
                 lv_obj_clear_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
                 break;
             case WIFI_AUTH_WPA2_ENTERPRISE:
+                // Same as above, however the auth dialog shown have login and password fields.
                 lv_obj_remove_event_cb(frm_wifi_login_btn_connect, wifi_apply);
                 lv_obj_add_event_cb(frm_wifi_login_btn_connect, wifi_apply, LV_EVENT_SHORT_CLICKED, (void *)i);
                 lv_obj_clear_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN);
                 break;
             case WIFI_AUTH_OPEN:
+                // This has no auth with password, connects directly.
                 wifi_apply(e);
                 break;
         }
     }if(code == LV_EVENT_LONG_PRESSED){
+        // Long pressing on the name of the network makes a deletion from the history list.
         forget_net(e);
     }
 }
-
+/// @brief Task which scans for networks and populates a list used as reference to connect to.
+/// @param param 
 void wifi_scan_task(void * param){
     int n = 0;
     wifi_info wi;
@@ -2561,19 +2710,28 @@ void wifi_scan_task(void * param){
     
     lv_label_set_text(frm_wifi_connected_to_lbl, "Scanning...");
     
-    //WiFi.disconnect(true);
+    // We can scan for other networks even if connected to one.
+    // Get the number of networks discovered.
     n = WiFi.scanNetworks();
     if(n > 0){
-        
+        // Cleans the list of wifi networks object.
         lv_obj_clean(frm_wifi_list);
-        
+        // Empty the list that holds the wifi info struct.
         wifi_list.clear();
+        // Iterates through the networks discovered.
         for(uint i = 0; i < n; i++){
+            // Use a structure to hold the wifi info.
+            // Get the type of auth.
             wi.auth_type = WiFi.encryptionType(i);
+            // Get the signal strength.
             wi.RSSI = WiFi.RSSI(i);
+            // Get the channel.
             wi.ch = WiFi.channel();
+            // Get the SSID.
             strcpy(wi.SSID, WiFi.SSID(i).c_str());
+            // Store on wifi_list. wifi_list is used to build a lvgl list with the names of the networks.
             wifi_list.push_back(wi);
+            // Create a description of each wifi network.
             strcpy(ssid, WiFi.SSID(i).c_str());
             strcat(ssid, " rssi:");
             itoa(WiFi.RSSI(i), rssi, 10);
@@ -2583,20 +2741,22 @@ void wifi_scan_task(void * param){
             strcat(ssid, " ch:");
             itoa(WiFi.channel(i), ch, 10);
             strcat(ssid, ch);
-            
+            // Create a button on the list with the description.
             btn = lv_list_add_btn(frm_wifi_list, LV_SYMBOL_WIFI, ssid);
+            // Set two events for each button, one to connect, other to forget.
             lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_SHORT_CLICKED, (void *)i);
             lv_obj_add_event_cb(btn, wifi_select, LV_EVENT_LONG_PRESSED, (void *)i);
             
         }
     }
     Serial.println("done");
-    
+    // Update the status message on scan.
     lv_label_set_text(frm_wifi_connected_to_lbl, "Scan complete");
-    
+    // Delete the task.
     vTaskDelete(task_wifi_scan);
 }
-
+/// @brief This event create a task which list the wifi networks.
+/// @param e 
 void wifi_scan(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2604,23 +2764,26 @@ void wifi_scan(lv_event_t * e){
         xTaskCreatePinnedToCore(wifi_scan_task, "wifi_scan_task", 10000, NULL, 1, &task_wifi_scan, 1);
     }
 }
-
+/// @brief Verifies if is conected to a wifi and sets or remove a icon on the home screen.
 void update_wifi_icon(){
     if(WiFi.isConnected()){
-        
+        // Seti the icon.
         lv_label_set_text(frm_home_wifi_lbl, LV_SYMBOL_WIFI);
+        // Set the name of the network in which its connected to.
         lv_label_set_text(frm_wifi_connected_to_lbl, connected_to);
         
     }
     else{
-        
+        // Undo the above.
         lv_label_set_text(frm_home_wifi_lbl, "");
         lv_label_set_text(frm_wifi_connected_to_lbl, "");
         
     }
+    // Sets the wifi connection info on wifi tab in settings menu.
     wifi_con_info();
 }
-
+/// @brief Event to show the content of the password field as the user holds the eye icon.
+/// @param e 
 void show_pass(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2633,7 +2796,8 @@ void show_pass(lv_event_t * e){
             break;
     }
 }
-
+/// @brief Event to show the content of the password field as the user holds the eye icon.
+/// @param e 
 void show_login_pass(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2646,7 +2810,8 @@ void show_login_pass(lv_event_t * e){
             break;
     }
 }
-
+/// @brief Show a simple auth dialog with password.
+/// @param e 
 void show_simple(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2656,7 +2821,8 @@ void show_simple(lv_event_t * e){
         }
     }
 }
-
+/// @brief Hide the simple auth dialog.
+/// @param e 
 void hide_simple(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2666,7 +2832,8 @@ void hide_simple(lv_event_t * e){
         }
     }
 }
-
+/// @brief Show a auth dialog with login and password.
+/// @param e 
 void show_wifi_login(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2676,7 +2843,8 @@ void show_wifi_login(lv_event_t * e){
         }
     }
 }
-
+/// @brief Hide the auth dialog with login and password.
+/// @param e 
 void hide_wifi_login(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2686,26 +2854,33 @@ void hide_wifi_login(lv_event_t * e){
         }
     }
 }
-
+/// @brief Event to toggle the connection on and off.
+/// @param e 
 void wifi_toggle(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     uint c = 0;
 
     if(code == LV_EVENT_SHORT_CLICKED){
+        // This will only proceed if we have at least a connection saved on history.
         if(wifi_connected_nets.list.size() == 0)
             return;
         if(!WiFi.isConnected()){
-            wifi_auto_toggle();
+            // Search for a wifi connection, if it exists on the history connect to it.
+            wifi_auto_connect(NULL);
         }
         else{
+            // Disconnect from the network.
             WiFi.disconnect(true);
+            // Turn off the wifi transceiver.
             WiFi.mode(WIFI_OFF);
+            // Sets the color of the wifi symbol to white.
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
             Serial.println("wifi off");
         }
     }
 }
-
+/// @brief T-Deck's routine to setup the sd card.
+/// @return 
 bool setupSD()
 {
     digitalWrite(BOARD_SDCARD_CS, HIGH);
@@ -2739,7 +2914,8 @@ bool setupSD()
     }
     return false;
 }
-
+/// @brief T-Deck's routine to enable sound and microfone.
+/// @return 
 bool setupCoder() {
     uint32_t ret_val = ESP_OK;
 
@@ -2772,7 +2948,8 @@ bool setupCoder() {
     ret_val |= es7210_adc_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
     return ret_val == ESP_OK;
 }
-
+/// @brief Task to connect to a internet radio station and plays.
+/// @param param 
 void song(void * param) {
     //BaseType_t xHigherPriorityTaskWoken;
     if(WiFi.isConnected()){
@@ -2781,7 +2958,7 @@ void song(void * param) {
             audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
             audio.setVolume(10);
             audio.connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3");
-            //audio.connecttospeech("Notificação enviada com sucesso.", "pt");
+            //audio.connecttospeech("Notification sent.", "us");
             while (audio.isRunning()) {
                 audio.loop();
             }
@@ -2791,7 +2968,8 @@ void song(void * param) {
     }
     vTaskDelete(task_play_radio);
 }
-
+/// @brief Task to play a short mp3 sound from the sd card, used to notify.
+/// @param p 
 void taskplaySong(void *p) {
     if(xSemaphoreTake(xSemaphore, 100 / portTICK_PERIOD_MS) == pdTRUE){
         const char *path = "comp_up.mp3";
@@ -2808,7 +2986,7 @@ void taskplaySong(void *p) {
     }
     vTaskDelete(NULL);
 }
-
+/// @brief Function to launch a task to play a notification sound.
 void notify_snd(){
     //xTaskCreatePinnedToCore(taskplaySong, "play_not_snd", 10000, NULL, 2 | portPRIVILEGE_BIT, NULL, 0);
 }
@@ -2828,7 +3006,8 @@ static void slider_event_cb(lv_event_t *e)
         setVolume(vol);
     }
 }*/
-
+/// @brief Event that shows a small keyboard with latin chars on chat dialog.
+/// @param e
 void show_especial(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -2839,16 +3018,16 @@ void show_especial(lv_event_t * e){
             lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
     }
 }
-
+/// @brief Change the color of the activity indicator.
+/// @param color 
 void activity(lv_color_t color){
-    
     lv_obj_set_style_bg_color(frm_home_activity_led, color, LV_PART_MAIN | LV_STATE_DEFAULT);
-    
 }
-
+/// @brief Array of latin chars.
 const char * kbmap[] = {"á", "à", "ã", "â", "Á", "À", "Ã", "Â","\n",
                         "é", "ê", "í", "ó", "É", "Ê", "Í", "Ó","\n",
                         "ô", "õ", "ú", "ç", "Ô", "Õ", "Ú", "Ç",""};
+/// @brief Array of state type for each button.
 const lv_btnmatrix_ctrl_t kbctrl[] = {
 LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, 
 LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT,
@@ -2856,25 +3035,33 @@ LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_R
 LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, 
 LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT,
 LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT, LV_BTNMATRIX_CTRL_NO_REPEAT};
-
+/// @brief Array brightness levels to set on the roller object.
 const char * brightness_levels = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10";
-
+/// @brief Event to set the backlight intensity of the display.
+/// @param e 
 void setBrightness(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * roller = (lv_obj_t *)lv_event_get_target(e);
 
     if(code == LV_EVENT_VALUE_CHANGED){
+        // Get the selected index on the roller.
         brightness = lv_roller_get_selected(roller);
+        // Write a mapped value to the analog output pin where the backlight is connected to.
         analogWrite(BOARD_BL_PIN, mapv(brightness, 0, 9, 100, 255));
     }
 }
-
+/// @brief Enum used to configure a menu object.
 enum {
     LV_MENU_ITEM_BUILDER_VARIANT_1,
     LV_MENU_ITEM_BUILDER_VARIANT_2
 };
 typedef uint8_t lv_menu_builder_variant_t;
-
+/// @brief Function to create a menu item.
+/// @param parent 
+/// @param icon 
+/// @param txt 
+/// @param builder_variant 
+/// @return lv_obj_t*
 static lv_obj_t * create_text(lv_obj_t * parent, const char * icon, const char * txt,
                               lv_menu_builder_variant_t builder_variant)
 {
@@ -2902,7 +3089,7 @@ static lv_obj_t * create_text(lv_obj_t * parent, const char * icon, const char *
 
     return obj;
 }
-
+/// @brief Function to update the wifi info on wifi tab in settings.
 void wifi_con_info(){
     char buf[100] = {'\0'};
     char num[10] = {'\0'};
@@ -2969,7 +3156,7 @@ void wifi_con_info(){
         
     }
 }
-
+/// @brief Function to initilize all lvgl objects.
 void ui(){
     //style**************************************************************
     lv_disp_t *dispp = lv_disp_get_default();
@@ -3827,17 +4014,20 @@ void ui(){
 
     lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN);
 }
-
+/// @brief Function to update the RTC with the intenet date and time and update the Date time widget.
 void datetime(){
+    // Set the timezone to +3. Change to yours.
     const char * timezone = "<-03>3";
+    // Hour and minute.
     char hm[6] = {'\0'};
+    // More described date.
     char date[12] = {'\0'};
-
+    // Only proceed with internet connection.
     if(WiFi.status() == WL_CONNECTED){
         Serial.print("RSSI ");
         Serial.println(WiFi.RSSI());
         Serial.println(WiFi.localIP());
-
+        // Configure sntp connection.
         esp_netif_init();
         if(sntp_enabled())
             sntp_stop();
@@ -3863,7 +4053,9 @@ void datetime(){
     }else
         Serial.println("Connect to a WiFi network to update the time and date");
 }
-
+/// @brief Function to return a string representation of the auth mode code used by wifi.
+/// @param auth_mode 
+/// @return const char *
 const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
     switch(auth_mode){
         case WIFI_AUTH_OPEN:
@@ -3889,179 +4081,73 @@ const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
     }
     return "unknown";
 }
-
-void wifi_auto_toggle(){
-    int n = 0;
-    int c = 0;
-    wifi_info wi;
-    vector<wifi_info>list;
-    char a[50] = {'\0'};
-    
-    Serial.print("Searching for wifi connections...");
-    lv_label_set_text(frm_home_title_lbl, "Searching for wifi connections...");
-    lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_STA);
-    esp_wifi_set_ps(WIFI_PS_NONE);
-    esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
-    n = WiFi.scanNetworks();
-    if(n > 0)
-        for(int i = 0; i < n; i++){
-            strcpy(wi.SSID, WiFi.SSID(i).c_str());
-            list.push_back(wi);
-        }
-    else{
-        Serial.println("No wifi networks found");
-        lv_label_set_text(frm_home_title_lbl, "No wifi networks found");
-        lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-    }
-    Serial.println("done");
-    lv_label_set_text(frm_home_title_lbl, "done");
-    lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-    if(wifi_connected_nets.list.size() > 0){
-        for(uint32_t i = 0; i < wifi_connected_nets.list.size(); i++){
-            for(uint32_t j = 0; j < list.size(); j++){
-                if(strcmp(wifi_connected_nets.list[i].SSID, list[j].SSID) == 0){
-                    Serial.print("Connecting to ");
-                    Serial.print(wifi_connected_nets.list[i].SSID);
-                    strcpy(a, "Connecting to ");
-                    strcat(a, wifi_connected_nets.list[i].SSID);
-                    lv_label_set_text(frm_home_title_lbl, a);
-                    if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_ENTERPRISE){
-                        esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
-                        esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
-                        esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_connected_nets.list[i].pass, strlen(wifi_connected_nets.list[i].pass));
-                        esp_wifi_sta_wpa2_ent_enable();
-                        WiFi.disconnect(true);
-                        WiFi.mode(WIFI_STA);
-                        WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
-                        
-                        while(!WiFi.isConnected()){
-                            Serial.print(".");
-                            c++;
-                            if(c == 30){
-                                WiFi.disconnect();
-                                c = 0;
-                                break;
-                            }
-                            delay(1000);
-                        }
-
-                        if(WiFi.isConnected()){
-                            last_wifi_con = i;
-                            break;
-                        }
-                    }else if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_PSK ||
-                             wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA_WPA2_PSK ||
-                             wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WEP){
-                        WiFi.disconnect(true);
-                        WiFi.mode(WIFI_STA);
-                        WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
-
-                        while(!WiFi.isConnected()){
-                            Serial.print(".");
-                            c++;
-                            if(c == 30){
-                                WiFi.disconnect();
-                                c = 0;
-                                break;
-                            }
-                            vTaskDelay(1000 / portTICK_PERIOD_MS);
-                        }
-
-                        if(WiFi.isConnected()){
-                            last_wifi_con = i;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        if(WiFi.isConnected()){
-            lv_label_set_text(frm_home_title_lbl, "connected");
-            lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-            lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-            strcpy(connected_to, wifi_connected_nets.list[last_wifi_con].SSID);
-            strcat(connected_to, " ");
-            strcat(connected_to, WiFi.localIP().toString().c_str());
-            Serial.println(" connected");
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
-            lv_label_set_text(frm_home_title_lbl, "");
-            lv_label_set_text(frm_home_symbol_lbl, "");
-            datetime();
-        }else{
-            Serial.println("disconnected");
-            lv_label_set_text(frm_home_title_lbl, "disconnected");
-            lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
-            lv_label_set_text(frm_home_title_lbl, "");
-            lv_label_set_text(frm_home_symbol_lbl, "");
-            lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
-        }
-    }
-}
-
+/// @brief This task searches for a wifi AP on the hitory list and connect to it if available.
+/// @param param 
 void wifi_auto_connect(void * param){
+    // Number of wifi network discovered.
     int n = 0;
+    // Count how many seconds elapsed until timeout.
     int c = 0;
+    // Holds the wifi characteristics.
     wifi_info wi;
+    // List of characteristics of each wifi network found.
     vector<wifi_info>list;
+    // String used to update statuses.
     char a[50] = {'\0'};
-    bool noNet = false;
-    
+    // Only proceed if we have at least a network on history.
     if(wifi_connected_nets.list.size() != 0){
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         Serial.print("Searching for wifi connections...");
-        
+        // Shows on notify area on home screen.
         lv_label_set_text(frm_home_title_lbl, "Searching for wifi connections...");
         lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-        
+        // Disconnect from network if it is.
         WiFi.disconnect(true);
+        // Change mode to stand alone client.
         WiFi.mode(WIFI_STA);
-        
+        // Get the number of networks discovered.
         n = WiFi.scanNetworks();
         if(n > 0)
             for(int i = 0; i < n; i++){
+                // Save the network on the list.
                 strcpy(wi.SSID, WiFi.SSID(i).c_str());
                 list.push_back(wi);
             }
         else{
             Serial.println("No wifi networks found");
-            
             lv_label_set_text(frm_home_title_lbl, "No wifi networks found");
             lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-            
         }
         Serial.println("done");
         
         lv_label_set_text(frm_home_title_lbl, "done");
         lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-        
         vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // Search in history for a wifi network connected previously.
         if(wifi_connected_nets.list.size() > 0){
             for(uint32_t i = 0; i < wifi_connected_nets.list.size(); i++){
                 for(uint32_t j = 0; j < list.size(); j++){
-                    if(strcmp(wifi_connected_nets.list[i].SSID, list[j].SSID) == 0){
+                    if(strcmp(wifi_connected_nets.list[i].SSID, list[j].SSID) == 0){ // We found one.
+                        // Notify the user the attempt connection.
                         Serial.print("Connecting to ");
                         Serial.print(wifi_connected_nets.list[i].SSID);
                         strcpy(a, "Connecting to ");
                         strcat(a, wifi_connected_nets.list[i].SSID);
-                        
                         lv_label_set_text(frm_home_title_lbl, a);
-                        
-
+                        // Choose the apropriate auth method.
                         if(wifi_connected_nets.list[i].auth_type == WIFI_AUTH_WPA2_ENTERPRISE){
+                            // This is for wpa enterprise, we need login and password.
                             esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
                             esp_wifi_sta_wpa2_ent_set_username((uint8_t*)wifi_connected_nets.list[i].login, strlen(wifi_connected_nets.list[i].login));
                             esp_wifi_sta_wpa2_ent_set_password((uint8_t*)wifi_connected_nets.list[i].pass, strlen(wifi_connected_nets.list[i].pass));
                             esp_wifi_sta_wpa2_ent_enable();
-
+                            // Disconnect from previous network.
                             WiFi.disconnect(true);
+                            // Configures the wifi to stand alone client.
                             WiFi.mode(WIFI_STA);
-                            //esp_wifi_set_ps(WIFI_PS_NONE);
-                            //esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
+                            // Begin a new connection.
                             WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
-                            
+                            // Set a 30 seconds timeout.
                             while(!WiFi.isConnected()){
                                 Serial.print(".");
                                 c++;
@@ -4072,7 +4158,7 @@ void wifi_auto_connect(void * param){
                                 }
                                 vTaskDelay(1000 / portTICK_PERIOD_MS);
                             }
-                    
+                            // Store the index of the network on history.
                             if(WiFi.isConnected()){
                                 last_wifi_con = i;
                                 break;
@@ -4083,8 +4169,6 @@ void wifi_auto_connect(void * param){
 
                             WiFi.disconnect(true);
                             WiFi.mode(WIFI_STA);
-                            //esp_wifi_set_ps(WIFI_PS_NONE);
-                            //esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B);
                             WiFi.begin(wifi_connected_nets.list[i].SSID, wifi_connected_nets.list[i].pass);
 
                             while(!WiFi.isConnected()){
@@ -4104,55 +4188,52 @@ void wifi_auto_connect(void * param){
                         }
                     }
                 }
-                if(i == wifi_connected_nets.list.size())
-                    noNet = true;
             }
 
             if(WiFi.isConnected()){
-                
+                // Update the notification area on home screen.
                 lv_label_set_text(frm_home_title_lbl, "connected");
                 lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
+                // Change the color of the wifi icon on settings to green.
                 lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-                
+                // For debug purposes.
                 strcpy(connected_to, wifi_connected_nets.list[last_wifi_con].SSID);
                 strcat(connected_to, " ");
                 strcat(connected_to, WiFi.localIP().toString().c_str());
                 Serial.println(" connected");
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
-                
+                // Clear the notification area on home screen.
                 lv_label_set_text(frm_home_title_lbl, "");
                 lv_label_set_text(frm_home_symbol_lbl, "");
-                
+                // Sets the date using the internet.
                 datetime();
             }else{
+                // If fails, notify the user and turn off the wifi transceiver.
                 Serial.println("disconnected");
-                
                 lv_label_set_text(frm_home_title_lbl, "disconnected");
                 lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-                
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
-                
                 lv_label_set_text(frm_home_title_lbl, "");
                 lv_label_set_text(frm_home_symbol_lbl, "");
-                
                 WiFi.disconnect();
                 WiFi.mode(WIFI_OFF);
             }
         }
     }
-    if(task_wifi_auto != NULL){
+    // To use this as function pass NULL as param. 
+    if(param != NULL){
         vTaskDelete(task_wifi_auto);
         task_wifi_auto = NULL;
     }
 }
-
+/// @brief Sends a beacon as LoRa packet.
 void announce(){
     lora_packet_status hi;
     int32_t status = 0;
-
+    // We don't set a destiny so this is heard by everyone in range.
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
-    
+    // Change the activity indicator to yellow.
     activity(lv_color_hex(0xffff00));
     while(transmiting){
         //Serial.print("transmiting ");
@@ -4163,7 +4244,7 @@ void announce(){
         //Serial.print("gotPacket ");
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
-    
+    // Transmit the packet.
     transmiting = true;
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         status = radio.transmit((uint8_t *)&hi, sizeof(hi));
@@ -4178,26 +4259,26 @@ void announce(){
     //activity(lv_color_hex(0xcccccc));
     transmiting = false;
 }
-
+/// @brief T-Deck's initial setup function.
 void setup(){
     bool ret = false;
     Serial.begin(115200);
     //delay(3000);
 
-    //time interval checking online contacts
+    //time interval checking online contacts.
     contacts_list.setCheckPeriod(1);
     //Load contacts
     loadContacts();
 
-    //load connected wifi networks
+    //load connected wifi networks.
     if(wifi_connected_nets.load())
         Serial.println("wifi networks loaded");
     else
         Serial.println("no wifi networks loaded");
-
+    // Configure pinouts.
     pinMode(BOARD_POWERON, OUTPUT);
     digitalWrite(BOARD_POWERON, HIGH);
-
+    // SPI chip selection for sd card, radio module and display. The selection is when the output goes low.
     pinMode(BOARD_SDCARD_CS, OUTPUT);
     pinMode(RADIO_CS_PIN, OUTPUT);
     pinMode(BOARD_TFT_CS, OUTPUT);
@@ -4207,6 +4288,7 @@ void setup(){
     digitalWrite(BOARD_TFT_CS, HIGH);
 
     pinMode(BOARD_SPI_MISO, INPUT_PULLUP);
+    // Initialize the SPI bus.
     SPI.begin(BOARD_SPI_SCK, BOARD_SPI_MISO, BOARD_SPI_MOSI);
 
     pinMode(BOARD_BOOT_PIN, INPUT_PULLUP);
@@ -4220,12 +4302,12 @@ void setup(){
 
     pinMode(BOARD_TOUCH_INT, INPUT); 
     delay(200);
-
+    // Inicialize the radio module.
     setupRadio(NULL);
-
+    // Initialize the i2c bus.
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
     //scanDevices(&Wire);
-
+    // Initialize the touch screen.
     touch = new TouchLib(Wire, BOARD_I2C_SDA, BOARD_I2C_SCL, touchAddress);
     touch->init();
     Wire.beginTransmission(touchAddress);
@@ -4235,27 +4317,30 @@ void setup(){
         Serial.println("touch detected");
     else 
         Serial.println("touch not detected");
-
+    // initialize the display.
     tft.begin();
+    // Set to landscape mode.
     tft.setRotation( 1 );
     tft.fillScreen(TFT_BLUE);
-
+    // Semaphore to control the SPI access to the modules.
     xSemaphore = xSemaphoreCreateBinary();
     assert(xSemaphore);
     xSemaphoreGive( xSemaphore );
-
-    pthread_mutex_init(&lvgl_mutex, NULL);
+    // Mutexes to restrict the access to some resources, avoiding memory corruption, catastrophic failures.
+    pthread_mutexattr_t Attr;
+    pthread_mutexattr_init(&Attr);
+    pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&lvgl_mutex, &Attr);
     pthread_mutex_init(&messages_mutex, NULL);
     pthread_mutex_init(&send_json_mutex, NULL);
-
+    // Initialize the physical keyboard.
     Wire.beginTransmission(touchAddress);
     ret = Wire.endTransmission() == 0;
     touchDected = ret;
-
     kbDected = checkKb();
-
+    // Initialize the graphical environment.
     setupLvgl();
-
+    // Draw the user interface.
     ui();
 
     //SD card
@@ -4268,27 +4353,29 @@ void setup(){
     //Load settings
     loadSettings();
     
-    // set brightness
+    // set brightness.
     analogWrite(BOARD_BL_PIN, mapv(brightness, 0, 9, 100, 255));
-
+    // Connect to a wifi network in history.
     if(wifi_connected_nets.list.size() > 0)
-        xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, NULL, 1, &task_wifi_auto, 0);
+        xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, (void*)"ok", 1, &task_wifi_auto, 0);
+    // Get the date from internet.
     if(wifi_connected)
         datetime();
-    //date time task
+    //Launch a date time task.
     xTaskCreatePinnedToCore(update_time, "update_time", 11000, (struct tm*)&timeinfo, 2, &task_date_time, 1);
 
-    // Initial date
+    // Initial date, in case of no internet connection.
     setDate(2024, 1, 1, 0, 0, 0, 0);
     
-    // battery
+    // Initialize the battery monitoring routine and lauch his task.
     initBat();
     xTaskCreatePinnedToCore(update_bat, "task_bat", 11000, NULL, 2, &task_bat, 1);
 
-    // Notification task
+    // Launch the notification task.
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
-    // web server
+    // Launch the web server task.
     xTaskCreatePinnedToCore(setupServer, "server", 12000, NULL, 1, NULL, 1);
+    // Send a beacon packet to the neighborhood.
     announce();
 }
 

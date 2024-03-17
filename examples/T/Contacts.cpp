@@ -121,7 +121,7 @@ bool Contact_list::find(Contact &c){
 vector <Contact> Contact_list::getList(){
     return list;
 }
-
+// Change inrange status based on a timeout feature defined by the user.
 void Contact_list::check_inrange(){
     if(this->list.size() > 0){
         for(uint32_t index = 0; index < this->list.size(); index++){
