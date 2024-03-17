@@ -67,6 +67,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         }
 
         .name-list ul li {
+            color: #333;
+            text-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
             margin-left: 10px;
             height: 50px;
             width: 300px;
@@ -147,7 +149,9 @@ const char index_html[] PROGMEM = R"rawliteral(
             margin-bottom: 5px;
             width: 300px;
             background-color: #ffe4c4;
-            box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 1);
+            box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
+            color: #333;
+            text-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
         }
 
         .contact_header2 {
@@ -156,7 +160,9 @@ const char index_html[] PROGMEM = R"rawliteral(
             margin-bottom: 5px;
             width: 300px;
             background-color: #bed5de;
-            box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 1);
+            box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
+            color: #333;
+            text-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
         }
 
         #divNew {
