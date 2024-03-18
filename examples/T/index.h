@@ -125,7 +125,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             margin-left: 280px;
             margin-top: -15px;
             animation-name: outofrange;
-            animation-duration: 2s;
+            animation-duration: 1s;
         }
 
         .status-on{
@@ -136,7 +136,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             margin-top: -15px;
             box-shadow: 0px 0px 10px 5px rgb(105, 255, 78);
             animation-name: inrange;
-            animation-duration: 2s;
+            animation-duration: 1s;
         }
 
         @keyframes outofrange {
