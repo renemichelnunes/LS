@@ -673,9 +673,9 @@ class ChatHandler : public WebsocketHandler{
         void onMessage(WebsocketInputStreambuf * input);
         void onClose();
 };
-// Max number of clients connected
+// Max number of clients connected.
 const uint8_t maxClients = 4;
-// List of clients
+// List of clients's websockets.
 ChatHandler * activeClients[maxClients];
 // Constructor for a new client WebSocket
 WebsocketHandler * ChatHandler::create() {
