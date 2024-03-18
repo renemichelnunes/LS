@@ -70,7 +70,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             color: #333;
             text-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
             margin-left: 10px;
-            height: 50px;
+            height: 40px;
             width: 300px;
             border-bottom: 1px solid #bbb;
             /*transition: transform 0.1s ease-in-out;*/
@@ -119,19 +119,38 @@ const char index_html[] PROGMEM = R"rawliteral(
         }
 
         .status{
-            width: 20px;
-            height: 20px;
+            width: 10px;
+            height: 10px;
             background-color: #bbb;
             margin-left: 280px;
-            margin-top: -20px;
+            margin-top: -15px;
+            animation-name: outofrange;
+            animation-duration: 2s;
         }
 
         .status-on{
-            width: 20px;
-            height: 20px;
-            background-color: #0f0;
+            width: 10px;
+            height: 10px;
+            background-color: rgb(129, 255, 133);
             margin-left: 280px;
-            margin-top: -20px;
+            margin-top: -15px;
+            box-shadow: 0px 0px 10px 5px rgb(105, 255, 78);
+            animation-name: inrange;
+            animation-duration: 2s;
+        }
+
+        @keyframes outofrange {
+            from{background-color: rgb(129, 255, 133);
+               box-shadow: 0px 0px 10px 5px rgb(105, 255, 78);}
+            to{background-color: #bbb;
+                 box-shadow: none;}
+        }
+
+        @keyframes inrange {
+            from{background-color: #bbb;
+                 box-shadow: none;}
+            to{background-color: rgb(129, 255, 133);
+               box-shadow: 0px 0px 10px 5px rgb(105, 255, 78);}
         }
 
         .btn-add {
@@ -578,18 +597,18 @@ const char index_html[] PROGMEM = R"rawliteral(
     </div>
     <div id="divNew">
         <form id="frmNew">
-            <textarea id="CID" rows="1" placeholder="ID"></textarea>
+            <textarea id="CID" rows="1" maxlength="6" placeholder="ID"></textarea>
             <textarea id="CName" rows="1" placeholder="Name"></textarea>
-            <textarea id="Ckey" rows="1" placeholder="KEY"></textarea>
+            <textarea id="Ckey" rows="1" maxlength="16" placeholder="KEY"></textarea>
             <input type="button" value="Confirm" onclick="confirmNew()">
             <input type="button" value="Close" onclick="hideNew()">
         </form>
     </div>
     <div id="divEdit">
         <form id="frmEdit">
-            <textarea id="CIDedit" rows="1" placeholder="ID"></textarea>
+            <textarea id="CIDedit" rows="1" maxlength="6" placeholder="ID"></textarea>
             <textarea id="CNameedit" rows="1" placeholder="Name"></textarea>
-            <textarea id="Ckeyedit" rows="1" placeholder="KEY"></textarea>
+            <textarea id="Ckeyedit" rows="1" maxlength="16" placeholder="KEY"></textarea>
             <input type="button" value="Confirm" onclick="confirmEdit()">
             <input type="button" value="Close" onclick="hideEdit()">
         </form>
@@ -4098,9 +4117,6 @@ function draw_rssi_snr(data){
     svg.append("circle").attr("cx",600).attr("cy",30).attr("r", 6).style("fill", "crimson");
     svg.append("text").attr("x", 610).attr("y", 34).text("SNR").style("font-size", "12px").attr("alignment-baseline","middle");
 }
-
-
-
 
     </script>
 </body>

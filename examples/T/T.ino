@@ -125,6 +125,8 @@ const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode);
 volatile int last_wifi_con = -1;
 // This object is used to encode and decode the LoRa messages
 Cipher * cipher = new Cipher();
+// Web server object.
+HTTPSServer * secureServer = NULL;
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -602,7 +604,7 @@ void middlewareAuthentication(HTTPRequest * req, HTTPResponse * res, std::functi
         next();
     }
 }
-/// @brief This checks is the client provided a valid user, if not a warning is sent.
+/// @brief This checks if the client provided a valid user, if not a warning is sent.
 /// @param req 
 /// @param res 
 /// @param next 
@@ -1080,7 +1082,6 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
 /// @brief This task runs a basic https server with websocket capabilities.
 /// @param param 
 void setupServer(void * param){
-    HTTPSServer * secureServer = NULL;
     SSLCert * cert;
     // Work in progress. The plan is to get up to 4 clients connected.
     // Before start a new server, close all the sockets.
@@ -1088,90 +1089,80 @@ void setupServer(void * param){
         //activeClients[i]->close();
         activeClients[i] = nullptr;
     }
-    // The server will be up as soons as the board gets connected through wifi.
-    // If the wifi is turned off the server also will be terminated. Useful
-    // when the http service gets busy or unresponsive. It needs refinement.
-    while(true){
-        if(WiFi.isConnected()){
-            // Create a self signed certificate using the owner's id as part of the config.
-            char cn[30] = {'\0'};
-            strcpy(cn, "CN=TDECK");
-            strcat(cn, user_id);
-            strcat(cn, ",O=TDECK");
-            strcat(cn, user_id);
-            strcat(cn, ",C=BR");
-            Serial.println("Starting server...");
-            cert = new SSLCert();
+    // Create a self signed certificate using the owner's id as part of the config.
+    char cn[30] = {'\0'};
+    strcpy(cn, "CN=TDECK");
+    strcat(cn, user_id);
+    strcat(cn, ",O=TDECK");
+    strcat(cn, user_id);
+    strcat(cn, ",C=BR");
+    cert = new SSLCert();
 
-            int createCertResult = createSelfSignedCert(
-            *cert,
-            KEYSIZE_2048,
-            cn,
-            "20240302000000",
-            "20340302000000"
-            );
-        
-            if (createCertResult != 0) {
-                Serial.printf("Error generating certificate");
-                return; 
-            }
-            // Create the server object, port 443 and limit the clients;
-            secureServer = new HTTPSServer(cert, 443, maxClients);
-            // A resource is a file like index.html, style.css..., represented by a node.
-            // The server sends the content of the string that holds the web page on index_html,
-            // style_css and script_js. For now, the style and javascript is already on index.html.
-            // nodeRoot is the equivalent as the index.html, the other nodes corresponds to the other files.
-            ResourceNode * nodeRoot = new ResourceNode("/", "GET", &handleRoot);
-            //ResourceNode * nodeStyle = new ResourceNode("/style.css", "GET", &handleStyle);
-            //ResourceNode * nodeScript = new ResourceNode("/script.js", "GET", &handleScript);
-            // If the client request a inexistent resource, send a 404 content.
-            ResourceNode * node404 = new ResourceNode("", "GET", &handle404);
-            // Register the nodes.
-            secureServer->registerNode(nodeRoot);
-            //secureServer->registerNode(nodeStyle);
-            //secureServer->registerNode(nodeScript);
-            secureServer->registerNode(node404);
-            // Create a websocket node (wss://server_address/chat on client side).
-            WebsocketNode * chatNode = new WebsocketNode("/chat", &ChatHandler::create);
-            secureServer->registerNode(chatNode);
-            secureServer->setDefaultNode(node404);
-            // Adds browser authentication.
-            secureServer->addMiddleware(&middlewareAuthentication);
-            secureServer->addMiddleware(&middlewareAuthorization);
-            // Start the service.
-            secureServer->start();
-            if (secureServer->isRunning()) {
-                // If all good, show a button with 'https' on settings, see wifi section.
-                lv_obj_clear_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
-                Serial.println("Server ready.");
-            }
-            // The server needs to run in loop and rest 10ms forever, similar to lvgl's.
-            while(WiFi.isConnected()){
-                secureServer->loop();
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-            }
-        }else{
-            // If the wifi was turned off, shut down the server.
-            if(secureServer != NULL){
-                for(int i = 0; i < maxClients; i++){
-                    if(activeClients[i] != NULL){
-                        activeClients[i]->close(1000, "Server shutdown");
-                        activeClients[i] = nullptr;
-                    }
-                }
-                secureServer->stop();
-                secureServer->~HTTPSServer();
-                secureServer = NULL;
-                // Hide the https button on settings.
-                lv_obj_add_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
-                Serial.println("Server ended");
-            }
-        }
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+    int createCertResult = createSelfSignedCert(
+    *cert,
+    KEYSIZE_2048,
+    cn,
+    "20240302000000",
+    "20340302000000"
+    );
+
+    if (createCertResult != 0) {
+        Serial.printf("Error generating certificate");
+        return; 
+    }
+    Serial.println("Starting server...");
+    // Create the server object, port 443 and limit the clients;
+    secureServer = new HTTPSServer(cert, 443, 4);
+    // A resource is a file like index.html, style.css..., represented by a node.
+    // The server sends the content of the string that holds the web page on index_html,
+    // style_css and script_js. For now, the style and javascript is already on index.html.
+    // nodeRoot is the equivalent as the index.html, the other nodes corresponds to the other files.
+    ResourceNode * nodeRoot = new ResourceNode("/", "GET", &handleRoot);
+    //ResourceNode * nodeStyle = new ResourceNode("/style.css", "GET", &handleStyle);
+    //ResourceNode * nodeScript = new ResourceNode("/script.js", "GET", &handleScript);
+    // If the client request a inexistent resource, send a 404 content.
+    ResourceNode * node404 = new ResourceNode("", "GET", &handle404);
+    // Register the nodes.
+    secureServer->registerNode(nodeRoot);
+    //secureServer->registerNode(nodeStyle);
+    //secureServer->registerNode(nodeScript);
+    secureServer->registerNode(node404);
+    // Create a websocket node (wss://server_address/chat on client side).
+    WebsocketNode * chatNode = new WebsocketNode("/chat", ChatHandler::create);
+    secureServer->registerNode(chatNode);
+    secureServer->setDefaultNode(node404);
+    // Adds browser authentication.
+    secureServer->addMiddleware(&middlewareAuthentication);
+    secureServer->addMiddleware(&middlewareAuthorization);
+    // Start the service.
+    secureServer->start();
+    if (secureServer->isRunning()) {
+        // If all good, show a button with 'https' on settings, see wifi section.
+        lv_obj_clear_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
+        Serial.println("Server ready.");
     }
     // In case when a external routine ends this task.
     vTaskDelete(NULL);
 }
+/// @brief Close all sockets and close the HTTPSServer.
+void shutdownServer(void *param){
+    if(secureServer != NULL){
+        for(int i = 0; i < maxClients; i++){
+            if(activeClients[i] != NULL){
+                activeClients[i]->close(1000, "Server shutdown");
+                activeClients[i] = nullptr;
+            }
+        }
+        secureServer->stop();
+        secureServer->~HTTPSServer();
+        secureServer = NULL;
+        // Hide the https button on settings.
+        lv_obj_add_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
+        Serial.println("Server ended.");
+    }
+    vTaskDelete(NULL);
+}
+
 /// @brief This task runs forever, process a LoRa packet as soons as is received.
 /// @param param 
 void processReceivedPacket(void * param){
@@ -4383,5 +4374,8 @@ void loop(){
     pthread_mutex_lock(&lvgl_mutex);
     lv_task_handler();
     pthread_mutex_unlock(&lvgl_mutex);
+    if(secureServer != NULL)
+        if(secureServer->isRunning())
+            secureServer->loop();
     delay(5);
 }
