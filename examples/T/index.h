@@ -134,14 +134,14 @@ const char index_html[] PROGMEM = R"rawliteral(
             background-color: rgb(129, 255, 133);
             margin-left: 280px;
             margin-top: -15px;
-            box-shadow: 0px 0px 10px 5px rgb(105, 255, 78);
+            box-shadow: 0px 0px 10px 2px rgb(105, 255, 78);
             animation-name: inrange;
             animation-duration: 1s;
         }
 
         @keyframes outofrange {
             from{background-color: rgb(129, 255, 133);
-               box-shadow: 0px 0px 10px 5px rgb(105, 255, 78);}
+               box-shadow: 0px 0px 10px 2px rgb(105, 255, 78);}
             to{background-color: #bbb;
                  box-shadow: none;}
         }
@@ -150,7 +150,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             from{background-color: #bbb;
                  box-shadow: none;}
             to{background-color: rgb(129, 255, 133);
-               box-shadow: 0px 0px 10px 5px rgb(105, 255, 78);}
+               box-shadow: 0px 0px 10px 2px rgb(105, 255, 78);}
         }
 
         .btn-add {
@@ -891,6 +891,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                 selectTab(tabId);
             });
         });
+        for(i = 0; i < 20; i++)
+            add_rssi_snr("-120", "0");
     });
 
     function changeStatusMessage(id, msg){

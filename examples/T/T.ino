@@ -127,6 +127,8 @@ volatile int last_wifi_con = -1;
 Cipher * cipher = new Cipher();
 // Web server object.
 HTTPSServer * secureServer = NULL;
+// Max number of clients connections.
+const uint8_t maxClients = 1;
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -673,8 +675,7 @@ class ChatHandler : public WebsocketHandler{
         void onMessage(WebsocketInputStreambuf * input);
         void onClose();
 };
-// Max number of clients connected.
-const uint8_t maxClients = 4;
+
 // List of clients's websockets.
 ChatHandler * activeClients[maxClients];
 // Constructor for a new client WebSocket
@@ -1082,6 +1083,11 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
 /// @brief This task runs a basic https server with websocket capabilities.
 /// @param param 
 void setupServer(void * param){
+    while(!WiFi.isConnected())
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    lv_label_set_text(frm_home_title_lbl, "Creating ssl certificate...");
+    lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     SSLCert * cert;
     // Work in progress. The plan is to get up to 4 clients connected.
     // Before start a new server, close all the sockets.
@@ -1110,9 +1116,15 @@ void setupServer(void * param){
         Serial.printf("Error generating certificate");
         return; 
     }
+    lv_label_set_text(frm_home_title_lbl, "Certificate done.");
+    lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    lv_label_set_text(frm_home_title_lbl, "Starting https server...");
+    lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     Serial.println("Starting server...");
     // Create the server object, port 443 and limit the clients;
-    secureServer = new HTTPSServer(cert, 443, 4);
+    secureServer = new HTTPSServer(cert, 443, maxClients);
     // A resource is a file like index.html, style.css..., represented by a node.
     // The server sends the content of the string that holds the web page on index_html,
     // style_css and script_js. For now, the style and javascript is already on index.html.
@@ -1139,10 +1151,16 @@ void setupServer(void * param){
     if (secureServer->isRunning()) {
         // If all good, show a button with 'https' on settings, see wifi section.
         lv_obj_clear_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(frm_home_title_lbl, "Server ready.");
+        lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         Serial.println("Server ready.");
+        lv_label_set_text(frm_home_title_lbl, "");
+        lv_label_set_text(frm_home_symbol_lbl, "");
     }
     // In case when a external routine ends this task.
-    vTaskDelete(NULL);
+    if(param != NULL)
+        vTaskDelete(NULL);
 }
 /// @brief Close all sockets and close the HTTPSServer.
 void shutdownServer(void *param){
@@ -4198,6 +4216,10 @@ void wifi_auto_connect(void * param){
                 lv_label_set_text(frm_home_symbol_lbl, "");
                 // Sets the date using the internet.
                 datetime();
+                if(param != NULL){
+                    // Launch the web server task.
+                    xTaskCreatePinnedToCore(setupServer, "server", 12000, (void*)"ok", 1, NULL, 1);
+                }
             }else{
                 // If fails, notify the user and turn off the wifi transceiver.
                 Serial.println("disconnected");
@@ -4364,8 +4386,6 @@ void setup(){
 
     // Launch the notification task.
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
-    // Launch the web server task.
-    xTaskCreatePinnedToCore(setupServer, "server", 12000, NULL, 1, NULL, 1);
     // Send a beacon packet to the neighborhood.
     announce();
 }
