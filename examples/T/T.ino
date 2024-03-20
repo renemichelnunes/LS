@@ -1203,6 +1203,8 @@ void processReceivedPacket(void * param){
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         if(gotPacket){// This bool is true every time a new LoRa packet is captured. After the processing this is set to false.
+            // Change the activity indicator to green.
+            activity(lv_color_hex(0x00ff00));
             processing = true;
             Serial.println("Packet received");
             
@@ -1221,7 +1223,7 @@ void processReceivedPacket(void * param){
             // Avoids processing a empty LoRa packet.
             if(size > 0 and size <= sizeof(lora_packet)){
                 // Get the data. We are using a normal LoRa packet variable to hold the two types. The only difference is the size,
-                // both packets begins with the same sender, destiny and status, so the data always matches.
+                // both packets begins with the same sender, destiny and status, so the data always fit.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                     // Its possible to read strings direcly, but we need to ensure is a valid LoRa packet, so we cast it,
                     // to a unsigned byte pointer.
