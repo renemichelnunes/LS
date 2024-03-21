@@ -59,10 +59,13 @@ char * Cipher::getKey() {
 void Cipher::encrypt(char * plainText, char * key, unsigned char * outputBuffer) {
   // encrypt plainText buffer of length 16 characters
   mbedtls_aes_context aes;
- 
+
   mbedtls_aes_init( &aes );
   mbedtls_aes_setkey_enc( &aes, (const unsigned char*) key, strlen(key) * 8 );
   mbedtls_aes_crypt_ecb( &aes, MBEDTLS_AES_ENCRYPT, (const unsigned char*)plainText, outputBuffer);
+  Serial.print(plainText);
+  Serial.print(" => ");
+  Serial.println((char*)outputBuffer);
   mbedtls_aes_free( &aes );
 }
 
@@ -91,9 +94,8 @@ String Cipher::encryptBuffer(char * plainText, char * key) {
   unsigned char cipherTextOutput[16];
   
   encrypt(plainText, key, cipherTextOutput);
-  
   for (int i = 0; i < 16; i++) {
-    cipherTextString = cipherTextString + (char)cipherTextOutput[i];
+    cipherTextString += (char)cipherTextOutput[i];
   }
 
   return cipherTextString;
@@ -137,20 +139,21 @@ String Cipher::encryptString(String plainText, char * key) {
   String buffer = "";
   String cipherTextString = "";
   int index = plainText.length() / BUFF_SIZE;
+  char enc[20];
   
   for(int block=0; block < plainText.length()/BUFF_SIZE; block++) {
       for(int j = block*BUFF_SIZE; j < (block+1)*BUFF_SIZE; j++) {
         buffer += plainText[j];
       }
-      
-      cipherTextString += encryptBuffer(const_cast<char*>(buffer.c_str()), key);
+      strcpy(enc, encryptBuffer(const_cast<char*>(buffer.c_str()), key).c_str());
+      cipherTextString += enc;
       buffer = "";
   }
 
   buffer="";
 
   if( plainText.length()%BUFF_SIZE > 0 ) {    
-    for(int bytes_read=(index*BUFF_SIZE); bytes_read <= (index*BUFF_SIZE) + plainText.length()%BUFF_SIZE; bytes_read++) {
+    for(int bytes_read=(index*BUFF_SIZE); bytes_read <= (index*BUFF_SIZE) + plainText.length()%BUFF_SIZE - 1; bytes_read++) {
       buffer += plainText[bytes_read];
     };
     cipherTextString += encryptBuffer(const_cast<char*>(buffer.c_str()), key);

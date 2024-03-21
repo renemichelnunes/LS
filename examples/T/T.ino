@@ -705,10 +705,12 @@ void ChatHandler::onClose() {
 /// @param json 
 void sendJSON(string json){
     sendingJson = true;
+    if(strcmp(WiFi.localIP().toString().c_str(), "") == 0)
+        return;
     if(json.length() > 0)
         for(uint i = 0; i < maxClients; i++)
             if(activeClients[i] != NULL)
-                activeClients[i]->send(json, WebsocketHandler::SEND_TYPE_TEXT);
+                activeClients[i]->send(json.c_str(), activeClients[i]->SEND_TYPE_TEXT);
     sendingJson = false;
 }
 /// @brief This is for debug purposes, a received decrypted message sometimes could bring non-printable
@@ -1085,6 +1087,7 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
 void setupServer(void * param){
     while(!WiFi.isConnected())
         vTaskDelay(100 / portTICK_PERIOD_MS);
+    Serial.println("Creating ssl certificate...");
     lv_label_set_text(frm_home_title_lbl, "Creating ssl certificate...");
     lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -1116,6 +1119,7 @@ void setupServer(void * param){
         Serial.printf("Error generating certificate");
         return; 
     }
+    Serial.println("Certificate done.");
     lv_label_set_text(frm_home_title_lbl, "Certificate done.");
     lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -1700,18 +1704,21 @@ void setupRadio(lv_event_t * e)
 /// @param key 
 /// @param msg 
 /// @return String
-String encryptMsg(char * key, String msg){
+String encryptMsg(char * key, const char * msg){
+    //Serial.println(msg);
     //Minimum cipher key must be 16 bytes long, or the default key will be used.
-    cipher->setKey(key);
-    return cipher->encryptString(msg);
+    //cipher->setKey(key);
+    //return cipher->encryptString(msg);
+    return msg;
 }
 /// @brief This decrypt a received message using a key.
 /// @param key 
 /// @param msg 
 /// @return String
 String decryptMsg(char * key, String msg){
-    cipher->setKey(key);
-    return cipher->decryptString(msg);
+    //cipher->setKey(key);
+    //return cipher->decryptString(msg);
+    return msg;
 }
 /// @brief This sends a ping packet.
 /// @param e 
