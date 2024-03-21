@@ -71,7 +71,6 @@ bool kbDected = false;
 bool hasRadio = false; 
 bool wifi_connected = false;
 bool isDX = false;
-volatile bool announcing = false;
 volatile bool transmiting = false;
 volatile bool processing = false;
 volatile bool gotPacket = false;
@@ -95,6 +94,8 @@ uint32_t msg_count = 0;
 Contact_list contacts_list = Contact_list();
 lora_incomming_messages messages_list = lora_incomming_messages();
 notification notification_list = notification();
+vector<lora_packet> received_packets;
+vector<lora_packet> transmiting_packets;
 // As soon as we select a contact on a contact list, it is pointed to this
 // variable, so other routines like send a message will use this contact
 Contact * actual_contact = NULL;
@@ -849,15 +850,9 @@ void parseCommands(std::string jsonString){
             strcpy(pkt.msg, enc_msg);
             // Here we wait for the radio module to become available.
             while(transmiting){// When using the board.
-                Serial.println("announcing");
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-            }
-            while(announcing){// Periodically the board transmit a beacon packet.
-                Serial.println("announcing");
                 vTaskDelay(100 / portTICK_PERIOD_MS);
             }
             while(gotPacket){// When receiving.
-                Serial.println("gotPacket");
                 vTaskDelay(100 / portTICK_PERIOD_MS);
             }
             activity(lv_color_hex(0xff0000));
@@ -1198,12 +1193,7 @@ void processReceivedPacket(void * param){
 
     while(true){
         // Wait for the radio module to become available.
-        while(announcing){
-            //Serial.println("waiting announcing to finish");
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
         while(transmiting){
-            //Serial.println("waiting transmission to finish");
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         if(gotPacket){// This bool is true every time a new LoRa packet is captured. After the processing this is set to false.
@@ -1328,13 +1318,8 @@ void processReceivedPacket(void * param){
                             strcpy(c.destiny, p.sender);
                             strcpy(c.status, "recv");
                             Serial.println("Sending confirmation...");
-                            while(announcing){
-                                //Serial.println("Awaiting announcement to finnish before send confirmation...");
-                                vTaskDelay(10 / portTICK_PERIOD_MS);
-                            }
 
                             while(transmiting){
-                                //Serial.println("waiting transmission to finish");
                                 vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
                             // Change the squared status on home screen to red.
@@ -1377,12 +1362,7 @@ void processReceivedPacket(void * param){
                             strcpy(pong.sender, user_id);
                             strcpy(pong.destiny, p.sender);
                             strcpy(pong.status, "pong");
-                            while(announcing){
-                                //Serial.println("Awaiting announcing to finish before send confirmation...");
-                                vTaskDelay(10 / portTICK_PERIOD_MS);
-                            }
                             while(transmiting){
-                                //Serial.println("waiting transmission to finish before send confirmation...");
                                 vTaskDelay(10 / portTICK_PERIOD_MS);
                             }
                             // Change the activity square to red.
@@ -1736,11 +1716,9 @@ void ping(lv_event_t * e){
     // Check is the radio is up.
     if(hasRadio){
         while(transmiting){
-            //Serial.println("waiting transmition to finish");
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         while(processing){
-            //Serial.println("waiting processing to finish");
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         transmiting = true;
@@ -2022,9 +2000,6 @@ void send_message(lv_event_t * e){
                 // Encrypt the message with our key.
                 enc_msg = encryptMsg(user_key, lv_textarea_get_text(frm_chat_text_ans));
                 strcpy(pkt.msg, enc_msg.c_str());
-                while(announcing){
-                    vTaskDelay(10 / portTICK_PERIOD_MS);
-                }
                 while(gotPacket){
                     vTaskDelay(10 / portTICK_PERIOD_MS);
                 }
@@ -2288,8 +2263,6 @@ void update_time(void *timeStruct) {
             lv_label_set_text(frm_home_date_lbl, date);
         }
         vTaskDelay(60000 / portTICK_RATE_MS);
-        // Send a beacon signal packet.
-        announce();
     }
     vTaskDelete(task_date_time);
 }
@@ -4256,14 +4229,12 @@ void announce(){
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
     // Change the activity indicator to yellow.
-    activity(lv_color_hex(0xffff00));
+    activity(lv_color_hex(0xff0000));
     while(transmiting){
-        //Serial.print("transmiting ");
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 
     while(processing){
-        //Serial.print("gotPacket ");
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     // Transmit the packet.
@@ -4278,9 +4249,23 @@ void announce(){
         }
         xSemaphoreGive(xSemaphore);
     }
-    //activity(lv_color_hex(0xcccccc));
     transmiting = false;
 }
+
+void task_beacon(void * param){
+    uint32_t r = 0;
+    while(true){
+        r = rand() % 30;
+        if(r < 10)
+            r += 10;
+        Serial.print("R = ");
+        Serial.println(r);
+        vTaskDelay(1000 * r / portTICK_PERIOD_MS);
+        announce();
+    }
+    vTaskDelete(NULL);
+}
+
 /// @brief T-Deck's initial setup function.
 void setup(){
     bool ret = false;
@@ -4395,8 +4380,8 @@ void setup(){
 
     // Launch the notification task.
     xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
-    // Send a beacon packet to the neighborhood.
-    announce();
+    // Launch de beacon task.
+    xTaskCreatePinnedToCore(task_beacon, "beacon", 4000, NULL, 1, NULL, 1);
 }
 
 void loop(){
