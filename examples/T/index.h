@@ -892,7 +892,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             });
         });
         for(i = 0; i < 20; i++)
-            add_rssi_snr("-120", "0");
+            add_rssi_snr("-147", "0");
     });
 
     function changeStatusMessage(id, msg){
@@ -4055,7 +4055,7 @@ function draw_rssi_snr(data){
         .range([40, 760]);
 
     var yScaleRssi = d3.scaleLinear()
-        .domain([-120, 0]) // Assuming RSSI values range from -120 dBm to -60 dBm
+        .domain([-147, 0]) // Assuming RSSI values range from -147 dBm to 0 dBm
         .range([180, 20]);
 
     var yScaleSnr = d3.scaleLinear()
