@@ -1180,6 +1180,252 @@ void shutdownServer(void *param){
     vTaskDelete(NULL);
 }
 
+void processTransmitPacketList(void * param){
+    int16_t status = 0;
+    lora_packet packet;
+    while(true)
+        if(hasRadio && !gotPacket){
+            if(transmiting_packets.size() > 0){
+                packet = transmiting_packets[0];
+
+                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                    transmiting = true;
+                    status = radio.transmit((uint8_t *)&packet, sizeof(packet));
+                    transmiting = false;
+                    xSemaphoreGive(xSemaphore);
+                }
+                if(status == RADIOLIB_ERR_NONE){
+                    transmiting_packets.erase(transmiting_packets.begin());
+                }
+            }
+        }
+}
+
+void parseLoRaPacket(lora_packet p){
+    lora_packet_status c;
+    lora_packet_status pong;
+    Contact * contact = NULL;
+    char message[200] = {'\0'}, pmsg [200] = {'\0'}, dec_msg[200] = {'\0'},
+        rssi[10] = {'\u0000'}, snr[10] = {'\u0000'};
+    JsonDocument doc;
+
+    if(strcmp(p.destiny, user_id) == 0){
+        // Prints some info on console for debug purposes.
+        Serial.print("sender ");
+        Serial.println(p.sender);
+        Serial.print("destiny ");
+        Serial.println(p.destiny);
+        Serial.print("msg ");
+        Serial.println(p.msg);// This message is still encrypted.
+        Serial.print("status ");
+        Serial.println(p.status);
+        Serial.print("me ");
+        Serial.println(p.me ? "true": "false");
+        // If our packet has a sender which is not on the contacts list, the processing ends here.
+        contact = contacts_list.getContactByID(p.sender);
+
+        if(contact != NULL){
+            Serial.println("Contact found");
+            if(strcmp(p.status, "send") == 0){
+                // Lets add a date time of arrival.
+                strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                // Decrypt the message.
+                strcpy(dec_msg, decryptMsg((char*)contact->getKey().c_str(), p.msg).c_str());
+                Serial.print("mensagem ");
+                Serial.println(dec_msg);
+                // Copy the decrypted message back to the packet.
+                strcpy(p.msg, dec_msg);
+                // The addMessage function sort the messages by destiny(contacts), so we trade places with the sender.
+                strcpy(p.destiny, p.sender);
+                // The board can play sounds however it uses SPI to transfer to the DAC and it slows the board, 
+                // the routine is commented so it does nothing for now. Needs more testing and refining.
+                notify_snd();
+                // messages_list is accessed by other routines so we need to get exclusive access.
+                pthread_mutex_lock(&messages_mutex);
+                    messages_list.addMessage(p);
+                pthread_mutex_unlock(&messages_mutex);
+                // This send a JSON representation of the messages list of the contact.
+                sendContactMessages(p.sender);
+
+                while(sendingJson){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
+                // On client side there is a javascript function that reproduces a sound when a message is received.
+                pthread_mutex_lock(&send_json_mutex);
+                    sendJSON("{\"command\" : \"playNewMessage\"}");
+                pthread_mutex_unlock(&send_json_mutex);
+                // Now w prepare a string to be shown on the notification area.
+                strcpy(message, contact->getName().c_str());
+                strcat(message, ": ");
+                // This ensure the message is 149 bytes long.
+                if(sizeof(p.msg) > 149){
+                    memcpy(pmsg, dec_msg, 149);
+                    strcat(message, pmsg);
+                }
+                else
+                    strcat(message, p.msg);
+                // Eclipse the message if bigger then 30 bytes.
+                message[30] = '.';
+                message[31] = '.';
+                message[32] = '.';
+                message[33] = '\0';
+                // Add to the notification list, there is a task to process it.
+                notification_list.add(message, LV_SYMBOL_ENVELOPE);
+                // Send confirmation. We use a small LoRa packet.
+                strcpy(c.sender, user_id);
+                strcpy(c.destiny, p.sender);
+                strcpy(c.status, "recv");
+                Serial.println("Sending confirmation...");
+
+                while(transmiting){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
+                // Change the squared status on home screen to red.
+                activity(lv_color_hex(0xff0000));
+                transmiting = true;
+                // Get exclusive access through SPI.
+                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                    if(radio.transmit((uint8_t*)&c, sizeof(c)) == RADIOLIB_ERR_NONE)
+                        Serial.println("Confirmation sent");
+                    else
+                        Serial.println("Confirmation not sent");
+                    xSemaphoreGive(xSemaphore);
+                }
+                transmiting = false;
+                contact = NULL;
+            }
+            // If we receive a delivered message confirmation.
+            if(strcmp(p.status, "recv") == 0){
+                // Trade places with the sender.
+                strcpy(p.destiny, p.sender);
+                // Adds date and time.
+                strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                // This is used on the client side.
+                strcpy(p.msg, "[received]");
+                // Add to the sender's list of messages.
+                pthread_mutex_lock(&messages_mutex);
+                    messages_list.addMessage(p);
+                pthread_mutex_unlock(&messages_mutex);
+                // Send his messages back to the client side. This updates the chat history.
+                sendContactMessages(p.sender);
+            }
+            // If we receive a ping solicitation.
+            if(strcmp(p.status, "ping") == 0 && strcmp(p.destiny, user_id) == 0){
+                // Display a simple sotification.
+                notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
+                // We'll send back a pong status.
+                Serial.print("Sending pong...");
+                strcpy(pong.sender, user_id);
+                strcpy(pong.destiny, p.sender);
+                strcpy(pong.status, "pong");
+                while(transmiting){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
+                // Change the activity square to red.
+                activity(lv_color_hex(0xff0000));
+                transmiting = true;
+                // Get exclusive use of the SPI connection.
+                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                    if(radio.transmit((uint8_t*)&pong, sizeof(lora_packet_status)) == RADIOLIB_ERR_NONE)
+                        Serial.println("done");
+                    else
+                        Serial.print("failed");
+                    xSemaphoreGive(xSemaphore);
+                }
+                transmiting = false;
+            }
+            // If we receive a confirmation ping.
+            if(strcmp(p.status, "pong") == 0 && strcmp(p.destiny, user_id) == 0){
+                // Reproduce a sound(disabled by now).
+                notify_snd();
+                Serial.println("pong");
+                // Format a message with rssi and s/n ratio statistics.
+                strcpy(message, "pong ");
+                sprintf(pmsg, "RSSI %.2f", radio.getRSSI());
+                strcat(message, pmsg);
+                sprintf(pmsg, " S/N %.2f", radio.getSNR());
+                strcat(message, pmsg);
+                // Adds the message to the notification, we'll see on top of the screen.
+                notification_list.add(message, LV_SYMBOL_DOWNLOAD);
+            }
+        }
+    }else if(strcmp(p.status, "show") == 0){// This is a beacon type packet.
+        // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
+        Contact * d = contacts_list.getContactByID(p.sender);
+        if(d != NULL){
+            // Set this to true if the contact is in range.
+            d->inrange = true;
+            // There's a time out in minutes, if the contacts don't send a "show" status in time they will be
+            // shown as out of range with a greyish squared mark after their names.
+            d->timeout = millis();
+            Serial.println("Announcement packet received");
+            d = NULL;
+        }
+    }else{
+        Serial.println("Packet ignored");
+    }
+}
+
+/// @brief Task to add the LoRa packets to the list of packets received.
+/// @param param 
+void addReceivedPacketToListTask(void * param){
+    uint32_t packet_size = 0;
+    char rssi[10] = {'\u0000'}, snr[10] = {'\u0000'};
+    JsonDocument doc;
+    string json;
+
+    while(true){
+        if(hasRadio && gotPacket){
+            Serial.println("Packet received");
+            lora_packet packet;
+            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                radio.standby();
+                packet_size = radio.getPacketLength();
+                radio.readData((uint8_t*)&packet, packet_size);
+                // Convert the rssi and snr to string.
+                sprintf(rssi, "%.2f", radio.getRSSI());
+                sprintf(snr, "%.2f", radio.getSNR());
+                radio.startReceive();
+                xSemaphoreGive(xSemaphore);
+            }
+            if(packet_size > 0 && (packet_size == sizeof(lora_packet) || packet_size == sizeof(lora_packet_status))){
+                // The client side has a javascript to plot a graphic about the rssi and s/n ratio. So we send it also as JSON.
+                doc["command"] = "rssi_snr";
+                doc["rssi"] = rssi;
+                doc["snr"] = snr;
+                serializeJson(doc, json);
+                pthread_mutex_lock(&send_json_mutex);
+                sendJSON(json);
+                pthread_mutex_unlock(&send_json_mutex);
+                if(strcmp(packet.destiny, user_id) == 0 || strcmp(packet.status, "show") == 0)
+                    received_packets.push_back(packet);
+                else
+                    Serial.println("Packet dropped");
+            }else{
+                Serial.println("Packet malformed");
+            }
+            gotPacket = false;
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
+/// @brief Task to process a LoRa packet from the list of packets received.
+/// @param param 
+void processReceivedPacketListTask(void * param){
+    lora_packet p;
+    lora_packet_status c;
+    lora_packet_status pong;
+
+    while(true){
+        if(hasRadio && received_packets.size() > 0){
+            p = received_packets[0];
+            parseLoRaPacket(p);
+            received_packets.erase(received_packets.begin());
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
+
 /// @brief This task runs forever, process a LoRa packet as soons as is received.
 /// @param param 
 void processReceivedPacket(void * param){
@@ -1197,8 +1443,6 @@ void processReceivedPacket(void * param){
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         if(gotPacket){// This bool is true every time a new LoRa packet is captured. After the processing this is set to false.
-            // Change the activity indicator to green.
-            activity(lv_color_hex(0x00ff00));
             processing = true;
             Serial.println("Packet received");
             
@@ -1215,7 +1459,10 @@ void processReceivedPacket(void * param){
                 xSemaphoreGive(xSemaphore);
             }
             // Avoids processing a empty LoRa packet.
-            if(size > 0 and size <= sizeof(lora_packet)){
+            if(size > 0 && size <= sizeof(lora_packet)){
+                if(strcmp(p.destiny, user_id) == 0 || strcmp(p.status, "show") == 0)
+                    // Change the activity indicator to green.
+                    activity(lv_color_hex(0x00ff00));
                 // Get the data. We are using a normal LoRa packet variable to hold the two types. The only difference is the size,
                 // both packets begins with the same sender, destiny and status, so the data always fit.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -1247,9 +1494,6 @@ void processReceivedPacket(void * param){
                 pthread_mutex_unlock(&send_json_mutex);
                 // If the received packet is for the owner, process it. If not, drop it(basically do nothing).
                 if(strcmp(p.destiny, user_id) == 0){
-                    // This is a small square on top of the home screen, depending on the activity it changes colors.
-                    // Lets change to green.
-                    activity(lv_color_hex(0x00ff00));
                     // Reset this flag to false, we have processed the packet.
                     gotPacket = false;
                     // Prints some info on console for debug purposes.
@@ -1333,8 +1577,6 @@ void processReceivedPacket(void * param){
                                     Serial.println("Confirmation not sent");
                                 xSemaphoreGive(xSemaphore);
                             }
-                            // Change to green.
-                            activity(lv_color_hex(0x00ff00));
                             transmiting = false;
                             contact = NULL;
                         }
@@ -1376,8 +1618,6 @@ void processReceivedPacket(void * param){
                                     Serial.print("failed");
                                 xSemaphoreGive(xSemaphore);
                             }
-                            // Change the activity square to green.
-                            activity(lv_color_hex(0x00ff00));
                             transmiting = false;
                         }
                         // If we receive a confirmation ping.
@@ -1585,6 +1825,7 @@ bool DXMode()
     return true;
     
 }
+
 /// @brief This is the initial setup as soon as the board boots.
 /// @param e 
 void setupRadio(lv_event_t * e)
@@ -1663,7 +1904,7 @@ void setupRadio(lv_event_t * e)
     int32_t code = 0;
     // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. So we're using core 1
     // to run this task forever.
-    xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 20000, NULL, 1, &task_recv_pkt, 1);
+    xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 11000, NULL, 1, &task_recv_pkt, 1);
     // The function onListen will be called every time a packet is received.
     radio.setPacketReceivedAction(onListen);
     // The onTransmit function is called every time when the radio finishes a transmission.
@@ -1730,7 +1971,6 @@ void ping(lv_event_t * e){
             xSemaphoreGive(xSemaphore);
         }
         transmiting = false;
-        //activity(lv_color_hex(0xcccccc));
         // If all went ok show a notification, if not print the error code.
         if(state != RADIOLIB_ERR_NONE){
             Serial.print("transmission failed ");
@@ -2015,7 +2255,6 @@ void send_message(lv_event_t * e){
                     state = radio.transmit((uint8_t *)&pkt, sizeof(pkt));
                     xSemaphoreGive(xSemaphore);
                 }
-                //activity(lv_color_hex(0xcccccc));
                 transmiting = false;
                 // Check the status returned from the radio module.
                 if(state != RADIOLIB_ERR_NONE){
@@ -2405,7 +2644,6 @@ void check_contacts_in_range(){
         // Sends the current status to the client side.
         sendContactsStatusJson(contacts_list.getList()[i].getID().c_str(), contacts_list.getList()[i].inrange);
     }
-    //activity(lv_color_hex(0xcccccc));
 }
 /// @brief Initialize the battery monitoring routine.
 void initBat(){
