@@ -96,6 +96,7 @@ lora_incomming_messages messages_list = lora_incomming_messages();
 notification notification_list = notification();
 vector<lora_packet> received_packets;
 vector<lora_packet> transmiting_packets;
+vector<lora_stats> received_stats;
 // As soon as we select a contact on a contact list, it is pointed to this
 // variable, so other routines like send a message will use this contact
 Contact * actual_contact = NULL;
@@ -1426,7 +1427,62 @@ void processReceivedPacketListTask(void * param){
     }
 }
 
-/// @brief This task runs forever, process a LoRa packet as soons as is received.
+/// @brief Collects lora packets and save them in received_packets.
+/// @param param 
+void collectPackets(void * param){
+    lora_packet p;
+    uint16_t packet_size;
+    lora_stats ls;
+
+    while(true){
+        if(gotPacket){
+            activity(lv_color_hex(0x00ff00));
+            // Get exclusive access to the radio module and read the payload.
+            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                radio.standby();
+                packet_size = radio.getPacketLength();
+                radio.readData((uint8_t*)&p, packet_size);
+                // Convert the info to a exact representation on a string.
+                sprintf(ls.rssi, "%.2f", radio.getRSSI());
+                sprintf(ls.snr, "%.2f", radio.getSNR());
+                gotPacket = false;
+                // Put the radio to listen.
+                radio.startReceive();
+                xSemaphoreGive(xSemaphore);
+            }
+            // Save the packet on received_packets.
+            if(packet_size > 0 && packet_size <= sizeof(lora_packet)){
+                received_packets.push_back(p);
+                // Add the stats of the trnasmission received to received_stats.
+                received_stats.push_back(ls);
+            }
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
+
+void processPackets(void * param){
+    lora_packet p;
+
+    while(true){
+        if(received_packets.size() > 0){
+            p = received_packets[0];
+            received_packets.erase(received_packets.begin());
+            // Case chat message
+            if(strcmp(p.status, "send") == 0){
+                lora_packet s;
+                strcpy(s.status, "recv");
+                strcpy(s.sender, user_id);
+                strcpy(s.destiny, p.sender);
+                transmiting_packets.push_back(s);
+            
+            }
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
+
+/// @brief This task runs forever, process a LoRa packet as soon as is received.
 /// @param param 
 void processReceivedPacket(void * param){
     lora_packet p;
