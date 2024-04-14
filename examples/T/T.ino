@@ -1452,9 +1452,13 @@ void collectPackets(void * param){
             }
             // Save the packet on received_packets.
             if(packet_size > 0 && packet_size <= sizeof(lora_packet)){
-                received_packets.push_back(p);
-                // Add the stats of the trnasmission received to received_stats.
-                received_stats.push_back(ls);
+                // Lets add a date time of arrival.
+                strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                if(strcmp(p.sender, user_id) != 0){
+                    received_packets.push_back(p);
+                    // Add the stats of the trnasmission received to received_stats.
+                    received_stats.push_back(ls);
+                }
             }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1462,7 +1466,10 @@ void collectPackets(void * param){
 }
 
 void processPackets(void * param){
-    lora_packet p;
+    lora_packet p, pong;
+    char dec_msg[200] = {'\0'};
+    char message[200] = {'\0'};
+    char pmsg[200] = {'\0'};
 
     while(true){
         if(received_packets.size() > 0){
@@ -1475,8 +1482,145 @@ void processPackets(void * param){
                 strcpy(s.sender, user_id);
                 strcpy(s.destiny, p.sender);
                 transmiting_packets.push_back(s);
-            
+                Contact * c = contacts_list.getContactByID(p.sender);
+
+                if(c != NULL){
+                    // Decrypt the message.
+                    strcpy(dec_msg, decryptMsg((char*)c->getKey().c_str(), p.msg).c_str());
+                    // Copy the decrypted message back to the packet.
+                    strcpy(p.msg, dec_msg);
+                    // The addMessage function sort the messages by destiny(contacts), so we trade places with the sender.
+                    strcpy(p.destiny, p.sender);
+                    // messages_list is accessed by other routines so we need to get exclusive access.
+                    pthread_mutex_lock(&messages_mutex);
+                    messages_list.addMessage(p);
+                    pthread_mutex_unlock(&messages_mutex);
+                    // This send a JSON representation of the messages list of the contact.
+                    sendContactMessages(p.sender);
+                    while(sendingJson){
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                    }
+                    // On client side there is a javascript function that reproduces a sound when a message is received.
+                    pthread_mutex_lock(&send_json_mutex);
+                    sendJSON("{\"command\" : \"playNewMessage\"}");
+                    pthread_mutex_unlock(&send_json_mutex);
+                    // Now w prepare a string to be shown on the notification area.
+                    strcpy(message, c->getName().c_str());
+                    strcat(message, ": ");
+                    // This ensure the message is 149 bytes long.
+                    if(sizeof(p.msg) > 149){
+                        memcpy(pmsg, dec_msg, 149);
+                        strcat(message, pmsg);
+                    }
+                    else
+                        strcat(message, p.msg);
+                    // Eclipse the message if bigger then 30 bytes.
+                    message[30] = '.';
+                    message[31] = '.';
+                    message[32] = '.';
+                    message[33] = '\0';
+                    // Add to the notification list, there is a task to process it.
+                    notification_list.add(message, LV_SYMBOL_ENVELOPE);
+                }
             }
+            // If we receive a delivered message confirmation.
+            if(strcmp(p.status, "recv") == 0){
+                // Trade places with the sender.
+                strcpy(p.destiny, p.sender);
+                // This is used on the client side.
+                strcpy(p.msg, "[received]");
+                // Add to the sender's list of messages.
+                pthread_mutex_lock(&messages_mutex);
+                messages_list.addMessage(p);
+                pthread_mutex_unlock(&messages_mutex);
+                // Send his messages back to the client side. This updates the chat history.
+                sendContactMessages(p.sender);
+            }
+            // If we receive a ping solicitation.
+            if(strcmp(p.status, "ping") == 0 && strcmp(p.destiny, user_id) == 0){
+                // Display a simple sotification.
+                notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
+                // We'll send back a pong status.
+                strcpy(pong.sender, user_id);
+                strcpy(pong.destiny, p.sender);
+                strcpy(pong.status, "pong");
+                transmiting_packets.push_back(pong);
+            }
+            // If we receive a confirmation ping.
+            if(strcmp(p.status, "pong") == 0 && strcmp(p.destiny, user_id) == 0){
+                // Reproduce a sound(disabled by now).
+                notify_snd();
+                Serial.println("pong");
+                // Format a message with rssi and s/n ratio statistics.
+                strcpy(message, "pong ");
+                sprintf(pmsg, "RSSI %.2f", radio.getRSSI());
+                strcat(message, pmsg);
+                sprintf(pmsg, " S/N %.2f", radio.getSNR());
+                strcat(message, pmsg);
+                // Adds the message to the notification, we'll see on top of the screen.
+                notification_list.add(message, LV_SYMBOL_DOWNLOAD);
+            }
+            // Beacon type packet
+            if(strcmp(p.status, "show") == 0){
+                // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
+                Contact * c = contacts_list.getContactByID(p.sender);
+                if(c != NULL){
+                    // Set this to true if the contact is in range.
+                    c->inrange = true;
+                    // There's a time out in minutes, if the contacts don't send a "show" status in time they will be
+                    // shown as out of range with a greyish squared mark after their names.
+                    c->timeout = millis();
+                    Serial.println("Announcement packet received");
+                    c = NULL;
+                }
+            }
+        }else{
+            Serial.println("Unknown or malformed packet");
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
+
+void processTransmittingPackets(void * param){
+    lora_packet p;
+    lora_packet_status ps;
+    
+    while(true){
+        if(transmiting_packets.size() > 0){
+
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
+
+void processReceivedStats(void * param){
+    lora_stats st;
+    string json;
+    JsonDocument doc;
+    char message[200] = {'\0'};
+    char rssi[20] = {'\0'};
+    char snr[20] = {'\0'};
+
+    while (true){
+        if(received_stats.size() > 0){
+            st = received_stats[0];
+            received_stats.erase(received_stats.begin());
+            // Lets print this statistics on console.
+            strcpy(message, "[RSSI:");
+            strcat(message, rssi);
+            strcat(message, " dBm");
+            strcat(message, " SNR:");
+            strcat(message, snr);
+            strcat(message, " dBm]");
+            Serial.println(message);  
+            // The client side has a javascript to plot a graphic about the rssi and s/n ratio. So we send it also as JSON.
+            doc["command"] = "rssi_snr";
+            doc["rssi"] = rssi;
+            doc["snr"] = snr;
+            serializeJson(doc, json);
+            pthread_mutex_lock(&send_json_mutex);
+            sendJSON(json);
+            pthread_mutex_unlock(&send_json_mutex);
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
