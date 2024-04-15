@@ -514,7 +514,12 @@ const char index_html[] PROGMEM = R"rawliteral(
         }
 
         .bat_meter {
+            padding-top: 0px;
+            border-top-style: hidden;
+            border-top-width: 0px;
+            margin-top: 0px;
             height: 20px;
+            width: 200px;
         }
 
     </style>
