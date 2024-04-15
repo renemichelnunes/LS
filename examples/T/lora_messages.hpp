@@ -26,8 +26,8 @@ struct lora_contact_messages{
 };
 /// @brief Struct that holds the statistics of a received lora transmission.
 struct lora_stats{
-  char rssi[6] = {'\0'};
-  char snr[6] = {'\0'};
+  char rssi[7] = {'\0'};
+  char snr[7] = {'\0'};
   
 };
 /// @brief Class to create a list of contacts's LoRa packets.
