@@ -282,7 +282,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             margin-top: 5px;
             padding: 5px;
             width: 155px;
-            height: 75px;
+            height: 100px;
             border: solid 1px #b5b5b5;
         }
 
@@ -291,11 +291,11 @@ const char index_html[] PROGMEM = R"rawliteral(
         }
 
         .settings_dx {
-            margin-top: -179px;
+            margin-top: -139px;
             margin-left: 172px;
             padding: 5px;
             width: 155px;
-            height: 75px;
+            height: 35px;
             border: solid 1px #b5b5b5;
         }
 
@@ -347,7 +347,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         }
 
         .settings_brightness {
-            margin-top: 5px;
+            margin-top: -249px;
+            margin-left: 172px;
             padding: 5px;
             width: 155px;
             height: 75px;
@@ -502,6 +503,20 @@ const char index_html[] PROGMEM = R"rawliteral(
             font-family: Arial, sans-serif;
             font-size: 12px;
         }
+        .tz {
+            border-radius: 0px;
+            border: 1px solid #ccc;
+            border-style: hidden;
+            background-color: #fff;
+        }
+        .bat {
+
+        }
+
+        .bat_meter {
+            height: 20px;
+        }
+
     </style>
     <div class="title">
         <h1>T-Deck</h1>
@@ -509,6 +524,9 @@ const char index_html[] PROGMEM = R"rawliteral(
         <div id="notification-area" class="hidden" tabindex="0">
         <div id="notification-list"></div>
         <a href="#" id="clear-link">Clear</a>
+        </div>
+        <div class="bat">
+            <meter class="bat_meter" min="1" max="100" low="10" high="50" value="0"></meter>
         </div>
     </div>
 </head>
@@ -564,6 +582,28 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <br>
                 <input type="time" id="settings_time" min="00:00" max="23:59" required>
                 <input type="button" id="btnSetDate" value="Set" onclick="setDateTime()">
+                <br>
+                <select id="citySelect" class="tz" onchange="getSelectedTimezone()">
+                    <option value="Timezone"></option>
+                    <option value="Pacific/Midway">(GMT-11:00)</option>
+                    <option value="Pacific/Honolulu">(GMT-10:00)</option>
+                    <option value="America/Anchorage">(GMT-09:00)</option>
+                    <option value="America/Los_Angeles">(GMT-08:00)</option>
+                    <option value="America/Denver">(GMT-07:00)</option>
+                    <option value="America/Chicago">(GMT-06:00)</option>
+                    <option value="America/New_York">(GMT-05:00)</option>
+                    <option value="America/Sao_Paulo" selected>(GMT-03:00)</option>
+                    <option value="Atlantic/Cape_Verde">(GMT-01:00)</option>
+                    <option value="Europe/London">(GMT+00:00)</option>
+                    <option value="Europe/Paris">(GMT+01:00)</option>
+                    <option value="Europe/Moscow">(GMT+03:00)</option>
+                    <option value="Asia/Tehran">(GMT+03:30)</option>
+                    <option value="Asia/Dubai">(GMT+04:00)</option>
+                    <option value="Asia/Kolkata">(GMT+05:30)</option>
+                    <option value="Asia/Hong_Kong">(GMT+08:00)</option>
+                    <option value="Asia/Tokyo">(GMT+09:00)</option>
+                    <option value="Australia/Sydney">(GMT+10:00)</option>
+                </select>
             </div>
             <div class="settings_dx">
                 Normal
@@ -631,6 +671,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     var notificationButton = document.getElementById("notification-button");
     var notificationArea = document.getElementById("notification-area");
     var timeoutId;
+    var selectedTimezone = "<-03>3";
 
     // Function to show the notification area
     function showNotificationArea() {
@@ -1186,6 +1227,10 @@ const char index_html[] PROGMEM = R"rawliteral(
         oscillator.stop(audioCtx.currentTime + durationInSeconds);
     }
 
+    function bat_level(level){
+        document.querySelector(".bat_meter").value = level;
+    }
+
     function parseData(data){
         try{
             let decData = JSON.parse(data);
@@ -1227,6 +1272,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                     document.getElementById('brightness_value').innerHTML = parseInt(decData.brightness) + 1;
                 }else if(decData.command === "rssi_snr"){
                     add_rssi_snr(decData.rssi, decData.snr);
+                }else if(decData.command === "bat_level"){
+                    bat_level(decData.level)
                 }
             }else{
                 console.log(data);
@@ -1345,7 +1392,34 @@ const char index_html[] PROGMEM = R"rawliteral(
         y = coordinates.y;
     });
 
-
+    var timezoneMap = {
+        "Pacific/Midway": "<-11>11",
+        "Pacific/Honolulu": "<-10>10",
+        "America/Anchorage": "<-09>9",
+        "America/Los_Angeles": "<-08>8",
+        "America/Denver": "<-07>7",
+        "America/Chicago": "<-06>6",
+        "America/New_York": "<-05>5",
+        "America/Sao_Paulo": "<-03>3",
+        "Atlantic/Cape_Verde": "<-01>1",
+        "Europe/London": "<+00>0",
+        "Europe/Paris": "<+01>1",
+        "Europe/Moscow": "<+03>3",
+        "Asia/Tehran": "<+03>3",
+        "Asia/Dubai": "<+04>4",
+        "Asia/Kolkata": "<+05>5",
+        "Asia/Hong_Kong": "<+08>8",
+        "Asia/Tokyo": "<+09>9",
+        "Australia/Sydney": "<+10>10"
+      };
+      
+      function getSelectedTimezone() {
+        var selectElement = document.getElementById("citySelect");
+        var selectedValue = selectElement.value;
+        selectedTimezone = timezoneMap[selectedValue];
+        console.log("Código de Fusos Horários selecionado:", selectedTimezone);
+        ws.send(JSON.stringify({"command" : "set_tz", "tz" : selectedTimezone}));
+      }
     
 // https://d3js.org v7.8.5 Copyright 2010-2023 Mike Bostock
 !function(t,n){"object"==typeof exports&&"undefined"!=typeof module?n(exports):"function"==typeof define&&define.amd?define(["exports"],n):n((t="undefined"!=typeof globalThis?globalThis:t||self).d3=t.d3||{})}(this,(function(t){"use strict";

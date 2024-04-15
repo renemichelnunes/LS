@@ -127,6 +127,7 @@ lv_obj_t * frm_settings_menu;
 lv_obj_t * frm_settings_context;
 lv_obj_t * frm_settings_root_page;
 lv_obj_t * frm_settings_root_section;
+lv_obj_t * frm_settings_timezone;
 /*notification form*/
 lv_obj_t * frm_not;
 lv_obj_t * frm_not_lbl;

@@ -65,7 +65,7 @@ SemaphoreHandle_t xSemaphore = NULL;
 static pthread_mutex_t lvgl_mutex = NULL;
 static pthread_mutex_t messages_mutex = NULL;
 static pthread_mutex_t send_json_mutex = NULL;
-// Used to represents the state of some resources
+// Used to represent the state of some resources
 bool touchDected = false;
 bool kbDected = false;
 bool hasRadio = false; 
@@ -111,6 +111,7 @@ uint32_t ui_primary_color = 0x5c81aa;
 uint8_t brightness = 1;
 // This is where we get and set the date and time
 struct tm timeinfo;
+char time_zone[10] = "<+03>3";
 // A reference to measure the battery vcc
 int vRef = 0;
 // Update the battery status on screen
@@ -549,6 +550,54 @@ bool checkKb()
     Wire.requestFrom(0x55, 1);
     return Wire.read() != -1;
 }
+/// @brief Return the TZ string
+/// @param index 
+/// @return const char *
+const char * tz_list(uint16_t index){
+    const char * tzl[] = {
+        "<-11>11",
+        "<-10>10",
+        "<-09>9",
+        "<-08>8",
+        "<-07>7",
+        "<-06>6",
+        "<-05>5",
+        "<-03>3",
+        "<-01>1",
+        "<+00>0",
+        "<+01>1",
+        "<+03>3",
+        "<+03>3",
+        "<+04>4",
+        "<+05>5",
+        "<+08>8",
+        "<+09>9",
+        "<+10>10"
+    };
+
+    if(index >= 0 && index < sizeof(tzl))
+        return tzl[index];
+    return NULL;
+}
+
+/// @brief Sets the Time zone
+void setTZ(){
+    int8_t err = 0;
+    if(sntp_enabled())
+        sntp_stop();
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+    err = setenv("TZ", time_zone, 1);
+    if(err == 0){
+        tzset();
+        Serial.print(time_zone);
+        Serial.println(" set");
+    }
+    else
+        Serial.println("Failed to change the time zone");
+}
+
 /// @brief  Transforms the contact list in a JSON string 
 /// @brief  "{"command" : "contacts", "contacts" : [{"id":"abcdef","name":"john doe","status":"on"},
 /// @brief                                          {"id":"aaaaaa","name":"joe","status":"off"}]}"
@@ -707,12 +756,22 @@ void ChatHandler::onClose() {
 /// @param json 
 void sendJSON(string json){
     sendingJson = true;
-    if(strcmp(WiFi.localIP().toString().c_str(), "") == 0)
+    char ip[20] = {'\0'};
+
+    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+        strcpy(ip, WiFi.localIP().toString().c_str());
+        xSemaphoreGive(xSemaphore);
+    }
+    if(strcmp(ip, "") == 0)
         return;
     if(json.length() > 0)
         for(uint i = 0; i < maxClients; i++)
-            if(activeClients[i] != NULL)
-                activeClients[i]->send(json.c_str(), activeClients[i]->SEND_TYPE_TEXT);
+            if(activeClients[i] != NULL){
+                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                    activeClients[i]->send(json.c_str(), activeClients[i]->SEND_TYPE_TEXT);
+                    xSemaphoreGive(xSemaphore);
+                }
+            }
     sendingJson = false;
 }
 /// @brief This is for debug purposes, a received decrypted message sometimes could bring non-printable
@@ -858,7 +917,7 @@ void parseCommands(std::string jsonString){
             Serial.println(pkt.msg);
             // Mutex to avoid errors, curruptions and concurrency.
             pthread_mutex_lock(&messages_mutex);
-                messages_list.addMessage(pkt);
+            messages_list.addMessage(pkt);
             pthread_mutex_unlock(&messages_mutex);
             
         }else
@@ -1030,12 +1089,18 @@ void parseCommands(std::string jsonString){
         lv_textarea_set_text(frm_settings_year, doc["y"]);
         lv_textarea_set_text(frm_settings_hour, doc["hh"]);
         lv_textarea_set_text(frm_settings_minute, doc["mm"]);
+        
         // setDateTime will retrieve from the settings and update the date and time.
         setDateTime();
         // Notify the client.
         pthread_mutex_lock(&send_json_mutex);
         sendJSON("{\"command\" : \"notification\", \"message\" : \"Date and time set.\"}");
         pthread_mutex_unlock(&send_json_mutex);
+    }else if(strcmp(command, "set_tz") == 0){
+        if(doc["tz"] != ""){
+            strcpy(time_zone, doc["tz"]);
+            setTZ();
+        }
     }
 }
 /// @brief This event is used by the websocket object when a message is received from the client.
@@ -1348,9 +1413,9 @@ void processTransmittingPackets(void * param){
                 // Get exclusive access through SPI.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                     if(radio.transmit((uint8_t*)&p, sizeof(p)) == RADIOLIB_ERR_NONE)
-                        Serial.println("Confirmation sent");
+                        Serial.println("Message sent");
                     else
-                        Serial.println("Confirmation not sent");
+                        Serial.println("Message not sent");
                     xSemaphoreGive(xSemaphore);
                 }
                 transmiting = false;
@@ -2424,14 +2489,21 @@ void update_bat(void * param){
     uint32_t p = read_bat();
     char pc[4] = {'\0'};
     char msg[30]= {'\0'};
+    string json;
+    JsonDocument doc;
+
     while(true){
         itoa(p, pc, 10);
         strcpy(msg, pc);
         strcat(msg, "% ");
         strcat(msg, get_battery_icon(p));
-        
+        doc["command"] = "bat_level";
+        doc["level"] = p;
+        serializeJson(doc, json);
         lv_label_set_text(frm_home_bat_lbl, msg);
-        
+        pthread_mutex_lock(&send_json_mutex);
+        sendJSON(json);
+        pthread_mutex_unlock(&send_json_mutex);
         check_contacts_in_range();
         vTaskDelay(30000 / portTICK_PERIOD_MS);
     }
@@ -3099,6 +3171,19 @@ void wifi_con_info(){
         
     }
 }
+
+void tz_event(lv_event_t * e){
+    lv_obj_t * tz = (lv_obj_t*)lv_event_get_target(e);
+    lv_event_code_t code = lv_event_get_code(e);
+    int8_t err = 0;
+
+    if(code == LV_EVENT_VALUE_CHANGED){
+        strcpy(time_zone, tz_list(lv_dropdown_get_selected(tz)));
+        Serial.print(time_zone);
+        setTZ();
+    }
+}
+
 /// @brief Function to initilize all lvgl objects.
 void ui(){
     //style**************************************************************
@@ -3678,13 +3763,38 @@ void ui(){
     // setDate button
     frm_settings_btn_setDate = lv_btn_create(frm_settings_obj_date);
     lv_obj_set_size(frm_settings_btn_setDate, 50, 20);
-    lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_LEFT, 0, 120);
+    lv_obj_align(frm_settings_btn_setDate, LV_ALIGN_TOP_LEFT, 130, 85);
     lv_obj_add_event_cb(frm_settings_btn_setDate, applyDate, LV_EVENT_SHORT_CLICKED, NULL);
 
     //setDate label
     frm_settings_btn_setDate_lbl = lv_label_create(frm_settings_btn_setDate);
     lv_label_set_text(frm_settings_btn_setDate_lbl, "Set");
     lv_obj_set_align(frm_settings_btn_setDate_lbl, LV_ALIGN_CENTER);
+
+    // Time zone list
+    frm_settings_timezone = lv_dropdown_create(frm_settings_obj_date);
+    lv_dropdown_set_text(frm_settings_timezone, "Time zone");
+    lv_dropdown_set_options(frm_settings_timezone, "(GMT-11:00)\n"
+                                                    "(GMT-10:00)\n"
+                                                    "(GMT-09:00)\n"
+                                                    "(GMT-08:00)\n"
+                                                    "(GMT-07:00)\n"
+                                                    "(GMT-06:00)\n"
+                                                    "(GMT-05:00)\n"
+                                                    "(GMT-03:00)\n"
+                                                    "(GMT-01:00)\n"
+                                                    "(GMT+00:00)\n"
+                                                    "(GMT+01:00)\n"
+                                                    "(GMT+03:00)\n"
+                                                    "(GMT+03:30)\n"
+                                                    "(GMT+04:00)\n"
+                                                    "(GMT+05:30)\n"
+                                                    "(GMT+08:00)\n"
+                                                    "(GMT+09:00)\n"
+                                                    "(GMT+10:00)\n");
+    lv_dropdown_set_selected(frm_settings_timezone, 7);
+    lv_obj_align(frm_settings_timezone, LV_ALIGN_OUT_TOP_LEFT, 0, 120);
+    lv_obj_add_event_cb(frm_settings_timezone, tz_event,LV_EVENT_VALUE_CHANGED, NULL);
 
     //ui custom section
     lv_obj_t * frm_settings_ui_section;
@@ -3959,8 +4069,6 @@ void ui(){
 }
 /// @brief Function to update the RTC with the intenet date and time and update the Date time widget.
 void datetime(){
-    // Set the timezone to +3. Change to yours.
-    const char * timezone = "<-03>3";
     // Hour and minute.
     char hm[6] = {'\0'};
     // More described date.
@@ -3977,7 +4085,7 @@ void datetime(){
         sntp_setoperatingmode(SNTP_OPMODE_POLL);
         sntp_setservername(0, "pool.ntp.org");
         sntp_init();
-        setenv("TZ", timezone, 1);
+        setenv("TZ", time_zone, 1);
         tzset();
         if(!getLocalTime(&timeinfo)){
             Serial.println("Failed to obtain time info");
