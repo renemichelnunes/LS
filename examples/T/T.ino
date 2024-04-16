@@ -1454,7 +1454,7 @@ void processTransmittingPackets(void * param){
                 }
                 transmiting = false;
             }
-            Serial.println("======processTransmittingPackets=======");
+            Serial.println("=======================================");
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
