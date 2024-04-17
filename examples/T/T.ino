@@ -75,6 +75,7 @@ volatile bool transmiting = false;
 volatile bool processing = false;
 volatile bool gotPacket = false;
 volatile bool sendingJson = false;
+volatile bool server_ready = false;
 // Hardware inputs
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
@@ -754,7 +755,9 @@ void ChatHandler::onClose() {
 }
 /// @brief This gets a JSON string built with seralizeJSON and send it through the websockets.
 /// @param json 
-void sendJSON(string json){
+void sendJSON(const char * json){
+    if(!server_ready)
+        return;
     sendingJson = true;
     char ip[20] = {'\0'};
 
@@ -764,13 +767,10 @@ void sendJSON(string json){
     }
     if(strcmp(ip, "") == 0)
         return;
-    if(json.length() > 0)
+    if(sizeof(json) > 0)
         for(uint i = 0; i < maxClients; i++)
             if(activeClients[i] != NULL){
-                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                    activeClients[i]->send(json.c_str(), activeClients[i]->SEND_TYPE_TEXT);
-                    xSemaphoreGive(xSemaphore);
-                }
+                 activeClients[i]->send(json, activeClients[i]->SEND_TYPE_TEXT);
             }
     sendingJson = false;
 }
@@ -969,7 +969,7 @@ void parseCommands(std::string jsonString){
                 saveContacts();
                 // We need to send the contacts list again and a notification, so lock on it.
                 pthread_mutex_lock(&send_json_mutex);
-                sendJSON(contacts_to_json());
+                sendJSON(contacts_to_json().c_str());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Edited.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }
@@ -988,7 +988,7 @@ void parseCommands(std::string jsonString){
                 saveContacts();
                 // Lock and send the contacts list and a JSON notification.
                 pthread_mutex_lock(&send_json_mutex);
-                sendJSON(contacts_to_json());
+                sendJSON(contacts_to_json().c_str());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact deleted.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }else{// If it was impossible to delete.
@@ -1018,7 +1018,7 @@ void parseCommands(std::string jsonString){
                 saveContacts();
                 // Lock and send the contacts list and notification.
                 pthread_mutex_lock(&send_json_mutex);
-                sendJSON(contacts_to_json());
+                sendJSON(contacts_to_json().c_str());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact added.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }
@@ -1034,7 +1034,7 @@ void parseCommands(std::string jsonString){
         }
     }else if(strcmp(command, "read_settings") == 0){ // Send a JSON string with the settings
         pthread_mutex_lock(&send_json_mutex);
-        sendJSON(settingsJSON());
+        sendJSON(settingsJSON().c_str());
         pthread_mutex_unlock(&send_json_mutex);
     }else if(strcmp(command, "set_brightness") == 0){// Sets the screen brightness, note the cast.
         setBrightness2((uint8_t)doc["brightness"]);
@@ -1119,19 +1119,21 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
 /// @brief This task runs a basic https server with websocket capabilities.
 /// @param param 
 void setupServer(void * param){
+    server_ready = false;
     while(!WiFi.isConnected())
         vTaskDelay(100 / portTICK_PERIOD_MS);
-    Serial.println("Creating ssl certificate...");
-    lv_label_set_text(frm_home_title_lbl, "Creating ssl certificate...");
-    lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    SSLCert * cert;
-    // Work in progress. The plan is to get up to 4 clients connected.
+        // Work in progress. The plan is to get up to 4 clients connected.
     // Before start a new server, close all the sockets.
     for(int i = 0; i < maxClients; i++){
         //activeClients[i]->close();
         activeClients[i] = nullptr;
     }
+    Serial.println("Creating ssl certificate...");
+    lv_label_set_text(frm_home_title_lbl, "Creating ssl certificate...");
+    lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    SSLCert * cert;
+    
     // Create a self signed certificate using the owner's id as part of the config.
     char cn[30] = {'\0'};
     strcpy(cn, "CN=TDECK");
@@ -1195,6 +1197,7 @@ void setupServer(void * param){
         Serial.println("Server ready.");
         lv_label_set_text(frm_home_title_lbl, "");
         lv_label_set_text(frm_home_symbol_lbl, "");
+        server_ready = true;
     }
     // In case when a external routine ends this task.
     if(param != NULL)
@@ -1485,7 +1488,7 @@ void processReceivedStats(void * param){
             doc["snr"] = st.snr;
             serializeJson(doc, json);
             pthread_mutex_lock(&send_json_mutex);
-            sendJSON(json);
+            sendJSON(json.c_str());
             pthread_mutex_unlock(&send_json_mutex);
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -2502,7 +2505,7 @@ void update_bat(void * param){
         serializeJson(doc, json);
         lv_label_set_text(frm_home_bat_lbl, msg);
         pthread_mutex_lock(&send_json_mutex);
-        sendJSON(json);
+        sendJSON(json.c_str());
         pthread_mutex_unlock(&send_json_mutex);
         check_contacts_in_range();
         vTaskDelay(30000 / portTICK_PERIOD_MS);

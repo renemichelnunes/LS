@@ -9,8 +9,9 @@ const char index_html[] PROGMEM = R"rawliteral(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>T-Deck</title>
+    <!--- <link rel="stylesheet" href="style.css"> --->
     <style>
-        body, html {
+                body, html {
             margin: 0;
             padding: 0;
         }
@@ -524,7 +525,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             border-style: hidden;
             background-color: #fff;
         }
-        bat {
+        .bat {
             position: fixed;
         }
 
@@ -547,7 +548,6 @@ const char index_html[] PROGMEM = R"rawliteral(
             text-shadow: 5px 1px 5px #000;
         }
 
-
     </style>
     <div class="title">
         <h1>T-Deck</h1>
@@ -555,7 +555,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         <div id="notification-area" class="hidden" tabindex="0">
         <div id="notification-list"></div>
         <a href="#" id="clear-link">Clear</a>
-        </div class="bat">
+        </div>
+        <div class="bat">
             <div class="bat_perc">
 
             </div>
@@ -689,7 +690,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         </form>
     </div>
     <script>
-    let ws = null;
+            let ws = null;
     let contactID = "";
     let editContactID = "";
     let contactName = "";
@@ -1264,7 +1265,6 @@ const char index_html[] PROGMEM = R"rawliteral(
 
     function bat_level(level){
         document.querySelector(".bat_meter").value = level;
-        document.querySelector(".bat_perc").textContent = bat + "%";
     }
 
     function parseData(data){
@@ -1448,7 +1448,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         "Asia/Tokyo": "<+09>9",
         "Australia/Sydney": "<+10>10"
       };
-      
+
       function getSelectedTimezone() {
         var selectElement = document.getElementById("citySelect");
         var selectedValue = selectElement.value;
@@ -1456,7 +1456,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         console.log("Código de Fusos Horários selecionado:", selectedTimezone);
         ws.send(JSON.stringify({"command" : "set_tz", "tz" : selectedTimezone}));
       }
-    
+
 // https://d3js.org v7.8.5 Copyright 2010-2023 Mike Bostock
 !function(t,n){"object"==typeof exports&&"undefined"!=typeof module?n(exports):"function"==typeof define&&define.amd?define(["exports"],n):n((t="undefined"!=typeof globalThis?globalThis:t||self).d3=t.d3||{})}(this,(function(t){"use strict";
 function n(t,n){return null==t||null==n?NaN:t<n?-1:t>n?1:t>=n?0:NaN}function e(t,n){return null==t||null==n?NaN:n<t?-1:n>t?1:n>=t?0:NaN}function r(t){let r,o,a;
