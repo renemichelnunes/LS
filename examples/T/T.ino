@@ -160,7 +160,7 @@ static void loadSettings(){
         for(uint32_t index = 0; index < v.size(); index++){
             v[index].remove(v[index].length() - 1);
         }
-        if(v.size() > 4){
+        if(v.size() > 5){
             strcpy(user_name, v[0].c_str());
             strcpy(user_id, v[1].c_str());
             v[2].toUpperCase();
@@ -169,6 +169,7 @@ static void loadSettings(){
             apply_color(NULL);
             brightness = atoi(v[3].c_str());
             strcpy(user_key, v[4].c_str());
+            strcpy(http_admin_pass, v[5].c_str());
         }
         Serial.println("Settings loaded");
     }catch (exception &ex){
@@ -193,6 +194,7 @@ static void saveSettings(){
     file.println(ui_primary_color_hex_text);
     file.println(brightness);
     file.println(user_key);
+    file.println(http_admin_pass);
     Serial.println("settings saved");
     file.close();
 }
@@ -769,7 +771,7 @@ void sendJSON(const char * json){
     }
     if(strcmp(ip, "") == 0)
         return;
-    if(sizeof(json) > 0)
+    if(json != NULL)
         for(uint i = 0; i < maxClients; i++)
             if(activeClients[i] != NULL){
                  activeClients[i]->send(json, activeClients[i]->SEND_TYPE_TEXT);
@@ -870,6 +872,7 @@ string settingsJSON(){
     doc["name"] = user_name;
     doc["id"] = user_id;
     doc["key"] = user_key;
+    doc["admin_pass"] = http_admin_pass;
     doc["dx"] = isDX;
     doc["color"] = ui_primary_color_hex_text;
     doc["brightness"] = brightness;
@@ -1102,6 +1105,12 @@ void parseCommands(std::string jsonString){
         if(doc["tz"] != ""){
             strcpy(time_zone, doc["tz"]);
             setTZ();
+        }
+    }else if(strcmp(command, "admin_pass") == 0){
+        if(doc["admin_pass"] != ""){
+            strcpy(http_admin_pass, doc["admin_pass"]);
+            sendJSON("{\"command\" : \"notification\", \"message\" : \"Admin password changed.\"}");
+            saveSettings();
         }
     }
 }
@@ -1831,6 +1840,8 @@ void hide_settings(lv_event_t * e){
             strcpy(user_id, lv_textarea_get_text(frm_settings_id));
             // Copy the ky of the user to user_key.
             strcpy(user_key, lv_textarea_get_text(frm_settings_key));
+            // Copy the http server admin password
+            strcpy(http_admin_pass, lv_textarea_get_text(frm_settings_admin_password));
             // Hides the menu.
             lv_obj_add_flag(frm_settings, LV_OBJ_FLAG_HIDDEN);
             // Save the modified data.
@@ -1865,6 +1876,7 @@ void show_settings(lv_event_t * e){
         lv_textarea_set_text(frm_settings_name, user_name);
         lv_textarea_set_text(frm_settings_id, user_id);
         lv_textarea_set_text(frm_settings_key, user_key);
+        lv_textarea_set_text(frm_settings_admin_password, http_admin_pass);
         // Convert the color from int to his HEX representation as string.
         sprintf(color, "%lX", ui_primary_color);
         // Set the color text area with the HEX string.
@@ -2414,6 +2426,7 @@ void sendContactsStatusJson(const char * id, bool status){
 }
 /// @brief Loops through the contacts to analyse the statuses and sends them to the client side.
 void check_contacts_in_range(){
+    Serial.println("========check_contacts_in_range========");
     // Change the activity indicator to light blue.
     activity(lv_color_hex(0x0095ff));
     // Verify if someone got timeout.
@@ -2428,6 +2441,7 @@ void check_contacts_in_range(){
         // Sends the current status to the client side.
         sendContactsStatusJson(contacts_list.getList()[i].getID().c_str(), contacts_list.getList()[i].inrange);
     }
+    Serial.println("=======================================");
 }
 /// @brief Initialize the battery monitoring routine.
 void initBat(){
@@ -3608,6 +3622,14 @@ void ui(){
     lv_label_set_text(frm_settings_btn_generate_key_lbl, "Generate");
     lv_obj_set_align(frm_settings_btn_generate_key_lbl, LV_ALIGN_CENTER);
 
+    // Admin password
+    frm_settings_admin_password = lv_textarea_create(frm_settings_obj_id);
+    lv_textarea_set_placeholder_text(frm_settings_admin_password, "adm pass");
+    lv_textarea_set_text(frm_settings_admin_password, http_admin_pass);
+    lv_textarea_set_max_length(frm_settings_admin_password, 40);
+    lv_obj_set_size(frm_settings_admin_password, 180, 30);
+    lv_obj_align(frm_settings_admin_password, LV_ALIGN_TOP_LEFT, 0, 115);
+
     //dx section
     frm_settings_dx_section;
     frm_settings_dx_page = lv_menu_page_create(frm_settings_menu, NULL);
@@ -4290,10 +4312,12 @@ void wifi_auto_connect(void * param){
 void announce(){
     lora_packet hi;
 
+    Serial.println("================announce===============");
     // We don't set a destiny so this is heard by everyone in range.
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
     transmiting_packets.push_back(hi);
+    Serial.println("=======================================");
 }
 
 void task_beacon(void * param){

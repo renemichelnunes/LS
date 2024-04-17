@@ -265,7 +265,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         .settings_id {
             padding: 5px;
             width: 155px;
-            height: 120px;
+            height: 160px;
             border: solid 1px #b5b5b5;
         }
 
@@ -280,6 +280,11 @@ const char index_html[] PROGMEM = R"rawliteral(
         }
 
         #settings_key {
+            width: 145px;
+            border-style: hidden;
+        }
+
+        #settings_admin_pass {
             width: 145px;
             border-style: hidden;
         }
@@ -611,6 +616,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <input id="settings_key" placeholder="KEY" maxlength="16">
                 <input type="button" id="btngenerate16" value="Generate" onclick="sendGeneratedKEY()">
                 <input type="button" id="btn_save" class="input_save" value="Save" onclick="saveConfig()">
+                <input id="settings_admin_pass" placeholder="Admin pass" maxlength="40">
+                <input type="button" id="btn_save" class="input_save" value="Set" onclick="saveAdminPass()">
             </div>
             <div class="settings_date">
                 Date
@@ -1268,6 +1275,10 @@ const char index_html[] PROGMEM = R"rawliteral(
         document.querySelector(".bat_perc").innerText = level + "%";
     }
 
+    function saveAdminPass(){
+        ws.send(JSON.stringify({"command" : "admin_pass", "admin_pass" : document.getElementById("settings_admin_pass").value}));
+    }
+
     function parseData(data){
         try{
             let decData = JSON.parse(data);
@@ -1301,6 +1312,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     document.getElementById('settings_name').value = decData.name;
                     document.getElementById('settings_id').value = decData.id;
                     document.getElementById('settings_key').value = decData.key;
+                    document.getElementById('settings_admin_pass').value = decData.admin_pass;
                     if(decData.dx === true)
                         setDxToggle();
                     document.getElementById('settings_uicolor').value = decData.color;
@@ -4167,11 +4179,11 @@ function draw_rssi_snr(data){
 
     var yScaleRssi = d3.scaleLinear()
         .domain([-147, 0]) // Assuming RSSI values range from -147 dBm to 0 dBm
-        .range([180, 20]);
+        .range([170, 20]);
 
     var yScaleSnr = d3.scaleLinear()
         .domain([0, 20]) // Assuming SNR values range from 0 to 20 dB
-        .range([180, 20]);
+        .range([170, 20]);
 
     // Define line functions
     var lineRssi = d3.line()
@@ -4205,9 +4217,10 @@ function draw_rssi_snr(data){
         .call(d3.axisLeft(yScaleRssi).ticks(5))
         .append("text")
         .attr("fill", "#000")
-        .attr("transform", "rotate(-90)")
+        .attr("transform", "rotate(0)")
         .attr("y", 6)
         .attr("dy", "0.71em")
+        .attr("dx", "1.5em")
         .attr("text-anchor", "end")
         .text("RSSI (dBm)");
 
@@ -4217,9 +4230,10 @@ function draw_rssi_snr(data){
         .call(d3.axisRight(yScaleSnr).ticks(5))
         .append("text")
         .attr("fill", "#000")
-        .attr("transform", "rotate(-90)")
-        .attr("y", -20)
+        .attr("transform", "rotate(0)")
+        .attr("y", 5)
         .attr("dy", "0.71em")
+        .attr("dx", "3.5em")
         .attr("text-anchor", "end")
         .text("SNR (dB)");
 

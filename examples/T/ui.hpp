@@ -84,6 +84,7 @@ lv_obj_t * frm_settings_btn_generate;
 lv_obj_t * frm_settings_btn_generate_lbl;
 lv_obj_t * frm_settings_btn_generate_key;
 lv_obj_t * frm_settings_btn_generate_key_lbl;
+lv_obj_t * frm_settings_admin_password;
 lv_obj_t * frm_settings_dx_section;
 lv_obj_t * frm_settings_dx_page;
 lv_obj_t * frm_settings_obj_dx;
