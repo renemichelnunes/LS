@@ -55,9 +55,12 @@ const char index_html[] PROGMEM = R"rawliteral(
 
         .name-list {
             height: 200px;
-            width: 340px;
+            width: 320px;
             overflow-y: scroll;
             background-color: #ddd;
+            border-radius: 10px;
+            box-shadow: 5px 5px 15px #919191, -5px -5px 15px #fff;
+
         }
 
         .name-list ul {
@@ -73,6 +76,10 @@ const char index_html[] PROGMEM = R"rawliteral(
             height: 40px;
             width: 300px;
             border-bottom: 1px solid #bbb;
+            transition: transform 0.1s ease-in-out;
+            border-radius: 10px;
+            box-shadow: 5px 1px 5px 1px #919191, -5px -5px 15px #fff;
+            margin: 5px;
             /*transition: transform 0.1s ease-in-out;*/
         }
 
@@ -95,27 +102,33 @@ const char index_html[] PROGMEM = R"rawliteral(
 
         .chat-messages{
             overflow-y: auto;
-            margin-top: -240px;
-            margin-left: 340px;
-            width: 340px;
-            height: 300px;
+            margin-top: -253px;
+            margin-left: 380px;
+            width: 400px;
+            height: 400px;
+            background-color: #ddd;
         }
         .text-scroller {
-            margin-left: 10px;
-            margin-top: 7px;
+            margin-left: 20px;
+            margin-top: 18px;
             width: 320px;
             height: 200px;
             border: 0px solid black;
             overflow-block: auto;
             background-color: #ddd;
+            border-radius: 10px;
+            box-shadow: 5px 5px 15px #919191, -5px -5px 15px #fff;
         }
 
         .input-textarea{
-            margin-top: 10px;
-            margin-left: 10px;
+            margin-top: 30px;
+            margin-left: 20px;
             width: 315px;
             background-color: #ddd;
-            border-style: hidden;
+            border-radius: 10px;
+            border-style: none;
+            box-shadow: 5px 5px 15px #919191, -5px -5px 15px #fff;
+            margin-bottom: 30px;
         }
 
         .status{
@@ -171,6 +184,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
             color: #333;
             text-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
         }
 
         .contact_header2 {
@@ -182,6 +196,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
             color: #333;
             text-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
         }
 
         #divNew {
@@ -509,18 +524,29 @@ const char index_html[] PROGMEM = R"rawliteral(
             border-style: hidden;
             background-color: #fff;
         }
-        .bat {
-
+        bat {
+            position: fixed;
         }
 
         .bat_meter {
+            position: fixed;
             padding-top: 0px;
             border-top-style: hidden;
             border-top-width: 0px;
-            margin-top: 0px;
+            margin-top: -20px;
+            margin-left: 2px;
             height: 20px;
-            width: 200px;
+            width: 100px;
         }
+
+        .bat_perc {
+            position: fixed;
+            margin-top: -22px;
+            margin-left: 110px;
+            color: fff;
+            text-shadow: 5px 1px 5px #000;
+        }
+
 
     </style>
     <div class="title">
@@ -529,9 +555,13 @@ const char index_html[] PROGMEM = R"rawliteral(
         <div id="notification-area" class="hidden" tabindex="0">
         <div id="notification-list"></div>
         <a href="#" id="clear-link">Clear</a>
-        </div>
-        <div class="bat">
-            <meter class="bat_meter" min="1" max="100" low="10" high="50" value="0"></meter>
+        </div class="bat">
+            <div class="bat_perc">
+
+            </div>
+            <div class="bat">
+                <meter class="bat_meter" min="1" max="100" low="10" high="50" value="0"></meter>
+            </div>
         </div>
     </div>
 </head>
@@ -1234,6 +1264,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 
     function bat_level(level){
         document.querySelector(".bat_meter").value = level;
+        document.querySelector(".bat_perc").textContent = bat + "%";
     }
 
     function parseData(data){
