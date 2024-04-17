@@ -680,11 +680,13 @@ void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::functio
 /// @param req 
 /// @param res 
 void handleRoot(HTTPRequest * req, HTTPResponse * res) {
+    server_ready = false;
     Serial.println("Sending main page");
     res->setHeader("Content-Type", "text/html");
     res->setStatusCode(200);
     res->setStatusText("OK");
-    res->println(index_html);
+    res->printStd(index_html);
+    server_ready = true;
 }
 /// @brief This is used to send the style.css stored on the variable style_css, se style.h.
 /// @param req 

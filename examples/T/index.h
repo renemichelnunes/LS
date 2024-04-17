@@ -1265,6 +1265,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 
     function bat_level(level){
         document.querySelector(".bat_meter").value = level;
+        document.querySelector(".bat_perc").innerText = level + "%";
     }
 
     function parseData(data){
