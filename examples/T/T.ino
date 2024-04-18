@@ -65,6 +65,7 @@ SemaphoreHandle_t xSemaphore = NULL;
 static pthread_mutex_t lvgl_mutex = NULL;
 static pthread_mutex_t messages_mutex = NULL;
 static pthread_mutex_t send_json_mutex = NULL;
+static pthread_mutex_t websocket_send = NULL;
 // Used to represent the state of some resources
 bool touchDected = false;
 bool kbDected = false;
@@ -759,22 +760,22 @@ void ChatHandler::onClose() {
 }
 /// @brief This gets a JSON string built with seralizeJSON and send it through the websockets.
 /// @param json 
-void sendJSON(const char * json){
+void sendJSON(string json){
+    if(secureServer == NULL)
+        return;
+    if(!secureServer->isRunning())
+        return;
     if(!server_ready)
         return;
     sendingJson = true;
     char ip[20] = {'\0'};
 
-    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        strcpy(ip, WiFi.localIP().toString().c_str());
-        xSemaphoreGive(xSemaphore);
-    }
-    if(strcmp(ip, "") == 0)
+    if(WiFi.localIP().toString() == "")
         return;
-    if(json != NULL)
+    if(json != "")
         for(uint i = 0; i < maxClients; i++)
             if(activeClients[i] != NULL){
-                 activeClients[i]->send(json, activeClients[i]->SEND_TYPE_TEXT);
+                activeClients[i]->send(json, WebsocketHandler::SEND_TYPE_TEXT);
             }
     sendingJson = false;
 }
@@ -934,7 +935,7 @@ void parseCommands(std::string jsonString){
         }
         // Obtain the exclusive access to sendJSON
         pthread_mutex_lock(&send_json_mutex);
-        sendJSON(contacts_to_json().c_str());
+        sendJSON(contacts_to_json());
         pthread_mutex_unlock(&send_json_mutex);
     }else if(strcmp(command, "sel_contact") == 0){// As soons as the client selects a contact on the list.
         // actual_contact points to the selected contact on the client side list of contacts.
@@ -953,9 +954,12 @@ void parseCommands(std::string jsonString){
             // Search for a contact using the new id. If NULL we enable edition.
             c = contacts_list.getContactByID(doc["newid"]);
             if(c != NULL){
+                while(sendingJson){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"ID in use.\"}");
-                pthread_mutex_lock(&send_json_mutex);
+                pthread_mutex_unlock(&send_json_mutex);
             }else{
                 edited = true;
             }
@@ -972,6 +976,9 @@ void parseCommands(std::string jsonString){
                 c->setKey((const char *)doc["newkey"]);
                 // Save the contact list.
                 saveContacts();
+                while(sendingJson){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
                 // We need to send the contacts list again and a notification, so lock on it.
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON(contacts_to_json().c_str());
@@ -991,17 +998,26 @@ void parseCommands(std::string jsonString){
                 Serial.println(" deleted.");
                 // Save the contacts list.
                 saveContacts();
+                while(sendingJson){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
                 // Lock and send the contacts list and a JSON notification.
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON(contacts_to_json().c_str());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact deleted.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }else{// If it was impossible to delete.
+                while(sendingJson){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Error deleting contact.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }
         }else{// If contact not found.
+            while(sendingJson){
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
             pthread_mutex_lock(&send_json_mutex);
             sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact not found.\"}");
             pthread_mutex_unlock(&send_json_mutex);
@@ -1021,25 +1037,37 @@ void parseCommands(std::string jsonString){
                 Serial.println(" added.");
                 // Save the contacts list.
                 saveContacts();
+                while(sendingJson){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
                 // Lock and send the contacts list and notification.
                 pthread_mutex_lock(&send_json_mutex);
-                sendJSON(contacts_to_json().c_str());
+                sendJSON(contacts_to_json());
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Contact added.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }
             else{// If adding fails.
+                while(sendingJson){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Fail to add new contact.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
             }
         }else{
+            while(sendingJson){
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
             pthread_mutex_lock(&send_json_mutex);
             sendJSON("{\"command\" : \"notification\", \"message\" : \"ID in use.\"}");
             pthread_mutex_unlock(&send_json_mutex);
         }
     }else if(strcmp(command, "read_settings") == 0){ // Send a JSON string with the settings
+        while(sendingJson){
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
         pthread_mutex_lock(&send_json_mutex);
-        sendJSON(settingsJSON().c_str());
+        sendJSON(settingsJSON());
         pthread_mutex_unlock(&send_json_mutex);
     }else if(strcmp(command, "set_brightness") == 0){// Sets the screen brightness, note the cast.
         setBrightness2((uint8_t)doc["brightness"]);
@@ -1067,6 +1095,9 @@ void parseCommands(std::string jsonString){
         lv_textarea_set_text(frm_settings_key, user_key);
         // The owner's info make part of settings.
         saveSettings();
+        while(sendingJson){
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
         // Send a notification
         pthread_mutex_lock(&send_json_mutex);
         sendJSON("{\"command\" : \"notification\", \"message\" : \"Name, ID and key saved.\"}");
@@ -1074,6 +1105,9 @@ void parseCommands(std::string jsonString){
     }else if(strcmp(command, "set_dx_mode") == 0){// This toggles between DX and normal mode of LoRa transmission.
         if(doc["dx"]){
             if(DXMode()){ // If dx mode is configured successfully, send a notification.
+            while(sendingJson){
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"DX mode.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
@@ -1081,6 +1115,9 @@ void parseCommands(std::string jsonString){
         }
         else{
             if(normalMode()){// Same as above. Doesn't need to reset the device.
+                while(sendingJson){
+                    vTaskDelay(10 / portTICK_PERIOD_MS);
+                }
                 pthread_mutex_lock(&send_json_mutex);
                 sendJSON("{\"command\" : \"notification\", \"message\" : \"Normal mode.\"}");
                 pthread_mutex_unlock(&send_json_mutex);
@@ -1097,6 +1134,9 @@ void parseCommands(std::string jsonString){
         
         // setDateTime will retrieve from the settings and update the date and time.
         setDateTime();
+        while(sendingJson){
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
         // Notify the client.
         pthread_mutex_lock(&send_json_mutex);
         sendJSON("{\"command\" : \"notification\", \"message\" : \"Date and time set.\"}");
@@ -1109,7 +1149,12 @@ void parseCommands(std::string jsonString){
     }else if(strcmp(command, "admin_pass") == 0){
         if(doc["admin_pass"] != ""){
             strcpy(http_admin_pass, doc["admin_pass"]);
+            while(sendingJson){
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+            pthread_mutex_lock(&send_json_mutex);
             sendJSON("{\"command\" : \"notification\", \"message\" : \"Admin password changed.\"}");
+            pthread_mutex_unlock(&send_json_mutex);
             saveSettings();
         }
     }
@@ -1242,7 +1287,7 @@ void collectPackets(void * param){
 
     while(true){
         if(gotPacket){
-            activity(lv_color_hex(0x00ff00));
+            //activity(lv_color_hex(0x00ff00));
             // Get exclusive access to the radio module and read the payload.
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 radio.standby();
@@ -1279,6 +1324,10 @@ void processPackets(void * param){
 
     while(true){
         if(received_packets.size() > 0){
+            // Change the squared status on home screen to green.
+            pthread_mutex_lock(&lvgl_mutex);
+            activity(lv_color_hex(0x00ff00));
+            pthread_mutex_unlock(&lvgl_mutex);
             p = received_packets[0];
             received_packets.erase(received_packets.begin());
             // Case chat message
@@ -1330,7 +1379,7 @@ void processPackets(void * param){
                 }
             }
             // If we receive a delivered message confirmation.
-            if(strcmp(p.status, "recv") == 0){
+            else if(strcmp(p.status, "recv") == 0){
                 // Trade places with the sender.
                 strcpy(p.destiny, p.sender);
                 // This is used on the client side.
@@ -1343,7 +1392,7 @@ void processPackets(void * param){
                 sendContactMessages(p.sender);
             }
             // If we receive a ping solicitation.
-            if(strcmp(p.status, "ping") == 0 && strcmp(p.destiny, user_id) == 0){
+            else if(strcmp(p.status, "ping") == 0 && strcmp(p.destiny, user_id) == 0){
                 // Display a simple sotification.
                 notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
                 // We'll send back a pong status.
@@ -1353,7 +1402,7 @@ void processPackets(void * param){
                 transmiting_packets.push_back(pong);
             }
             // If we receive a confirmation ping.
-            if(strcmp(p.status, "pong") == 0 && strcmp(p.destiny, user_id) == 0){
+            else if(strcmp(p.status, "pong") == 0 && strcmp(p.destiny, user_id) == 0){
                 // Reproduce a sound(disabled by now).
                 notify_snd();
                 Serial.println("pong");
@@ -1363,7 +1412,7 @@ void processPackets(void * param){
                 notification_list.add(message, LV_SYMBOL_DOWNLOAD);
             }
             // Beacon type packet
-            if(strcmp(p.status, "show") == 0){
+            else if(strcmp(p.status, "show") == 0){
                 // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
                 Contact * c = contacts_list.getContactByID(p.sender);
                 if(c != NULL){
@@ -1399,13 +1448,15 @@ void processTransmittingPackets(void * param){
             Serial.println(ps.destiny);
             Serial.print("Status ");
             Serial.println(ps.status);
-            
+            // Change the squared status on home screen to red.
+            pthread_mutex_lock(&lvgl_mutex);
+            activity(lv_color_hex(0xff0000));
+            pthread_mutex_unlock(&lvgl_mutex);
             // Send a confirmation of a message
             if(strcmp(p.status, "recv") == 0){
                 while(gotPacket)
                     vTaskDelay(10 / portTICK_PERIOD_MS);
-                // Change the squared status on home screen to red.
-                activity(lv_color_hex(0xff0000));
+                
                 transmiting = true;
                 // Get exclusive access through SPI.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -1438,8 +1489,6 @@ void processTransmittingPackets(void * param){
             if(strcmp(p.status, "ping") == 0){
                 while(gotPacket)
                     vTaskDelay(10 / portTICK_PERIOD_MS);
-                // Change the squared status on home screen to red.
-                activity(lv_color_hex(0xff0000));
                 transmiting = true;
                 // Get exclusive access through SPI.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -1455,8 +1504,6 @@ void processTransmittingPackets(void * param){
             if(strcmp(p.status, "show") == 0){
                 while(gotPacket)
                     vTaskDelay(10 / portTICK_PERIOD_MS);
-                // Change the squared status on home screen to red.
-                activity(lv_color_hex(0xff0000));
                 transmiting = true;
                 // Get exclusive access through SPI.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
@@ -1498,8 +1545,11 @@ void processReceivedStats(void * param){
             doc["rssi"] = st.rssi;
             doc["snr"] = st.snr;
             serializeJson(doc, json);
+            while(sendingJson){
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
             pthread_mutex_lock(&send_json_mutex);
-            sendJSON(json.c_str());
+            sendJSON(json);
             pthread_mutex_unlock(&send_json_mutex);
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1738,7 +1788,6 @@ void setupRadio(lv_event_t * e)
     int32_t code = 0;
     // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. So we're using core 1
     // to run this task forever.
-    //xTaskCreatePinnedToCore(processReceivedPacket, "proc_recv_pkt", 11000, NULL, 1, &task_recv_pkt, 1);
     xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processPackets, "process_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
@@ -2421,7 +2470,7 @@ void sendContactsStatusJson(const char * id, bool status){
     }
     // Avoids parallel calls of sendJSON, memory corruption...
     pthread_mutex_lock(&send_json_mutex);
-    sendJSON(json.c_str());
+    sendJSON(json);
     pthread_mutex_unlock(&send_json_mutex);
 }
 /// @brief Loops through the contacts to analyse the statuses and sends them to the client side.
@@ -2519,9 +2568,14 @@ void update_bat(void * param){
         doc["command"] = "bat_level";
         doc["level"] = p;
         serializeJson(doc, json);
+        pthread_mutex_lock(&lvgl_mutex);
         lv_label_set_text(frm_home_bat_lbl, msg);
+        pthread_mutex_unlock(&lvgl_mutex);
+        while(sendingJson){
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
         pthread_mutex_lock(&send_json_mutex);
-        sendJSON(json.c_str());
+        sendJSON(json);
         pthread_mutex_unlock(&send_json_mutex);
         check_contacts_in_range();
         vTaskDelay(30000 / portTICK_PERIOD_MS);
@@ -4408,6 +4462,7 @@ void setup(){
     pthread_mutex_init(&lvgl_mutex, &Attr);
     pthread_mutex_init(&messages_mutex, NULL);
     pthread_mutex_init(&send_json_mutex, NULL);
+    pthread_mutex_init(&websocket_send, NULL);
     // Initialize the physical keyboard.
     Wire.beginTransmission(touchAddress);
     ret = Wire.endTransmission() == 0;
@@ -4444,10 +4499,10 @@ void setup(){
     
     // Initialize the battery monitoring routine and lauch his task.
     initBat();
-    xTaskCreatePinnedToCore(update_bat, "task_bat", 11000, NULL, 2, &task_bat, 1);
+    xTaskCreatePinnedToCore(update_bat, "task_bat", 4000, NULL, 2, &task_bat, 1);
 
     // Launch the notification task.
-    xTaskCreatePinnedToCore(notify, "notify", 11000, NULL, 1, &task_not, 1);
+    xTaskCreatePinnedToCore(notify, "notify", 4000, NULL, 1, &task_not, 1);
     // Launch de beacon task.
     xTaskCreatePinnedToCore(task_beacon, "beacon", 4000, NULL, 1, NULL, 1);
 }
@@ -4456,8 +4511,11 @@ void loop(){
     pthread_mutex_lock(&lvgl_mutex);
     lv_task_handler();
     pthread_mutex_unlock(&lvgl_mutex);
+    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
     if(secureServer != NULL)
         if(secureServer->isRunning())
             secureServer->loop();
+        xSemaphoreGive(xSemaphore);
+    }
     delay(5);
 }
