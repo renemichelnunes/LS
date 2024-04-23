@@ -1323,6 +1323,7 @@ void processPackets(void * param){
     char pmsg[200] = {'\0'};
 
     while(true){
+        if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(received_packets.size() > 0){
             // Change the squared status on home screen to green.
             pthread_mutex_lock(&lvgl_mutex);
@@ -1425,6 +1426,8 @@ void processPackets(void * param){
                     c = NULL;
                 }
             }
+        }
+        xSemaphoreGive(xSemaphore);
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
@@ -1786,12 +1789,7 @@ void setupRadio(lv_event_t * e)
         //return false;
     }
     int32_t code = 0;
-    // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. So we're using core 1
-    // to run this task forever.
-    xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 3000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processPackets, "process_pkt", 3000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processTransmittingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
+    
     // The function onListen will be called every time a packet is received.
     radio.setPacketReceivedAction(onListen);
     // The onTransmit function is called every time when the radio finishes a transmission.
@@ -4505,6 +4503,12 @@ void setup(){
     xTaskCreatePinnedToCore(notify, "notify", 4000, NULL, 1, &task_not, 1);
     // Launch de beacon task.
     xTaskCreatePinnedToCore(task_beacon, "beacon", 4000, NULL, 1, NULL, 1);
+    // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. So we're using core 1
+    // to run this task forever.
+    xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 3000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processPackets, "process_pkt", 3000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processTransmittingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
 }
 
 void loop(){
