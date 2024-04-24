@@ -774,9 +774,10 @@ void sendJSON(string json){
         return;
     if(json != "")
         for(uint i = 0; i < maxClients; i++)
-            if(activeClients[i] != NULL){
-                activeClients[i]->send(json, WebsocketHandler::SEND_TYPE_TEXT);
-            }
+            if(activeClients != NULL)
+                if(activeClients[i] != NULL){
+                    activeClients[i]->send(json, WebsocketHandler::SEND_TYPE_TEXT);
+                }
     sendingJson = false;
 }
 /// @brief This is for debug purposes, a received decrypted message sometimes could bring non-printable
@@ -1162,6 +1163,8 @@ void parseCommands(std::string jsonString){
 /// @brief This event is used by the websocket object when a message is received from the client.
 /// @param inbuf 
 void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
+    if(!server_ready)
+        return;
     // Get the input message.
     std::ostringstream ss;
     std::string msg;
@@ -1261,21 +1264,23 @@ void setupServer(void * param){
 }
 /// @brief Close all sockets and close the HTTPSServer.
 void shutdownServer(void *param){
-    if(secureServer != NULL){
-        for(int i = 0; i < maxClients; i++){
-            if(activeClients[i] != NULL){
-                activeClients[i]->close(1000, "Server shutdown");
-                activeClients[i] = nullptr;
+    if(server_ready)
+        if(secureServer != NULL){
+            for(int i = 0; i < maxClients; i++){
+                if(activeClients[i] != NULL){
+                    activeClients[i]->close(1000, "Server shutdown");
+                    activeClients[i] = nullptr;
+                }
             }
+            secureServer->stop();
+            secureServer->~HTTPSServer();
+            secureServer = NULL;
+            // Hide the https button on settings.
+            lv_obj_add_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
+            Serial.println("Server ended.");
+            server_ready = false;
         }
-        secureServer->stop();
-        secureServer->~HTTPSServer();
-        secureServer = NULL;
-        // Hide the https button on settings.
-        lv_obj_add_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
-        Serial.println("Server ended.");
-    }
-    vTaskDelete(NULL);
+    //vTaskDelete(NULL);
 }
 
 /// @brief Collects lora packets and save them in received_packets.
@@ -4340,6 +4345,7 @@ void wifi_auto_connect(void * param){
                 if(param != NULL){
                     // Launch the web server task.
                     xTaskCreatePinnedToCore(setupServer, "server", 12000, (void*)"ok", 1, NULL, 1);
+                    //setupServer(NULL);
                 }
             }else{
                 // If fails, notify the user and turn off the wifi transceiver.
