@@ -141,7 +141,7 @@ String Cipher::encryptString(String plainText, char * key) {
   int index = plainText.length() / BUFF_SIZE;
   char enc[20];
   
-  for(int block=0; block < plainText.length()/BUFF_SIZE; block++) {
+  for(int block=0; block <= plainText.length()/BUFF_SIZE; block++) {
       for(int j = block*BUFF_SIZE; j < (block+1)*BUFF_SIZE; j++) {
         buffer += plainText[j];
       }
@@ -152,7 +152,7 @@ String Cipher::encryptString(String plainText, char * key) {
 
   buffer="";
 
-  if( plainText.length()%BUFF_SIZE > 0 ) {    
+  if( plainText.length()%BUFF_SIZE > 0 && plainText.length() > BUFF_SIZE) {    
     for(int bytes_read=(index*BUFF_SIZE); bytes_read <= (index*BUFF_SIZE) + plainText.length()%BUFF_SIZE - 1; bytes_read++) {
       buffer += plainText[bytes_read];
     };

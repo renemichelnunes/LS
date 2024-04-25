@@ -910,9 +910,12 @@ void parseCommands(std::string jsonString){
             return;
         // Encrypting the message and copying to enc_msg. This one will be sent.
         strcpy(enc_msg, encryptMsg(user_key, msg).c_str());
+        
         // For debug purposes.
         Serial.println(enc_msg);
+        Serial.println(decryptMsg(user_key, enc_msg));
         // It will send only if the LoRa module is configured.
+        hasRadio = false;
         if(hasRadio){
             // We need a new LoRa packet.
             lora_packet pkt;
@@ -1828,18 +1831,18 @@ void setupRadio(lv_event_t * e)
 String encryptMsg(char * key, const char * msg){
     //Serial.println(msg);
     //Minimum cipher key must be 16 bytes long, or the default key will be used.
-    //cipher->setKey(key);
-    //return cipher->encryptString(msg);
-    return msg;
+    cipher->setKey(key);
+    return cipher->encryptString(msg);
+    //return msg;
 }
 /// @brief This decrypt a received message using a key.
 /// @param key 
 /// @param msg 
 /// @return String
 String decryptMsg(char * key, String msg){
-    //cipher->setKey(key);
-    //return cipher->decryptString(msg);
-    return msg;
+    cipher->setKey(key);
+    return cipher->decryptString(msg);
+    //return msg;
 }
 /// @brief This sends a ping packet.
 /// @param e 
