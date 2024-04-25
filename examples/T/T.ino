@@ -28,6 +28,7 @@
 #include "index.h"
 #include "style.h"
 #include "script.h"
+#include "favicon.h"
 #include "ArduinoJson.hpp"
 
 using namespace httpsserver;
@@ -679,6 +680,13 @@ void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::functio
         next();
     }
 }
+
+void handleFav(HTTPRequest * req, HTTPResponse * res) {
+    Serial.println("Sending favicon");
+    res->setHeader("Content-Type", "image/vnd.microsoft.icon");
+    res->printStd(FAVICON_DATA);
+}
+
 /// @brief This is used to send the index.html stored on the variable index_html, se index.h.
 /// @param req 
 /// @param res 
@@ -1233,11 +1241,13 @@ void setupServer(void * param){
     //ResourceNode * nodeScript = new ResourceNode("/script.js", "GET", &handleScript);
     // If the client request a inexistent resource, send a 404 content.
     ResourceNode * node404 = new ResourceNode("", "GET", &handle404);
+    ResourceNode * nodeFav = new ResourceNode("/favicon.ico", "GET", &handleFav);
     // Register the nodes.
     secureServer->registerNode(nodeRoot);
     //secureServer->registerNode(nodeStyle);
     //secureServer->registerNode(nodeScript);
     secureServer->registerNode(node404);
+    secureServer->registerNode(nodeFav);
     // Create a websocket node (wss://server_address/chat on client side).
     WebsocketNode * chatNode = new WebsocketNode("/chat", ChatHandler::create);
     secureServer->registerNode(chatNode);
