@@ -889,6 +889,29 @@ string settingsJSON(){
     serializeJson(doc, json);
     return json;
 }
+
+void encryptm(char * plainText, char * key, unsigned char * outputBuffer) {
+  // encrypt plainText buffer of length 16 characters
+  mbedtls_aes_context aes;
+
+  mbedtls_aes_init( &aes );
+  mbedtls_aes_setkey_enc( &aes, (const unsigned char*) key, strlen(key) * 8 );
+  mbedtls_aes_crypt_ecb( &aes, MBEDTLS_AES_ENCRYPT, (const unsigned char*)plainText, outputBuffer);
+  Serial.print(plainText);
+  Serial.print(" => ");
+  Serial.println((char*)outputBuffer);
+  mbedtls_aes_free( &aes );
+}
+
+void enc_message(const char * text, char * key, char * output){
+    int len = strlen(text);
+    int blocks = len / 16;
+    Serial.print("length ");
+    Serial.println(len);
+    Serial.print("blocks ");
+    Serial.println(blocks);
+}
+
 /// @brief This is used to parse commands and redirect data received or sent through a websocket.
 /// @param jsonString 
 void parseCommands(std::string jsonString){
