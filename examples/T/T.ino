@@ -135,6 +135,7 @@ Cipher * cipher = new Cipher();
 HTTPSServer * secureServer = NULL;
 // Max number of clients connections.
 const uint8_t maxClients = 1;
+#define BLOCK_SIZE 16  // AES bloco size (16 bytes)
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -890,26 +891,68 @@ string settingsJSON(){
     return json;
 }
 
-void encryptm(char * plainText, char * key, unsigned char * outputBuffer) {
-  // encrypt plainText buffer of length 16 characters
-  mbedtls_aes_context aes;
-
-  mbedtls_aes_init( &aes );
-  mbedtls_aes_setkey_enc( &aes, (const unsigned char*) key, strlen(key) * 8 );
-  mbedtls_aes_crypt_ecb( &aes, MBEDTLS_AES_ENCRYPT, (const unsigned char*)plainText, outputBuffer);
-  Serial.print(plainText);
-  Serial.print(" => ");
-  Serial.println((char*)outputBuffer);
-  mbedtls_aes_free( &aes );
+/// @brief Complete the string with zero until it becomes a multiple of 16 bytes
+/// @param plaintext 
+/// @param length 
+/// @param padded_plaintext 
+void zero_padding(unsigned char *plaintext, size_t length, unsigned char *padded_plaintext) {
+    // Copy the original text to the buffer that will be padded
+    memcpy(padded_plaintext, plaintext, length);
+    // Fill the rest of the buffer with zero.
+    memset(padded_plaintext + length, 0, BLOCK_SIZE - (length % BLOCK_SIZE));
 }
 
-void enc_message(const char * text, char * key, char * output){
-    int len = strlen(text);
-    int blocks = len / 16;
-    Serial.print("length ");
-    Serial.println(len);
-    Serial.print("blocks ");
-    Serial.println(blocks);
+/// @brief Function to encrypt the text with a 16 bytes key using ECB
+/// @param text 
+/// @param key 
+/// @param text_length 
+/// @param ciphertext 
+void encrypt_text(unsigned char *text, unsigned char *key, size_t text_length, unsigned char *ciphertext) {
+    // Calculate the size to fill the text
+    size_t padded_len = ((text_length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
+
+    // Buffer to hold the padded text
+    unsigned char padded_text[padded_len];
+
+    // Fill the buffer with zero
+    zero_padding(text, text_length, padded_text);
+
+    // Initialize the AES structure
+    mbedtls_aes_context aes;
+    mbedtls_aes_init(&aes);
+
+    // Set the crypto key
+    mbedtls_aes_setkey_enc(&aes, key, 128); // 128 bits
+
+    // Encrypt every 16 bytes block of the text
+    for (size_t i = 0; i < padded_len; i += BLOCK_SIZE) {
+        mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_ENCRYPT, &padded_text[i], &ciphertext[i]);
+    }
+
+    // Free the AES structure
+    mbedtls_aes_free(&aes);
+}
+
+/// @brief Function to decrypt the text using AES 16 bytes key
+/// @param ciphertext 
+/// @param key 
+/// @param cipher_length 
+/// @param decrypted_text 
+void decrypt_text(unsigned char *ciphertext, unsigned char *key, size_t cipher_length, unsigned char *decrypted_text) {
+    // Init the AES structure
+    mbedtls_aes_context aes;
+    mbedtls_aes_init(&aes);
+
+    // Set the decrypt key
+    mbedtls_aes_setkey_dec(&aes, key, 128); // 128 bits (16B)
+
+    // Decrypt every 16 bytes of the encrypted text
+    for (size_t i = 0; i < cipher_length; i += BLOCK_SIZE) {
+        mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_DECRYPT, &ciphertext[i], &decrypted_text[i]);
+    }
+
+    // Free the AES structure
+    mbedtls_aes_free(&aes);
 }
 
 /// @brief This is used to parse commands and redirect data received or sent through a websocket.
@@ -932,11 +975,20 @@ void parseCommands(std::string jsonString){
         if(strcmp(id, "111111") == 0 || actual_contact == NULL)
             return;
         // Encrypting the message and copying to enc_msg. This one will be sent.
-        strcpy(enc_msg, encryptMsg(user_key, msg).c_str());
-        
-        // For debug purposes.
-        Serial.println(enc_msg);
-        Serial.println(decryptMsg(user_key, enc_msg));
+        //strcpy(enc_msg, encryptMsg(user_key, msg).c_str());
+
+        size_t text_length = strlen(msg);
+        size_t padded_len = ((text_length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
+        unsigned char ciphertext[padded_len];
+        encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
+        Serial.print("Encrypted => ");
+        for(uint8_t i = 0; i < padded_len; i++)
+            Serial.printf("%02x ", ciphertext[i]);
+
+        unsigned char decrypted_text[padded_len];
+        decrypt_text(ciphertext, (unsigned char*)user_key, padded_len, decrypted_text);
+        Serial.printf("\nDecrypted => %s\n", decrypt_text);
+
         // It will send only if the LoRa module is configured.
         hasRadio = false;
         if(hasRadio){

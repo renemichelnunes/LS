@@ -14,7 +14,8 @@ struct lora_packet{
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
     bool me = false;
-    char msg[150] = {'\0'};
+    char msg[160] = {'\0'};
+    uint8_t msg_size = 0;
     char date_time[30] = {'\0'};
 };
 /// @brief Struct that holds a list of LoRa packets related to a contact.
