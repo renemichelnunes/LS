@@ -984,10 +984,10 @@ void parseCommands(std::string jsonString){
         Serial.print("Encrypted => ");
         for(uint8_t i = 0; i < padded_len; i++)
             Serial.printf("%02x ", ciphertext[i]);
-
-        unsigned char decrypted_text[padded_len];
+        Serial.printf("Pad len %d\n", padded_len);
+        unsigned char decrypted_text[padded_len + 1] = {'\0'};
         decrypt_text(ciphertext, (unsigned char*)user_key, padded_len, decrypted_text);
-        Serial.printf("\nDecrypted => %s\n", decrypt_text);
+        Serial.printf("\nDecrypted => %s\n", decrypted_text);
 
         // It will send only if the LoRa module is configured.
         hasRadio = false;
