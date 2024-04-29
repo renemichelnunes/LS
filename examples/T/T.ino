@@ -969,16 +969,11 @@ void parseCommands(std::string jsonString){
         // We need to ensure id and msg are strings.
         const char * id = (const char*)doc["id"];
         const char * msg = (const char*)doc["msg"];
-        // This will hold the message after being encrypted.
-        char enc_msg[150] = {'\u0000'};
         // If the id of the sender is the default on client's javascript or the contact wasn't selected, return.
         if(strcmp(id, "111111") == 0 || actual_contact == NULL)
             return;
-        // Encrypting the message and copying to enc_msg. This one will be sent.
-        //strcpy(enc_msg, encryptMsg(user_key, msg).c_str());
-
-        size_t text_length = strlen(msg);
-        size_t padded_len = ((text_length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
+        uint8_t text_length = strlen(msg);
+        uint8_t padded_len = ((text_length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
         unsigned char ciphertext[padded_len];
         encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
         Serial.print("Encrypted => ");
@@ -1000,7 +995,6 @@ void parseCommands(std::string jsonString){
             // from the destination. This is how we know the destination received the message. Not guaranteed.
             strcpy(pkt.status, "send");
             strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-            //strcpy(pkt.msg, enc_msg);
             memcpy(pkt.msg, ciphertext, padded_len);
             pkt.msg_size = padded_len;
             transmiting_packets.push_back(pkt);
@@ -1437,9 +1431,11 @@ void processPackets(void * param){
 
                 if(c != NULL){
                     // Decrypt the message.
-                    strcpy(dec_msg, decryptMsg((char*)c->getKey().c_str(), p.msg).c_str());
+                    unsigned char decrypted_text[p.msg_size + 1] = {'\0'};
+                    decrypt_text((unsigned char *)p.msg, (unsigned char*)user_key, p.msg_size, decrypted_text);
+                    strcpy(dec_msg, (const char *)decrypted_text);
                     // Copy the decrypted message back to the packet.
-                    strcpy(p.msg, dec_msg);
+                    strcpy((char*)p.msg, dec_msg);
                     // The addMessage function sort the messages by destiny(contacts), so we trade places with the sender.
                     strcpy(p.destiny, p.sender);
                     // messages_list is accessed by other routines so we need to get exclusive access.
@@ -2197,8 +2193,12 @@ void send_message(lv_event_t * e){
                 // Get the message from the answer text area.
                 strcpy(msg, lv_textarea_get_text(frm_chat_text_ans));
                 // Encrypt the message with our key.
+                uint8_t text_length = strlen(msg);
+                uint8_t padded_len = ((text_length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
+                unsigned char ciphertext[padded_len];
+                encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
                 enc_msg = encryptMsg(user_key, lv_textarea_get_text(frm_chat_text_ans));
-                strcpy(pkt.msg, enc_msg.c_str());
+                memcpy(pkt.msg, ciphertext, padded_len);
                 transmiting_packets.push_back(pkt);
                 // add the message to the contact's list of messages.
                 // This is used when we are assembling the chat messages list, every time we found me = true we are 
