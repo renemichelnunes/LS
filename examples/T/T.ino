@@ -984,13 +984,13 @@ void parseCommands(std::string jsonString){
         Serial.print("Encrypted => ");
         for(uint8_t i = 0; i < padded_len; i++)
             Serial.printf("%02x ", ciphertext[i]);
-        Serial.printf("Pad len %d\n", padded_len);
+        Serial.printf("\nPadded len %d\n", padded_len);
         unsigned char decrypted_text[padded_len + 1] = {'\0'};
         decrypt_text(ciphertext, (unsigned char*)user_key, padded_len, decrypted_text);
         Serial.printf("\nDecrypted => %s\n", decrypted_text);
 
         // It will send only if the LoRa module is configured.
-        hasRadio = false;
+        //hasRadio = false;
         if(hasRadio){
             // We need a new LoRa packet.
             lora_packet pkt;
@@ -1000,7 +1000,9 @@ void parseCommands(std::string jsonString){
             // from the destination. This is how we know the destination received the message. Not guaranteed.
             strcpy(pkt.status, "send");
             strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-            strcpy(pkt.msg, enc_msg);
+            //strcpy(pkt.msg, enc_msg);
+            memcpy(pkt.msg, ciphertext, padded_len);
+            pkt.msg_size = padded_len;
             transmiting_packets.push_back(pkt);
             pkt.me = true;
             // And add the unencrypted message.
