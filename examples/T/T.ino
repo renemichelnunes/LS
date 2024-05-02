@@ -18,7 +18,6 @@
 #include <Audio.h>
 #include <driver/i2s.h>
 #include "es7210.h"
-#include "Cipher.h"
 #include "esp_wifi.h"
 #include "mutex"
 #include <HTTPSServer.hpp>
@@ -129,8 +128,6 @@ void wifi_auto_toggle();
 const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode);
 // Just an index representing the position on the last wifi connection on wifi_connected_nets
 volatile int last_wifi_con = -1;
-// This object is used to encode and decode the LoRa messages
-Cipher * cipher = new Cipher();
 // Web server object.
 HTTPSServer * secureServer = NULL;
 // Max number of clients connections.
@@ -686,6 +683,7 @@ void handleFav(HTTPRequest * req, HTTPResponse * res) {
     Serial.println("Sending favicon");
     res->setHeader("Content-Type", "image/vnd.microsoft.icon");
     res->printStd(FAVICON_DATA);
+    Serial.println("favicon sent.");
 }
 
 /// @brief This is used to send the index.html stored on the variable index_html, se index.h.
@@ -757,13 +755,15 @@ WebsocketHandler * ChatHandler::create() {
     }
     return handler;
 }
+
 /// @brief Search and close the client instance.
 void ChatHandler::onClose() {
     for(int i = 0; i < maxClients; i++) {
         if (activeClients[i] == this) {
             Serial.print("closing websocket no ");
             Serial.println(i);
-            activeClients[i] = nullptr;
+            delete activeClients[i];
+            activeClients[i] = NULL;
         }
     }
 }
@@ -1242,6 +1242,7 @@ void parseCommands(std::string jsonString){
         }
     }
 }
+
 /// @brief This event is used by the websocket object when a message is received from the client.
 /// @param inbuf 
 void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
@@ -1257,6 +1258,7 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
     // By now this server only receives JSON strings over the websocket, so parse them. 
     parseCommands(msg);
 }
+
 /// @brief This task runs a basic https server with websocket capabilities.
 /// @param param 
 void setupServer(void * param){
@@ -1283,7 +1285,7 @@ void setupServer(void * param){
     strcat(cn, user_id);
     strcat(cn, ",C=BR");
     cert = new SSLCert();
-
+    
     int createCertResult = createSelfSignedCert(
     *cert,
     KEYSIZE_2048,
@@ -1296,6 +1298,7 @@ void setupServer(void * param){
         Serial.printf("Error generating certificate");
         return; 
     }
+    Serial.printf("cert size => %d\n", cert->getCertLength());
     Serial.println("Certificate done.");
     lv_label_set_text(frm_home_title_lbl, "Certificate done.");
     lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
@@ -1412,7 +1415,6 @@ void processPackets(void * param){
     char pmsg[200] = {'\0'};
 
     while(true){
-        if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(received_packets.size() > 0){
             // Change the squared status on home screen to green.
             pthread_mutex_lock(&lvgl_mutex);
@@ -1432,7 +1434,9 @@ void processPackets(void * param){
                 if(c != NULL){
                     // Decrypt the message.
                     unsigned char decrypted_text[p.msg_size + 1] = {'\0'};
-                    decrypt_text((unsigned char *)p.msg, (unsigned char*)user_key, p.msg_size, decrypted_text);
+                    decrypt_text((unsigned char *)p.msg, (unsigned char*)c->getKey().c_str(), p.msg_size, decrypted_text);
+                    Serial.printf("msg size => %d\n", p.msg_size);
+                    Serial.printf("Decrypted => %s\n", decrypted_text);
                     strcpy(dec_msg, (const char *)decrypted_text);
                     // Copy the decrypted message back to the packet.
                     strcpy((char*)p.msg, dec_msg);
@@ -1517,8 +1521,6 @@ void processPackets(void * param){
                     c = NULL;
                 }
             }
-        }
-        xSemaphoreGive(xSemaphore);
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
@@ -1897,26 +1899,7 @@ void setupRadio(lv_event_t * e)
     //return true;
 
 }
-/// @brief This encrypt a message using a key.
-/// @param key 
-/// @param msg 
-/// @return String
-String encryptMsg(char * key, const char * msg){
-    //Serial.println(msg);
-    //Minimum cipher key must be 16 bytes long, or the default key will be used.
-    cipher->setKey(key);
-    return cipher->encryptString(msg);
-    //return msg;
-}
-/// @brief This decrypt a received message using a key.
-/// @param key 
-/// @param msg 
-/// @return String
-String decryptMsg(char * key, String msg){
-    cipher->setKey(key);
-    return cipher->decryptString(msg);
-    //return msg;
-}
+
 /// @brief This sends a ping packet.
 /// @param e 
 void ping(lv_event_t * e){
@@ -2197,8 +2180,8 @@ void send_message(lv_event_t * e){
                 uint8_t padded_len = ((text_length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
                 unsigned char ciphertext[padded_len];
                 encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
-                enc_msg = encryptMsg(user_key, lv_textarea_get_text(frm_chat_text_ans));
                 memcpy(pkt.msg, ciphertext, padded_len);
+                pkt.msg_size = padded_len;
                 transmiting_packets.push_back(pkt);
                 // add the message to the contact's list of messages.
                 // This is used when we are assembling the chat messages list, every time we found me = true we are 
@@ -4602,7 +4585,7 @@ void setup(){
     // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. So we're using core 1
     // to run this task forever.
     xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 3000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processPackets, "process_pkt", 3000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processPackets, "process_pkt", 4000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processTransmittingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
 }
