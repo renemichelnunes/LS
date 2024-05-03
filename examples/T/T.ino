@@ -77,6 +77,7 @@ volatile bool processing = false;
 volatile bool gotPacket = false;
 volatile bool sendingJson = false;
 volatile bool server_ready = false;
+volatile bool parsing = false;
 // Hardware inputs
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
@@ -770,24 +771,31 @@ void ChatHandler::onClose() {
 /// @brief This gets a JSON string built with seralizeJSON and send it through the websockets.
 /// @param json 
 void sendJSON(string json){
+    char j[json.size() + 1];
+    strcpy(j, json.c_str());
+
     if(secureServer == NULL)
         return;
     if(!secureServer->isRunning())
         return;
     if(!server_ready)
         return;
-    sendingJson = true;
     char ip[20] = {'\0'};
 
     if(WiFi.localIP().toString() == "")
         return;
-    if(json != "")
+    if(strcmp(j, "") != 0)
         for(uint i = 0; i < maxClients; i++)
             if(activeClients != NULL)
                 if(activeClients[i] != NULL){
-                    activeClients[i]->send(json, WebsocketHandler::SEND_TYPE_TEXT);
+                    if(parsing){
+                        Serial.println("WebSocket busy, wait...");
+                        delay(100);
+                    }
+                    sendingJson = true;
+                    activeClients[i]->send(j, WebsocketHandler::SEND_TYPE_TEXT);
+                    sendingJson = false;
                 }
-    sendingJson = false;
 }
 /// @brief This is for debug purposes, a received decrypted message sometimes could bring non-printable
 /// @brief chars and it was making the board reboot.
@@ -958,6 +966,11 @@ void decrypt_text(unsigned char *ciphertext, unsigned char *key, size_t cipher_l
 /// @brief This is used to parse commands and redirect data received or sent through a websocket.
 /// @param jsonString 
 void parseCommands(std::string jsonString){
+    if(sendingJson){
+        Serial.println("WebSocket busy, wait...");
+        delay(100);
+    }
+    parsing = true;
     JsonDocument doc;
     // Transform a JSON string in a JSON object.
     //Serial.println(jsonString.c_str());
@@ -1241,6 +1254,7 @@ void parseCommands(std::string jsonString){
             saveSettings();
         }
     }
+    parsing = false;
 }
 
 /// @brief This event is used by the websocket object when a message is received from the client.
@@ -4585,7 +4599,7 @@ void setup(){
     // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. So we're using core 1
     // to run this task forever.
     xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 3000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processPackets, "process_pkt", 4000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processPackets, "process_pkt", 5000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processTransmittingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
 }
