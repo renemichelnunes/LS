@@ -966,7 +966,7 @@ void decrypt_text(unsigned char *ciphertext, unsigned char *key, size_t cipher_l
 /// @brief This is used to parse commands and redirect data received or sent through a websocket.
 /// @param jsonString 
 void parseCommands(std::string jsonString){
-    if(sendingJson){
+    while(sendingJson){
         Serial.println("WebSocket busy, wait...");
         delay(100);
     }
@@ -2662,6 +2662,9 @@ void update_bat(void * param){
         lv_label_set_text(frm_home_bat_lbl, msg);
         pthread_mutex_unlock(&lvgl_mutex);
         while(sendingJson){
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+        while(parsing){
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         pthread_mutex_lock(&send_json_mutex);

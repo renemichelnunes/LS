@@ -130,6 +130,13 @@ const char index_html[] PROGMEM = R"rawliteral(
             border-style: none;
             box-shadow: 5px 5px 15px #919191, -5px -5px 15px #fff;
             margin-bottom: 30px;
+            color: #333;
+            text-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        #counter {
+            color: #333;
+            text-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
         }
 
         .status{
@@ -597,7 +604,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <div class="text-scroller">
 
                 </div>
-                <textarea id="msg-area" class="input-textarea" rows="4" maxlength="120" placeholder="Type your message here, use 'Enter' to send and 'Shift + Enter' to add a new line..."></textarea>
+                <textarea id="msg-area" class="input-textarea" rows="4" maxlength="159" oninput="charCount()" placeholder="Type your message here, use 'Enter' to send and 'Shift + Enter' to add a new line..."></textarea>
+                <p id="counter"></p>
             </div>
         </div>
         <div class="content" id="tab2" style="display: none;">
@@ -715,6 +723,18 @@ const char index_html[] PROGMEM = R"rawliteral(
     var notificationArea = document.getElementById("notification-area");
     var timeoutId;
     var selectedTimezone = "<-03>3";
+
+    // Function to show characters left
+    function charCount(){
+        var text_field = document.getElementById("msg-area");
+        var counter = document.getElementById("counter");
+        var limit = 159;
+
+        var charsWritten = text_field.value.length;
+        var charsLeft = limit - charsWritten;
+
+        counter.textContent = charsLeft + " chars left.";
+    }
 
     // Function to show the notification area
     function showNotificationArea() {
