@@ -739,33 +739,32 @@ class ChatHandler : public WebsocketHandler{
         static WebsocketHandler * create();
         void onMessage(WebsocketInputStreambuf * input);
         void onClose();
+        void onError();
 };
 
+void ChatHandler::onError(){
+    Serial.println("WebSocket error");
+    onClose();
+}
+
 // List of clients's websockets.
-ChatHandler * activeClients[maxClients];
+ChatHandler * activeClient;
 // Constructor for a new client WebSocket
 WebsocketHandler * ChatHandler::create() {
     Serial.println("Creating new chat client!");
     ChatHandler * handler = new ChatHandler();
-    // Put the handler on a vacant index of the list
-    for(int i = 0; i < maxClients; i++) {
-        if (activeClients[i] == nullptr) {
-            activeClients[i] = handler;
-            break;
-        }
+    if (activeClient == nullptr) {
+        activeClient = handler;
     }
+    
     return handler;
 }
 
 /// @brief Search and close the client instance.
 void ChatHandler::onClose() {
-    for(int i = 0; i < maxClients; i++) {
-        if (activeClients[i] == this) {
-            Serial.print("closing websocket no ");
-            Serial.println(i);
-            delete activeClients[i];
-            activeClients[i] = NULL;
-        }
+    if (activeClient != NULL) {
+        Serial.println("closing websocket");
+        activeClient = NULL;
     }
 }
 /// @brief This gets a JSON string built with seralizeJSON and send it through the websockets.
@@ -785,17 +784,15 @@ void sendJSON(string json){
     if(WiFi.localIP().toString() == "")
         return;
     if(strcmp(j, "") != 0)
-        for(uint i = 0; i < maxClients; i++)
-            if(activeClients != NULL)
-                if(activeClients[i] != NULL){
-                    if(parsing){
-                        Serial.println("WebSocket busy, wait...");
-                        delay(100);
-                    }
-                    sendingJson = true;
-                    activeClients[i]->send(j, WebsocketHandler::SEND_TYPE_TEXT);
-                    sendingJson = false;
-                }
+        if(activeClient != NULL){
+            if(parsing){
+                Serial.println("WebSocket busy, wait...");
+                delay(100);
+            }
+            sendingJson = true;
+            activeClient->send(j, WebsocketHandler::SEND_TYPE_TEXT);
+            sendingJson = false;
+        }
 }
 /// @brief This is for debug purposes, a received decrypted message sometimes could bring non-printable
 /// @brief chars and it was making the board reboot.
@@ -1270,6 +1267,14 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
     // For debug purposes.
     Serial.println(msg.c_str());
     // By now this server only receives JSON strings over the websocket, so parse them. 
+    while(parsing){
+        Serial.println("onMessage parsing");
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    while(sendingJson){
+        Serial.println("onMessage JSON");
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
     parseCommands(msg);
 }
 
@@ -1280,11 +1285,12 @@ void setupServer(void * param){
     while(!WiFi.isConnected())
         vTaskDelay(100 / portTICK_PERIOD_MS);
         // Work in progress. The plan is to get up to 4 clients connected.
-    // Before start a new server, close all the sockets.
-    for(int i = 0; i < maxClients; i++){
-        //activeClients[i]->close();
-        activeClients[i] = nullptr;
+    // Before start a new server, close the socket.
+    if(activeClient != NULL){
+        activeClient->close();
+        activeClient = nullptr;
     }
+    
     Serial.println("Creating ssl certificate...");
     lv_label_set_text(frm_home_title_lbl, "Creating ssl certificate...");
     lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
@@ -1367,12 +1373,11 @@ void setupServer(void * param){
 void shutdownServer(void *param){
     if(server_ready)
         if(secureServer != NULL){
-            for(int i = 0; i < maxClients; i++){
-                if(activeClients[i] != NULL){
-                    activeClients[i]->close(1000, "Server shutdown");
-                    activeClients[i] = nullptr;
-                }
+            if(activeClient != NULL){
+                activeClient->close(1000, "Server shutdown");
+                activeClient = nullptr;
             }
+            
             secureServer->stop();
             secureServer->~HTTPSServer();
             secureServer = NULL;
@@ -1546,6 +1551,7 @@ void processTransmittingPackets(void * param){
     
     while(true){
         if(transmiting_packets.size() > 0){
+            vTaskDelay(100 / portTICK_PERIOD_MS);
             p = transmiting_packets[0];
             transmiting_packets.erase(transmiting_packets.begin());
             strcpy(ps.sender, p.sender);
@@ -1656,6 +1662,9 @@ void processReceivedStats(void * param){
             doc["snr"] = st.snr;
             serializeJson(doc, json);
             while(sendingJson){
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+            while(parsing){
                 vTaskDelay(10 / portTICK_PERIOD_MS);
             }
             pthread_mutex_lock(&send_json_mutex);
