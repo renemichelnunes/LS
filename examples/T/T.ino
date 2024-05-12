@@ -27,7 +27,7 @@
 #include "index.h"
 #include "style.h"
 #include "script.h"
-#include "favicon.h"
+//#include "favicon.h"
 #include "ArduinoJson.hpp"
 
 using namespace httpsserver;
@@ -134,6 +134,7 @@ HTTPSServer * secureServer = NULL;
 // Max number of clients connections.
 const uint8_t maxClients = 1;
 #define BLOCK_SIZE 16  // AES bloco size (16 bytes)
+volatile bool wifi_got_ip = false;
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -683,7 +684,7 @@ void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::functio
 void handleFav(HTTPRequest * req, HTTPResponse * res) {
     Serial.println("Sending favicon");
     res->setHeader("Content-Type", "image/vnd.microsoft.icon");
-    res->printStd(FAVICON_DATA);
+    //res->printStd(FAVICON_DATA);
     Serial.println("favicon sent.");
 }
 
@@ -739,11 +740,11 @@ class ChatHandler : public WebsocketHandler{
         static WebsocketHandler * create();
         void onMessage(WebsocketInputStreambuf * input);
         void onClose();
-        void onError();
+        void onError(std::string error);
 };
 
-void ChatHandler::onError(){
-    Serial.println("WebSocket error");
+void ChatHandler::onError(std::string error){
+    Serial.printf("WebSocket error %s", error);
     onClose();
 }
 
@@ -755,6 +756,7 @@ WebsocketHandler * ChatHandler::create() {
     ChatHandler * handler = new ChatHandler();
     if (activeClient == nullptr) {
         activeClient = handler;
+
     }
     
     return handler;
@@ -770,8 +772,8 @@ void ChatHandler::onClose() {
 /// @brief This gets a JSON string built with seralizeJSON and send it through the websockets.
 /// @param json 
 void sendJSON(string json){
-    char j[json.size() + 1];
-    strcpy(j, json.c_str());
+    //char j[json.size() + 1];
+    //strcpy(j, json.c_str());
 
     if(secureServer == NULL)
         return;
@@ -781,18 +783,22 @@ void sendJSON(string json){
         return;
     char ip[20] = {'\0'};
 
-    if(WiFi.localIP().toString() == "")
+    if(!wifi_got_ip)
         return;
-    if(strcmp(j, "") != 0)
+    if(json.length() > 0){
         if(activeClient != NULL){
             if(parsing){
-                Serial.println("WebSocket busy, wait...");
+                Serial.println("(parsing)WebSocket busy, wait...");
                 delay(100);
             }
             sendingJson = true;
-            activeClient->send(j, WebsocketHandler::SEND_TYPE_TEXT);
+            int count = 0;
+            if(!activeClient->closed())
+                activeClient->send(json, WebsocketHandler::SEND_TYPE_TEXT);
             sendingJson = false;
         }
+    }else
+        Serial.println("JSON empty");
 }
 /// @brief This is for debug purposes, a received decrypted message sometimes could bring non-printable
 /// @brief chars and it was making the board reboot.
@@ -964,7 +970,7 @@ void decrypt_text(unsigned char *ciphertext, unsigned char *key, size_t cipher_l
 /// @param jsonString 
 void parseCommands(std::string jsonString){
     while(sendingJson){
-        Serial.println("WebSocket busy, wait...");
+        Serial.println("(sendingJSON)WebSocket busy, wait...");
         delay(100);
     }
     parsing = true;
@@ -1269,11 +1275,15 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
     // By now this server only receives JSON strings over the websocket, so parse them. 
     while(parsing){
         Serial.println("onMessage parsing");
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        delay(100);
     }
     while(sendingJson){
         Serial.println("onMessage JSON");
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        delay(100);
+    }
+    while(this->sending){
+        Serial.println("onMessage http_send");
+        delay(100);
     }
     parseCommands(msg);
 }
@@ -1282,9 +1292,11 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
 /// @param param 
 void setupServer(void * param){
     server_ready = false;
-    while(!WiFi.isConnected())
+    while(!wifi_got_ip){
+        Serial.println("No IP address");
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        // Work in progress. The plan is to get up to 4 clients connected.
+    }
+    
     // Before start a new server, close the socket.
     if(activeClient != NULL){
         activeClient->close();
@@ -1329,6 +1341,7 @@ void setupServer(void * param){
     Serial.println("Starting server...");
     // Create the server object, port 443 and limit the clients;
     secureServer = new HTTPSServer(cert, 443, maxClients);
+    
     // A resource is a file like index.html, style.css..., represented by a node.
     // The server sends the content of the string that holds the web page on index_html,
     // style_css and script_js. For now, the style and javascript is already on index.html.
@@ -1338,13 +1351,13 @@ void setupServer(void * param){
     //ResourceNode * nodeScript = new ResourceNode("/script.js", "GET", &handleScript);
     // If the client request a inexistent resource, send a 404 content.
     ResourceNode * node404 = new ResourceNode("", "GET", &handle404);
-    ResourceNode * nodeFav = new ResourceNode("/favicon.ico", "GET", &handleFav);
+    //ResourceNode * nodeFav = new ResourceNode("/favicon.ico", "GET", &handleFav);
     // Register the nodes.
     secureServer->registerNode(nodeRoot);
     //secureServer->registerNode(nodeStyle);
     //secureServer->registerNode(nodeScript);
     secureServer->registerNode(node404);
-    secureServer->registerNode(nodeFav);
+    //secureServer->registerNode(nodeFav);
     // Create a websocket node (wss://server_address/chat on client side).
     WebsocketNode * chatNode = new WebsocketNode("/chat", ChatHandler::create);
     secureServer->registerNode(chatNode);
@@ -1881,7 +1894,7 @@ void setupRadio(lv_event_t * e)
     }
 
     // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-    if (radio.setOutputPower(17) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+    if (radio.setOutputPower(10) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
         Serial.println(F("Selected output power is invalid for this module!"));
         //return false;
     }
@@ -4315,9 +4328,20 @@ const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
     }
     return "unknown";
 }
+
+void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info){
+    wifi_got_ip = true;
+}
+
+void WiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
+    wifi_got_ip = false;
+}
+
 /// @brief This task searches for a wifi AP on the hitory list and connect to it if available.
 /// @param param 
 void wifi_auto_connect(void * param){
+    WiFi.onEvent(WiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+    WiFi.onEvent(WiFiDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
     // Number of wifi network discovered.
     int n = 0;
     // Count how many seconds elapsed until timeout.
@@ -4620,10 +4644,11 @@ void loop(){
     pthread_mutex_lock(&lvgl_mutex);
     lv_task_handler();
     pthread_mutex_unlock(&lvgl_mutex);
-    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+    
     if(secureServer != NULL)
-        if(secureServer->isRunning())
-            secureServer->loop();
+        if(secureServer->isRunning()){
+        xSemaphoreTake(xSemaphore, portMAX_DELAY);
+        secureServer->loop();
         xSemaphoreGive(xSemaphore);
     }
     delay(5);
