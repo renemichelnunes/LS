@@ -1360,9 +1360,13 @@ const char index_html[] PROGMEM = R"rawliteral(
     function connect(){
         ws = new WebSocket(location.protocol === 'https:' ? 'wss://' + window.location.host + '/chat' : 'ws://' + window.location.host + ':9501/chat');
         ws.onopen = function(e){
-            ws.send(JSON.stringify({"command" : "contacts"}));
-            ws.send(JSON.stringify({"command" : "read_settings"}));
             document.getElementById('btnconnect').disabled = true;
+            setTimeout(function(){
+                ws.send(JSON.stringify({"command" : "contacts"}));
+                setTimeout(function(){
+                    ws.send(JSON.stringify({"command" : "read_settings"}));
+                }, 1000);
+            }, 1000);
             console.log(e);
         };
         ws.onerror = function(e){
