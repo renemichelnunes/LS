@@ -1402,12 +1402,22 @@ void shutdownServer(void *param){
     //vTaskDelete(NULL);
 }
 
+/// @brief Updates de rssi and snr graph widget on home screen
+/// @param rssi 
+/// @param snr 
+void update_rssi_snr_graph(float rssi, float snr){
+    lv_chart_set_next_value(frm_home_rssi_chart, frm_home_rssi_series, rssi);
+    lv_chart_set_next_value(frm_home_rssi_chart, frm_home_snr_series, snr);
+    lv_chart_refresh(frm_home_rssi_chart);
+}
+
 /// @brief Collects lora packets and save them in received_packets.
 /// @param param 
 void collectPackets(void * param){
     lora_packet p;
     uint16_t packet_size;
     lora_stats ls;
+    float rssi, snr;
 
     while(true){
         if(gotPacket){
@@ -1418,8 +1428,10 @@ void collectPackets(void * param){
                 packet_size = radio.getPacketLength();
                 radio.readData((uint8_t*)&p, packet_size);
                 // Convert the info to a exact representation on a string.
-                sprintf(ls.rssi, "%.2f", radio.getRSSI());
-                sprintf(ls.snr, "%.2f", radio.getSNR());
+                rssi = radio.getRSSI();
+                snr = radio.getSNR();
+                sprintf(ls.rssi, "%.2f", rssi);
+                sprintf(ls.snr, "%.2f", snr);
                 gotPacket = false;
                 // Put the radio to listen.
                 radio.startReceive();
@@ -1433,6 +1445,9 @@ void collectPackets(void * param){
                     received_packets.push_back(p);
                     // Add the stats of the trnasmission received to received_stats.
                     received_stats.push_back(ls);
+                    Serial.print("Updating rssi graph...");
+                    update_rssi_snr_graph(rssi, snr);
+                    Serial.println("rssi graph updated.");
                 }
             }
         }
@@ -3413,6 +3428,19 @@ void ui(){
     lv_label_set_text(frm_home_wifi_lbl, "");
     lv_obj_set_style_text_color(frm_home_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_align(frm_home_wifi_lbl, LV_ALIGN_TOP_RIGHT, -55, -10);
+
+    // RSSI graph
+    frm_home_rssi_chart = lv_chart_create(frm_home);
+    lv_obj_set_size(frm_home_rssi_chart, 90, 55);
+    lv_obj_align(frm_home_rssi_chart, LV_ALIGN_OUT_TOP_LEFT, 0, 15);
+    lv_chart_set_type(frm_home_rssi_chart, LV_CHART_TYPE_LINE);
+    frm_home_rssi_series = lv_chart_add_series(frm_home_rssi_chart, lv_palette_main(LV_PALETTE_LIGHT_GREEN), LV_CHART_AXIS_PRIMARY_Y);
+    frm_home_snr_series = lv_chart_add_series(frm_home_rssi_chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_SECONDARY_Y);
+    lv_chart_set_range(frm_home_rssi_chart, LV_CHART_AXIS_PRIMARY_Y, -147, 0);
+    lv_chart_set_range(frm_home_rssi_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 20);
+    lv_chart_set_next_value(frm_home_rssi_chart, frm_home_rssi_series, -147);
+    lv_chart_set_next_value(frm_home_rssi_chart, frm_home_snr_series, 0);
+    lv_chart_refresh(frm_home_rssi_chart);
 
     //date time background
     frm_home_frm_date_time = lv_obj_create(frm_home);

@@ -19,6 +19,9 @@ lv_obj_t * frm_home_date_lbl;
 lv_obj_t * frm_home_bat_lbl;
 lv_obj_t * frm_home_wifi_lbl;
 lv_obj_t * frm_home_activity_led;
+lv_obj_t * frm_home_rssi_chart;
+lv_chart_series_t * frm_home_rssi_series;
+lv_chart_series_t  * frm_home_snr_series;
 
 /*contacts form*/
 lv_obj_t * frm_contacts;
