@@ -66,6 +66,7 @@ static pthread_mutex_t lvgl_mutex = NULL;
 static pthread_mutex_t messages_mutex = NULL;
 static pthread_mutex_t send_json_mutex = NULL;
 static pthread_mutex_t websocket_send = NULL;
+static pthread_mutex_t sound_mutex = NULL;
 // Used to represent the state of some resources
 bool touchDected = false;
 bool kbDected = false;
@@ -4588,6 +4589,7 @@ void setup(){
     delay(200);
     // Inicialize the radio module.
     setupRadio(NULL);
+    //setup_adc();
     // Initialize the i2c bus.
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
     //scanDevices(&Wire);
