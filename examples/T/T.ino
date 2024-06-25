@@ -4544,8 +4544,27 @@ void task_beacon(void * param){
     vTaskDelete(NULL);
 }
 
+void setup_sound(){
+    bool findMp3 = false;
+
+    audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
+    audio.setVolume(21);
+    
+    if(SPIFFS.exists("/comp_up.mp3")){
+        findMp3 = audio.connecttoFS(SPIFFS, "/comp_up.mp3");
+        if(findMp3){
+            
+        }
+    }else
+        Serial.println("comp_up.mp3 not found");
+    //SPIFFS.end();
+}
+
 /// @brief T-Deck's initial setup function.
 void setup(){
+    if(!SPIFFS.begin(true)){
+        Serial.println("failed mounting SPIFFS");
+    }
     bool ret = false;
     Serial.begin(115200);
     //delay(3000);
@@ -4589,7 +4608,7 @@ void setup(){
     delay(200);
     // Inicialize the radio module.
     setupRadio(NULL);
-    //setup_adc();
+    
     // Initialize the i2c bus.
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
     //scanDevices(&Wire);
@@ -4668,6 +4687,8 @@ void setup(){
     xTaskCreatePinnedToCore(processPackets, "process_pkt", 5000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processTransmittingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
+
+    setup_sound();
 }
 
 void loop(){
@@ -4682,4 +4703,8 @@ void loop(){
         xSemaphoreGive(xSemaphore);
     }
     delay(5);
+    if(audio.isRunning()){
+        audio.loop();
+        delay(3);
+    }
 }
