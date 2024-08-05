@@ -7,12 +7,14 @@ struct lora_packet_status{
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = "recv";
+    uint8_t hops = 3;
 };
 /// @brief Class to create a complete LoRa packet.
 struct lora_packet{
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
+    uint8_t hops = 3;
     bool me = false;
     char msg[160] = {'\0'};
     uint8_t msg_size = 0;
