@@ -9,7 +9,18 @@ struct lora_packet_status{
     char status[7] = "recv";
     uint8_t hops = 3;
 };
-/// @brief Class to create a complete LoRa packet.
+
+/// @brief Class that is used when we send messages.
+struct lora_packet_msg{
+    char sender[7] = {'\0'};
+    char destiny[7] = {'\0'};
+    char status[7] = {'\0'};
+    uint8_t hops = 3;
+    char msg[160] = {'\0'};
+    uint8_t msg_size = 0;
+};
+
+/// @brief Class to create a complete LoRa packet info, saved in a list.
 struct lora_packet{
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -19,9 +30,10 @@ struct lora_packet{
     char msg[160] = {'\0'};
     uint8_t msg_size = 0;
     char date_time[30] = {'\0'};
-    char rssi[7] = {'\0'};
-    char snr[7] = {'\0'};
+    float rssi = 0;
+    float snr = 0;
 };
+
 /// @brief Struct that holds a list of LoRa packets related to a contact.
 struct lora_contact_messages{
     // ID of the owner.

@@ -1433,6 +1433,8 @@ void collectPackets(void * param){
                 snr = radio.getSNR();
                 sprintf(ls.rssi, "%.2f", rssi);
                 sprintf(ls.snr, "%.2f", snr);
+                p.rssi = rssi;
+                p.snr = snr;
                 gotPacket = false;
                 // Put the radio to listen.
                 radio.startReceive();
@@ -1442,6 +1444,8 @@ void collectPackets(void * param){
             if(packet_size > 0 && packet_size <= sizeof(lora_packet)){
                 // Lets add a date time of arrival.
                 strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                // If we receive the same packet we transmitted, drop it. This is a thing that happen
+                // as soon as we send a packet.
                 if(strcmp(p.sender, user_id) != 0){
                     received_packets.push_back(p);
                     // Add the stats of the trnasmission received to received_stats.
