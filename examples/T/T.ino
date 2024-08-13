@@ -1445,7 +1445,7 @@ void collectPackets(void * param){
                 // Lets add a date time of arrival.
                 strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                 // If we receive the same packet we transmitted, drop it. This is a thing that happen
-                // as soon as we send a packet.
+                // as soon as we send a packet. Maybe the radio uses the same buffer to transmit and receive.
                 if(strcmp(p.sender, user_id) != 0){
                     received_packets.push_back(p);
                     // Add the stats of the trnasmission received to received_stats.
