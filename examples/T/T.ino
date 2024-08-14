@@ -1460,6 +1460,8 @@ void collectPackets(void * param){
     }
 }
 
+
+
 void processPackets(void * param){
     lora_packet p, pong;
     char dec_msg[200] = {'\0'};
