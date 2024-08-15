@@ -6,8 +6,10 @@
 using namespace std;
 
 struct ContactMessages{
-    char id[7] = {'\0'};
-    char msg[160] = {'\0'};
+    char messageID[7] = {'\0'};
+    char senderID[7] = {'\0'};
+    char dateTime[30] = {'\0'};
+    char message[160] = {'\0'};
 };
 
 /// @brief Class that represents a LoRa contact.
@@ -24,6 +26,7 @@ class Contact{
         void setKey(String key);
         bool inrange = false;
         uint32_t timeout = 0;
+        // Routines to handle the messages
         bool addMessage(ContactMessages cm);
         ContactMessages * getMessageByID(char * id);
         bool existsMessage(char * id);
