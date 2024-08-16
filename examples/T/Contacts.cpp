@@ -155,3 +155,18 @@ void Contact_list::setCheckPeriod(uint8_t min){
     if(min >= 1)
         this->check_period = min * 60 * 1000L;
 }
+
+// Routines to handle the messages
+bool Contact::addMessage(ContactMessages cm){
+
+    return true;
+}
+ContactMessages * Contact::getMessageByID(char * id){
+
+    return NULL;
+}
+
+bool Contact::existsMessage(char * id){
+
+    return true;
+}
