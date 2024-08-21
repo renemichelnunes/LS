@@ -35,6 +35,7 @@ class Contact{
         String id;
         String key;
         vector<ContactMessages> messages;
+        uint8_t max_messages = 20;
 };
 /// @brief Class that provides a list of contacts.
 class Contact_list{

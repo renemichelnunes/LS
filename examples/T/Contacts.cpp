@@ -115,10 +115,10 @@ bool Contact_list::del(Contact c){
     std::vector<Contact>::iterator it = std::find(this->list.begin(), this->list.end(), c);
     if(it != this->list.end()){
         this->list.erase(it);
+        return true;
     }
     else
         return false;
-    return true;
 }
 /// @brief Return true if a contact is found.
 /// @param c 
@@ -156,17 +156,28 @@ void Contact_list::setCheckPeriod(uint8_t min){
         this->check_period = min * 60 * 1000L;
 }
 
-// Routines to handle the messages
+// Routines to handle the contact's messages
 bool Contact::addMessage(ContactMessages cm){
-
-    return true;
+    if(!this->existsMessage(cm.messageID)){
+        // If the message list has more than 20 messages, exclude the oldest
+        if(this->messages.size() > this->max_messages)
+            this->messages.erase(this->messages.begin());
+        // Adds the message at the end of the list
+        this->messages.push_back(cm);
+        return true;
+    }
+    return false;
 }
 ContactMessages * Contact::getMessageByID(char * id){
-
+    for(uint8_t i = 0; i < this->messages.size(); i++)
+        if(strcmp(id, this->messages[i].messageID) == 0)
+            return &this->messages[i];
     return NULL;
 }
 
 bool Contact::existsMessage(char * id){
-
-    return true;
+    for(uint8_t i = 0; i < this->messages.size(); i++)
+        if(strcmp(id, this->messages[i].messageID) == 0)
+            return true;
+    return false;
 }
