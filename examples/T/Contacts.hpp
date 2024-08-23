@@ -5,7 +5,7 @@
 
 using namespace std;
 
-struct ContactMessages{
+struct ContactMessage{
     char messageID[7] = {'\0'};
     char senderID[7] = {'\0'};
     char dateTime[30] = {'\0'};
@@ -21,20 +21,26 @@ class Contact{
         String getName();
         String getID();
         String getKey();
+        float getRSSI();
+        float getSNR();
         void setName(String name);
         void setID(String id);
         void setKey(String key);
+        void setRSSI(float rssi);
+        void setSNR(float snr);
         bool inrange = false;
         uint32_t timeout = 0;
         // Routines to handle the messages
-        bool addMessage(ContactMessages cm);
-        ContactMessages * getMessageByID(char * id);
+        bool addMessage(ContactMessage cm);
+        ContactMessage * getMessageByID(char * id);
         bool existsMessage(char * id);
     private:
         String name;
         String id;
         String key;
-        vector<ContactMessages> messages;
+        float rssi;
+        float snr;
+        vector<ContactMessage> messages;
         uint8_t max_messages = 20;
 };
 /// @brief Class that provides a list of contacts.

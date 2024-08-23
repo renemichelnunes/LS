@@ -2,7 +2,7 @@
 #include <vector>
 #include <Arduino.h>
 #include <exception>
-/// @brief Class that is used to create a shorter LoRa packet with status info.
+/// @brief Struct that is used to create a shorter LoRa packet with status info.
 struct lora_packet_status{
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -10,7 +10,7 @@ struct lora_packet_status{
     uint8_t hops = 3;
 };
 
-/// @brief Class that is used when we send messages.
+/// @brief Struct that is used when we send messages.
 struct lora_packet_msg{
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -20,7 +20,7 @@ struct lora_packet_msg{
     uint8_t msg_size = 0;
 };
 
-/// @brief Class to create a complete LoRa packet info, saved in a list.
+/// @brief Struct to create a complete LoRa packet info, saved in a list.
 struct lora_packet{
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};

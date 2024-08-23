@@ -157,7 +157,7 @@ void Contact_list::setCheckPeriod(uint8_t min){
 }
 
 // Routines to handle the contact's messages
-bool Contact::addMessage(ContactMessages cm){
+bool Contact::addMessage(ContactMessage cm){
     if(!this->existsMessage(cm.messageID)){
         // If the message list has more than 20 messages, exclude the oldest
         if(this->messages.size() > this->max_messages)
@@ -168,7 +168,7 @@ bool Contact::addMessage(ContactMessages cm){
     }
     return false;
 }
-ContactMessages * Contact::getMessageByID(char * id){
+ContactMessage * Contact::getMessageByID(char * id){
     for(uint8_t i = 0; i < this->messages.size(); i++)
         if(strcmp(id, this->messages[i].messageID) == 0)
             return &this->messages[i];
@@ -180,4 +180,20 @@ bool Contact::existsMessage(char * id){
         if(strcmp(id, this->messages[i].messageID) == 0)
             return true;
     return false;
+}
+
+float Contact::getRSSI(){
+    return this->rssi;
+}
+
+float Contact::getSNR(){
+    return this->snr;
+}
+
+void Contact::setRSSI(float rssi){
+    this->rssi = rssi;
+}
+
+void Contact::setSNR(float snr){
+    this->snr = snr;
 }
