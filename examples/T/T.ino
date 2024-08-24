@@ -62,11 +62,11 @@ TFT_eSPI tft;
 // xSemaphoreGive, see other parts of this code.
 SemaphoreHandle_t xSemaphore = NULL;
 // Mutexes used to control access, using pthread_mutex_lock.
-static pthread_mutex_t lvgl_mutex = NULL;
-static pthread_mutex_t messages_mutex = NULL;
-static pthread_mutex_t send_json_mutex = NULL;
-static pthread_mutex_t websocket_send = NULL;
-static pthread_mutex_t sound_mutex = NULL;
+static pthread_mutex_t lvgl_mutex;
+static pthread_mutex_t messages_mutex;
+static pthread_mutex_t send_json_mutex;
+static pthread_mutex_t websocket_send;
+static pthread_mutex_t sound_mutex;
 // Used to represent the state of some resources
 bool touchDected = false;
 bool kbDected = false;
@@ -2460,7 +2460,7 @@ void DX(lv_event_t * e){
                 Serial.println("DX mode off");
                 isDX = false;
             }else{
-                notification_list.add("Normal mode failed",LV_SYMBOL_SETTINGS);
+                notification_list.add("Normal mode failed", LV_SYMBOL_SETTINGS);
                 Serial.println("Normal mode failed");
             }
         }
@@ -4092,7 +4092,7 @@ void ui(){
 
     //root page
     frm_settings_root_section;
-    frm_settings_root_page = lv_menu_page_create(frm_settings_menu, "Settings");
+    frm_settings_root_page = lv_menu_page_create(frm_settings_menu, (char*)"Settings");
     lv_obj_set_style_pad_hor(frm_settings_root_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(frm_settings_menu), 0), 0);
     frm_settings_root_section = lv_menu_section_create(frm_settings_root_page);
     lv_obj_add_event_cb(frm_settings_root_page, hide_settings, LV_EVENT_SHORT_CLICKED, NULL);
