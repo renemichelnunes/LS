@@ -33,6 +33,7 @@ class Contact{
         // Routines to handle the messages
         bool addMessage(ContactMessage cm);
         ContactMessage * getMessageByID(char * id);
+        vector<ContactMessage> * getMessagesList();
         bool existsMessage(char * id);
     private:
         String name;
@@ -46,17 +47,17 @@ class Contact{
 /// @brief Class that provides a list of contacts.
 class Contact_list{
     private:
-        vector <Contact> list;
+        vector<Contact> list;
         uint64_t check_period = (1 * 60 * 1000L);
     public:
-        
         bool add(Contact c);
         bool del(Contact c);
         bool find(Contact &c);
         Contact getContact(uint32_t index);
         Contact * getContactByName(String name);
-        Contact * getContactByID(String id);
-        vector <Contact> getList();
+        Contact * getContactByID(const char *  id);
+        vector<Contact> * getContactsList();
+        vector<ContactMessage> * getContactMessages(const char * id);
         uint32_t size();
         void check_inrange();
         void setCheckPeriod(uint8_t min);

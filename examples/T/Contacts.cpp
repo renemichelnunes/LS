@@ -99,11 +99,11 @@ Contact  Contact_list::getContact(uint32_t index){
 /// @brief Return a pointer to the contact on the list.
 /// @param id 
 /// @return Contact *
-Contact *Contact_list::getContactByID(String id)
+Contact *Contact_list::getContactByID(const char * id)
 {
     if(list.size() > 0){
         for(uint32_t i = 0; i < list.size(); i++)
-            if(strcmp(list[i].getID().c_str(), id.c_str()) == 0)
+            if(strcmp(list[i].getID().c_str(), id) == 0)
                 return &this->list[i];
     }
     return NULL;
@@ -132,11 +132,7 @@ bool Contact_list::find(Contact &c){
     else
         return false;
 }
-/// @brief Return a copy of the list object.
-/// @return vector <Contact>
-vector <Contact> Contact_list::getList(){
-    return list;
-}
+
 /// @brief Change the contacts inrange status based on a timeout value defined by the user.
 // Should be called periodically.
 void Contact_list::check_inrange(){
@@ -154,6 +150,14 @@ void Contact_list::check_inrange(){
 void Contact_list::setCheckPeriod(uint8_t min){
     if(min >= 1)
         this->check_period = min * 60 * 1000L;
+}
+
+vector<Contact> * Contact_list::getContactsList(){
+    return &this->list;
+}
+
+vector<ContactMessage> * Contact_list::getContactMessages(const char * id){
+    return this->getContactByID(id)->getMessagesList();
 }
 
 // Routines to handle the contact's messages
@@ -196,4 +200,8 @@ void Contact::setRSSI(float rssi){
 
 void Contact::setSNR(float snr){
     this->snr = snr;
+}
+
+vector<ContactMessage> * Contact::getMessagesList(){
+    return &this->messages;
 }
