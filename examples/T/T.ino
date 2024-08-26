@@ -614,12 +614,13 @@ std::string contacts_to_json(){
 
     // Fist the command parsed by the javascript on client side.
     doc["command"] = "contacts";
-    for(uint32_t i = 0; i < contacts_list.size(); i++){
+    vector<Contact> cl = *contacts_list.getContactsList();
+    for(uint32_t i = 0; i < cl.size(); i++){
         // A list of contacts represented by "contacts", not the command.
-        doc["contacts"][i]["id"] = contacts_list.getList()[i].getID();
-        doc["contacts"][i]["name"] = contacts_list.getList()[i].getName();
-        doc["contacts"][i]["key"] = contacts_list.getList()[i].getKey();
-        doc["contacts"][i]["status"] = contacts_list.getList()[i].inrange ? "on" : "off";
+        doc["contacts"][i]["id"] = cl[i].getID();
+        doc["contacts"][i]["name"] = cl[i].getName();
+        doc["contacts"][i]["key"] = cl[i].getKey();
+        doc["contacts"][i]["status"] = cl[i].inrange ? "on" : "off";
     }
     // This transforms the doc object into a string
     serializeJson(doc, json);
@@ -2615,14 +2616,16 @@ void check_contacts_in_range(){
     // Verify if someone got timeout.
     contacts_list.check_inrange();
     // Loop through the contacts.
+
+    vector<Contact> * cl = contacts_list.getContactsList();
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         // Update the status indicator.
-        update_frm_contacts_status(i, contacts_list.getList()[i].inrange);
+        update_frm_contacts_status(i, cl[i].inrange);
         // For debug purposes.
-        Serial.print(contacts_list.getList()[i].getName());
-        Serial.println(contacts_list.getList()[i].inrange ? " is in range" : " is out of range");
+        Serial.print(cl[i].getName());
+        Serial.println(cl[i].inrange ? " is in range" : " is out of range");
         // Sends the current status to the client side.
-        sendContactsStatusJson(contacts_list.getList()[i].getID().c_str(), contacts_list.getList()[i].inrange);
+        sendContactsStatusJson(cl[i].getID().c_str(), cl[i].inrange);
     }
     Serial.println("=======================================");
 }
