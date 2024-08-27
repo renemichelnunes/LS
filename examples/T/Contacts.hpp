@@ -7,8 +7,9 @@ using namespace std;
 
 struct ContactMessage{
     char messageID[7] = {'\0'};
-    char senderID[7] = {'\0'};
     char dateTime[30] = {'\0'};
+    bool ack = false;
+    bool me = false;
     char message[160] = {'\0'};
 };
 

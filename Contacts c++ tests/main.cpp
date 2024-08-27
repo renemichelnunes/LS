@@ -16,6 +16,11 @@ int main(int argc, char** argv){
     c1->addMessage(cm);
     c1 = NULL;
     c1 = cl.getContactByID("123456");
+    if(c1 == NULL){
+        printf("%s\n", "contato não encontrado");
+        exit(11);
+    }else
+        printf("Contato encontrado - %s\n", (*c1).getName().c_str());
     vector<ContactMessage> * messages = c1->getMessagesList();
     for(int i = 0; i < messages->size(); i++){
         printf("vector messages = %s\n", (*messages)[i].message);

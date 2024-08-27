@@ -39,9 +39,9 @@ class Contact{
         uint32_t timeout = 0;
         // Routines to handle the messages
         bool addMessage(ContactMessage cm);
-        ContactMessage * getMessageByID(char * id);
+        ContactMessage * getMessageByID(const char * id);
         vector<ContactMessage> * getMessagesList();
-        bool existsMessage(char * id);
+        bool existsMessage(const char * id);
     private:
         String name;
         String id;
