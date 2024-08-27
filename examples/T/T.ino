@@ -2617,8 +2617,8 @@ void check_contacts_in_range(){
     contacts_list.check_inrange();
     // Loop through the contacts.
 
-    vector<Contact> * cl = contacts_list.getContactsList();
-    for(uint32_t i = 0; i < contacts_list.size(); i++){
+    vector<Contact> cl = *contacts_list.getContactsList();
+    for(uint32_t i = 0; i < cl.size(); i++){
         // Update the status indicator.
         update_frm_contacts_status(i, cl[i].inrange);
         // For debug purposes.
