@@ -1,4 +1,5 @@
 #include "Contacts.hpp"
+#include "lora_messages.hpp"
 
 int main(int argc, char** argv){
     Contact_list cl;
@@ -41,4 +42,17 @@ int main(int argc, char** argv){
     for(int i = 0; i < messages->size(); i++){
         printf("final 2 = %s\n", (*messages)[i].message);
     }
+
+    lora_incomming_packets lip;
+    lora_packet lp;
+    lp.type = 0x00;
+    strcpy(lp.sender, "123456");
+    strcpy(lp.destiny, "111111");
+    strcpy(lp.status, "show");
+    lp.hops = 2;
+    lp.rssi = 17.0;
+    lp.snr = 9.0;
+    printf("has packets %d\n", lip.has_packets());
+    lip.add(lp);
+    printf("has packets %d\n", lip.has_packets());
 }
