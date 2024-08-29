@@ -55,4 +55,7 @@ int main(int argc, char** argv){
     printf("has packets %d\n", lip.has_packets());
     lip.add(lp);
     printf("has packets %d\n", lip.has_packets());
+    lora_packet lp1 = lip.get();
+    printf("Type 0x%x\nsender %s\nDestiny %s\nStatus %s\n", lp1.type, lp1.sender, lp1.destiny, lp1.status);
+    printf("has packets %d\n", lip.has_packets());
 }
