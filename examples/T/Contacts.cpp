@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+
 /// @brief Constructor with name and id as parameters.
 /// @param name 
 /// @param id 
@@ -92,7 +93,8 @@ Contact  Contact_list::getContact(uint32_t index){
         return list.at(index);
     }
     catch(exception e){
-        Serial.println(e.what());
+        //Serial.println(e.what());
+        printf("%s\n",e.what());
         return Contact();
     }
 }
@@ -172,14 +174,14 @@ bool Contact::addMessage(ContactMessage cm){
     }
     return false;
 }
-ContactMessage * Contact::getMessageByID(char * id){
+ContactMessage * Contact::getMessageByID(const char * id){
     for(uint8_t i = 0; i < this->messages.size(); i++)
         if(strcmp(id, this->messages[i].messageID) == 0)
             return &this->messages[i];
     return NULL;
 }
 
-bool Contact::existsMessage(char * id){
+bool Contact::existsMessage(const char * id){
     for(uint8_t i = 0; i < this->messages.size(); i++)
         if(strcmp(id, this->messages[i].messageID) == 0)
             return true;

@@ -96,11 +96,10 @@ TaskHandle_t task_recv_pkt = NULL, // when we receive a LoRa packet
 uint32_t msg_count = 0;
 // List of contacts, LoRa packets and notification
 Contact_list contacts_list = Contact_list();
-lora_incomming_messages messages_list = lora_incomming_messages();
+lora_incomming_packets pkt_list = lora_incomming_packets();
 notification notification_list = notification();
 vector<lora_packet> received_packets;
-vector<lora_packet> transmiting_packets;
-vector<lora_stats> received_stats;
+vector<lora_packet_msg> transmiting_packets;
 // As soon as we select a contact on a contact list, it is pointed to this
 // variable, so other routines like send a message will use this contact
 Contact * actual_contact = NULL;
@@ -817,48 +816,38 @@ bool containsNonPrintableChars(const char *str) {
 }
 // For debug purposes.
 void printMessages(const char * id){
-    vector<lora_packet> msgs;
+    vector<ContactMessage> * msgs;
     // A mutex is used here to prevent concurrent access and memory corruption.
     pthread_mutex_lock(&messages_mutex);
-        msgs = messages_list.getMessages(id);
+        msgs = contacts_list.getContactMessages(id);
     pthread_mutex_unlock(&messages_mutex);
     Serial.println("=================================");
-    if(msgs.size() > 0){
-        for(uint32_t i = 0; i < msgs.size(); i++)
-            Serial.println(msgs[i].msg);
+    if((*msgs).size() > 0){
+        for(uint32_t i = 0; i < (*msgs).size(); i++)
+            Serial.println((*msgs)[i].message);
     }
     Serial.println("=================================");
 }
 /// @brief This creates and sends a JSON to the client with the list of messages from a selected contact.
 /// @param id 
 void sendContactMessages(const char * id){
-    vector<lora_packet>msgs;
+    vector<ContactMessage> * msgs;
     JsonDocument doc;
     string json;
     // Mutex to avoid concurrent access and memory corruption.
     pthread_mutex_lock(&messages_mutex);
-        msgs = messages_list.getMessages(id);
+        msgs = contacts_list.getContactMessages(id);
     pthread_mutex_unlock(&messages_mutex);
     // Command and id for the requested contact.
     doc["command"] = "msg_list";
     doc["id"] = id;
     // Creating a list of messages. 'Me' is a bool that represents when the message is from the sender, if false
     // so the message is from the destination. We also add the date and time of the message.
-    if(msgs.size() > 0){
-        for(uint32_t i = 0; i < msgs.size(); i++){
-            doc["messages"][i]["me"] = msgs[i].me;
-            doc["messages"][i]["msg_date"] = msgs[i].date_time;
-            
-            if(msgs[i].me){
-                doc["messages"][i]["msg"] = msgs[i].msg; // Here was a example of detecting non-printable chars.
-                //if(containsNonPrintableChars(msgs[i].msg))
-                //    doc["messages"][i]["msg"] = "[corrupted]";
-            }
-            else{
-                doc["messages"][i]["msg"] = msgs[i].msg;
-                //if(containsNonPrintableChars(msgs[i].msg))
-                //    doc["messages"][i]["msg"] = "[corrupted]";
-            }
+    if((*msgs).size() > 0){
+        for(uint32_t i = 0; i < (*msgs).size(); i++){
+            doc["messages"][i]["me"] = (*msgs)[i].me;
+            doc["messages"][i]["msg_date"] = (*msgs)[i].dateTime;
+            doc["messages"][i]["msg"] = (*msgs)[i].message;
         }
     }
     // Transform the doc in JSON string.
@@ -1006,28 +995,27 @@ void parseCommands(std::string jsonString){
         //hasRadio = false;
         if(hasRadio){
             // We need a new LoRa packet.
-            lora_packet pkt;
-            strcpy(pkt.sender, user_id);
-            strcpy(pkt.destiny, id);
-            // There are two statuses, send when sending to a destination, and recv when we received a confirmation
+            lora_packet_msg msg_pkt;
+            strcpy(msg_pkt.sender, user_id);
+            strcpy(msg_pkt.destiny, id);
+            // There are two statuses, 'send' when sending to a destination, and 'recv' when we received a confirmation
             // from the destination. This is how we know the destination received the message. Not guaranteed.
-            strcpy(pkt.status, "send");
-            strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-            memcpy(pkt.msg, ciphertext, padded_len);
-            pkt.msg_size = padded_len;
-            transmiting_packets.push_back(pkt);
-            pkt.me = true;
+            strcpy(msg_pkt.status, "send");
+            //strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+            memcpy(msg_pkt.msg, ciphertext, padded_len);
+            msg_pkt.msg_size = padded_len;
+            transmiting_packets.push_back(msg_pkt);
             // And add the unencrypted message.
-            strcpy(pkt.msg, msg);
+            strcpy(msg_pkt.msg, msg);
             Serial.print("Adding answer to ");
-            Serial.println(pkt.destiny);
-            Serial.println(pkt.msg);
+            Serial.println(msg_pkt.destiny);
+            Serial.println(msg_pkt.msg);
             // Mutex to avoid errors, curruptions and concurrency.
             pthread_mutex_lock(&messages_mutex);
-            messages_list.addMessage(pkt);
+            messages_list.addMessage(msg_pkt);
             pthread_mutex_unlock(&messages_mutex);
             
-        }else
+        }else  
             Serial.println("Radio not configured");
     }else if(strcmp(command, "contacts") == 0){// When we are asked to send the contacts list.
         // Wait if sendJSON is being used.
