@@ -1583,6 +1583,7 @@ void processPackets(void * param){
 void processTransmittingPackets(void * param){
     lora_packet p;
     lora_packet_status ps;
+    lora_packet_msg pm;
     
     while(true){
         if(transmiting_packets.size() > 0){
@@ -1625,10 +1626,18 @@ void processTransmittingPackets(void * param){
                     vTaskDelay(10 / portTICK_PERIOD_MS);
                 // Change the squared status on home screen to red.
                 activity(lv_color_hex(0xff0000));
-                transmiting = true;
+                if(p.type == MESSAGE_PACKET){
+                    pm.type = MESSAGE_PACKET;
+                    strcpy(pm.sender, p.sender);
+                    strcpy(pm.destiny, p.destiny);
+                    strcpy(pm.status, p.status);
+                    strcpy(pm.msg, p.msg);
+                    pm.msg_size = p.msg_size;
+                }
+                transmiting = true; Parei aqui
                 // Get exclusive access through SPI.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                    if(radio.transmit((uint8_t*)&p, sizeof(p)) == RADIOLIB_ERR_NONE)
+                    if(radio.transmit((uint8_t*)&pm, sizeof(pm)) == RADIOLIB_ERR_NONE)
                         Serial.println("Message sent");
                     else
                         Serial.println("Message not sent");

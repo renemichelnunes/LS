@@ -40,8 +40,6 @@ struct lora_packet{
     bool me = false;
     char msg[160] = {'\0'};
     uint8_t msg_size = 0;
-    float rssi = 0;
-    float snr = 0;
 };
 
 class lora_incomming_packets{
