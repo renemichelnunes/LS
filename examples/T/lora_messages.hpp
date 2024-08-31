@@ -34,12 +34,8 @@ struct lora_packet{
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
     uint8_t hops = 3;
-    bool me = false;
     char msg[160] = {'\0'};
     uint8_t msg_size = 0;
-    char date_time[30] = {'\0'};
-    float rssi = 0;
-    float snr = 0;
 };
 
 class lora_incomming_packets{

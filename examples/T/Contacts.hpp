@@ -11,6 +11,8 @@ struct ContactMessage{
     bool ack = false;
     bool me = false;
     char message[160] = {'\0'};
+    float rssi = 0;
+    float snr = 0;
 };
 
 /// @brief Class that represents a LoRa contact.

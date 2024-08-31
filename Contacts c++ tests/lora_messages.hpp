@@ -12,7 +12,7 @@
 
 /// @brief Struct that is used to create a shorter LoRa packet with status info.
 struct lora_packet_status{
-    uint8_t type = 0x0;
+    uint8_t type = MESSAGE_PACKET;
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = "recv";
@@ -40,7 +40,6 @@ struct lora_packet{
     bool me = false;
     char msg[160] = {'\0'};
     uint8_t msg_size = 0;
-    char date_time[30] = {'\0'};
     float rssi = 0;
     float snr = 0;
 };

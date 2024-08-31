@@ -99,7 +99,7 @@ Contact_list contacts_list = Contact_list();
 lora_incomming_packets pkt_list = lora_incomming_packets();
 notification notification_list = notification();
 vector<lora_packet> received_packets;
-vector<lora_packet_msg> transmiting_packets;
+vector<lora_packet> transmiting_packets;
 // As soon as we select a contact on a contact list, it is pointed to this
 // variable, so other routines like send a message will use this contact
 Contact * actual_contact = NULL;
@@ -995,24 +995,35 @@ void parseCommands(std::string jsonString){
         //hasRadio = false;
         if(hasRadio){
             // We need a new LoRa packet.
-            lora_packet_msg msg_pkt;
-            strcpy(msg_pkt.sender, user_id);
-            strcpy(msg_pkt.destiny, id);
+            lora_packet pkt;
+            ContactMessage cm;
+
+            pkt.type = MESSAGE_PACKET;
+            strcpy(pkt.sender, user_id);
+            strcpy(pkt.destiny, id);
             // There are two statuses, 'send' when sending to a destination, and 'recv' when we received a confirmation
             // from the destination. This is how we know the destination received the message. Not guaranteed.
-            strcpy(msg_pkt.status, "send");
+            strcpy(pkt.status, "send");
             //strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-            memcpy(msg_pkt.msg, ciphertext, padded_len);
-            msg_pkt.msg_size = padded_len;
-            transmiting_packets.push_back(msg_pkt);
+            memcpy(pkt.msg, ciphertext, padded_len);
+            pkt.msg_size = padded_len;
+            transmiting_packets.push_back(pkt);
             // And add the unencrypted message.
-            strcpy(msg_pkt.msg, msg);
+            strcpy(pkt.msg, msg);
             Serial.print("Adding answer to ");
-            Serial.println(msg_pkt.destiny);
-            Serial.println(msg_pkt.msg);
+            Serial.println(pkt.destiny);
+            Serial.println(pkt.msg);
+
+            // Populating a contact message struct
+            cm.me = true;
+            strftime(cm.dateTime, sizeof(cm.dateTime)," - %a, %b %d %Y %H:%M", &timeinfo);
+            strcpy(cm.message, msg);
+            strcpy(cm.messageID, generate_ID(6).c_str());
+
             // Mutex to avoid errors, curruptions and concurrency.
             pthread_mutex_lock(&messages_mutex);
-            messages_list.addMessage(msg_pkt);
+            // Adding the contact message packet to his list of messages
+            contacts_list.getContactByID(id)->addMessage(cm);
             pthread_mutex_unlock(&messages_mutex);
             
         }else  
