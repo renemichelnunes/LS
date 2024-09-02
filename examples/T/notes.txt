@@ -1,2 +1,7 @@
+Protocolo L2L
+-------------
+
 Ao receber um pacote:
 ---------------------
+1 - ao receber um pacote, o id é adicionado a uma lista de ids que serve de histórico, uma maneira de dizer se determinado pacote já passou pelo nó. Se o id do pacote já estiver na lista, será descartado. Isso evita retransmissões do mesmo pacote e diminui o congestionamento da rede. Devido a memória limitada do aparelho talvez o tamanho da lista não passe de 20, à medida que novos pacotes chegam o id mais antigo sai da lista, considerando que raramente um id se repete.
+

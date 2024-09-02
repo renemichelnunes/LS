@@ -97,6 +97,7 @@ uint32_t msg_count = 0;
 // List of contacts, LoRa packets and notification
 Contact_list contacts_list = Contact_list();
 lora_incomming_packets pkt_list = lora_incomming_packets();
+lora_pkt_history pkt_history = lora_pkt_history();
 notification notification_list = notification();
 vector<lora_packet> received_packets;
 vector<lora_packet> transmiting_packets;
@@ -135,6 +136,7 @@ HTTPSServer * secureServer = NULL;
 const uint8_t maxClients = 1;
 #define BLOCK_SIZE 16  // AES bloco size (16 bytes)
 volatile bool wifi_got_ip = false;
+float rssi, snr;
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -1417,8 +1419,6 @@ void update_rssi_snr_graph(float rssi, float snr){
 void collectPackets(void * param){
     lora_packet p;
     uint16_t packet_size;
-    lora_stats ls;
-    float rssi, snr;
 
     while(true){
         if(gotPacket){
@@ -1431,25 +1431,20 @@ void collectPackets(void * param){
                 // Convert the info to a exact representation on a string.
                 rssi = radio.getRSSI();
                 snr = radio.getSNR();
-                sprintf(ls.rssi, "%.2f", rssi);
-                sprintf(ls.snr, "%.2f", snr);
-                p.rssi = rssi;
-                p.snr = snr;
                 gotPacket = false;
                 // Put the radio to listen.
                 radio.startReceive();
                 xSemaphoreGive(xSemaphore);
             }
-            // Save the packet on received_packets.
+            // Save the packet id on received_packets.
             if(packet_size > 0 && packet_size <= sizeof(lora_packet)){
                 // Lets add a date time of arrival.
                 strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                 // If we receive the same packet we transmitted, drop it. This is a thing that happen
                 // as soon as we send a packet. Maybe the radio uses the same buffer to transmit and receive.
-                if(strcmp(p.sender, user_id) != 0){
+                if(strcmp(p.sender, user_id) != 0 && !pkt_history.exists(p.id)){
+                    pkt_history.add(p.id);
                     received_packets.push_back(p);
-                    // Add the stats of the trnasmission received to received_stats.
-                    received_stats.push_back(ls);
                     Serial.print("Updating rssi graph...");
                     update_rssi_snr_graph(rssi, snr);
                     Serial.println("rssi graph updated.");
@@ -1464,6 +1459,7 @@ void collectPackets(void * param){
 
 void processPackets(void * param){
     lora_packet p, pong;
+    ContactMessage cm;
     char dec_msg[200] = {'\0'};
     char message[200] = {'\0'};
     char pmsg[200] = {'\0'};
@@ -1482,6 +1478,7 @@ void processPackets(void * param){
                 strcpy(s.status, "recv");
                 strcpy(s.sender, user_id);
                 strcpy(s.destiny, p.sender);
+                strcpy(s.id, p.id);
                 transmiting_packets.push_back(s);
                 Contact * c = contacts_list.getContactByID(p.sender);
 
@@ -1496,9 +1493,12 @@ void processPackets(void * param){
                     strcpy((char*)p.msg, dec_msg);
                     // The addMessage function sort the messages by destiny(contacts), so we trade places with the sender.
                     strcpy(p.destiny, p.sender);
+                    strcpy(cm.messageID, p.id);
+                    strcpy(cm.dateTime, p.date_time);
+                    strcpy(cm.message, p.msg);
                     // messages_list is accessed by other routines so we need to get exclusive access.
                     pthread_mutex_lock(&messages_mutex);
-                    messages_list.addMessage(p);
+                    c->addMessage(cm);
                     pthread_mutex_unlock(&messages_mutex);
                     // This send a JSON representation of the messages list of the contact.
                     sendContactMessages(p.sender);
@@ -1634,7 +1634,7 @@ void processTransmittingPackets(void * param){
                     strcpy(pm.msg, p.msg);
                     pm.msg_size = p.msg_size;
                 }
-                transmiting = true; Parei aqui
+                transmiting = true; 
                 // Get exclusive access through SPI.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                     if(radio.transmit((uint8_t*)&pm, sizeof(pm)) == RADIOLIB_ERR_NONE)
