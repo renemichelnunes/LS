@@ -3,11 +3,10 @@
 #include <Arduino.h>
 #include <exception>
 
-#define lora_id char[7]
-
-#define STATUS_PACKET 0x0
-#define MESSAGE_PACKET 0x1
-#define COMMAND_PACKET 0x2
+#define LORA_PKT_STATUS 0x0
+#define LORA_PKT_MSG 0x1
+#define LORA_PKT_COMM 0x2
+#define LORA_PACKET_ACK 0x3
 
 /// @brief Struct that is used to create a shorter LoRa packet with status info.
 struct lora_packet_status{
@@ -15,14 +14,14 @@ struct lora_packet_status{
     uint8_t type = 0x0;
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    char status[7] = "recv";
-    uint8_t hops = 3;
+    char status[7] = "recv"; // can be used to ack (sender's message id)
+    uint8_t hops = 10;
 };
 
 /// @brief Struct that is used when we send messages.
 struct lora_packet_msg{
     char id[7] = {'\0'};
-    uint8_t type = 0x1;
+    uint8_t type = LORA_PKT_MSG;
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};

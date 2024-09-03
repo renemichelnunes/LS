@@ -1000,7 +1000,7 @@ void parseCommands(std::string jsonString){
             lora_packet pkt;
             ContactMessage cm;
 
-            pkt.type = MESSAGE_PACKET;
+            pkt.type = LORA_PKT_MSG;
             strcpy(pkt.sender, user_id);
             strcpy(pkt.destiny, id);
             // There are two statuses, 'send' when sending to a destination, and 'recv' when we received a confirmation
@@ -1528,8 +1528,8 @@ void processPackets(void * param){
                     notification_list.add(message, LV_SYMBOL_ENVELOPE);
                 }
             }
-            // If we receive a delivered message confirmation.
-            else if(strcmp(p.status, "recv") == 0){
+            // If we receive an ack.
+            else if(p.type = LORA_PACKET_ACK){
                 // Trade places with the sender.
                 strcpy(p.destiny, p.sender);
                 // This is used on the client side.
@@ -1626,8 +1626,8 @@ void processTransmittingPackets(void * param){
                     vTaskDelay(10 / portTICK_PERIOD_MS);
                 // Change the squared status on home screen to red.
                 activity(lv_color_hex(0xff0000));
-                if(p.type == MESSAGE_PACKET){
-                    pm.type = MESSAGE_PACKET;
+                if(p.type == LORA_PKT_MSG){
+                    pm.type = LORA_PKT_MSG;
                     strcpy(pm.sender, p.sender);
                     strcpy(pm.destiny, p.destiny);
                     strcpy(pm.status, p.status);
