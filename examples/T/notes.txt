@@ -5,3 +5,7 @@ Ao receber um pacote:
 ---------------------
 1 - ao receber um pacote, o id é adicionado a uma lista de ids que serve de histórico, uma maneira de dizer se determinado pacote já passou pelo nó. Se o id do pacote já estiver na lista, será descartado. Isso evita retransmissões do mesmo pacote e diminui o congestionamento da rede. Devido a memória limitada do aparelho talvez o tamanho da lista não passe de 20, à medida que novos pacotes chegam o id mais antigo sai da lista, considerando que raramente um id se repete.
 
+2 - Um pacote lora recebido tem tipos e tamanhos diferentes. A informação desses pacotes são transportadas para um tipo de pacote genérico que contém todas as variáveis usadas por todos os tipos. Assim podemos guardá-los em uma lista que será percorrida de tempos em tempos e extraída a informação. Os tipos são anúncio de presença um nó na rede, ping entre nós comparando os ids de usuário, configuração dos nós através de comandos e parâmetros, e mensagens criptografadas entre nó remetente e nó destinatário.
+
+2.1 - Ao receber um pacote de tipo LORA_PKT_STATUS é verificado se o remetente está na lista de contatos. Se sim, o estatus 'in range' é mudado para verdadeiro. Um contato possui uma variável que armazena o tempo máximo de timeout, e caso não se tenha recebido nenhum pacote deste tipo até o timeout limite o status 'in range' do contato é mudado para falso.
+
