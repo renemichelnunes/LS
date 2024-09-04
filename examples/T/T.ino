@@ -79,6 +79,7 @@ volatile bool gotPacket = false;
 volatile bool sendingJson = false;
 volatile bool server_ready = false;
 volatile bool parsing = false;
+volatile bool new_stats = false;
 // Hardware inputs
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
@@ -1431,6 +1432,7 @@ void collectPackets(void * param){
                 // Convert the info to a exact representation on a string.
                 rssi = radio.getRSSI();
                 snr = radio.getSNR();
+                new_stats = true;
                 gotPacket = false;
                 // Put the radio to listen.
                 radio.startReceive();
@@ -1529,8 +1531,8 @@ void processPackets(void * param){
                 }
             }
             // If we receive an ack.
-            else if(p.type = LORA_PACKET_ACK){
-                // Update de ack status of the contact's message by message id.
+            else if(p.type = LORA_PKT_ACK){
+                // Update de ack status of the contact's message by message id(status).
                 Contact * c = contacts_list.getContactByID(p.sender);
                 if(c != NULL){
                     ContactMessage *cm = c->getMessageByID(p.status);
@@ -1540,9 +1542,10 @@ void processPackets(void * param){
                         sendContactMessages(p.sender);
                     }
                 }
+                c == NULL;
             }
             // If we receive a ping solicitation.
-            else if(strcmp(p.status, "ping") == 0 && strcmp(p.destiny, user_id) == 0){
+            else if(p.type == LORA_PKT_PING && strcmp(p.destiny, user_id) == 0){
                 // Display a simple sotification.
                 notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
                 // We'll send back a pong status.
@@ -1562,7 +1565,7 @@ void processPackets(void * param){
                 notification_list.add(message, LV_SYMBOL_DOWNLOAD);
             }
             // Beacon type packet
-            else if(strcmp(p.status, "show") == 0){
+            else if(p.type == LORA_PKT_STATUS){
                 // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
                 Contact * c = contacts_list.getContactByID(p.sender);
                 if(c != NULL){
@@ -1683,27 +1686,20 @@ void processTransmittingPackets(void * param){
 /// @brief Gets the status of the lora radio and send them to the web client
 /// @param param 
 void processReceivedStats(void * param){
-    lora_stats st;
     string json;
     JsonDocument doc;
-    char message[200] = {'\0'};
+    char rssi_text[7] = {'\0'}, snr_text[7] = {'\0'};
 
     while (true){
-        if(received_stats.size() > 0){
-            st = received_stats[0];
-            received_stats.erase(received_stats.begin());
+        if(new_stats){
+            sprintf(rssi_text, "%.2f", rssi);
+            sprintf(snr_text, "%.2f", snr);
             // Lets print this statistics on console.
-            strcpy(message, "[RSSI:");
-            strcat(message, st.rssi);
-            strcat(message, " dBm");
-            strcat(message, " SNR:");
-            strcat(message, st.snr);
-            strcat(message, " dBm]");
-            Serial.println(message);  
+            Serial.printf("[RSSI:%.2f dBm SNR:%.2f dBm]\n", rssi, snr);
             // The client side has a javascript to plot a graphic about the rssi and s/n ratio. So we send it also as JSON.
             doc["command"] = "rssi_snr";
-            doc["rssi"] = st.rssi;
-            doc["snr"] = st.snr;
+            doc["rssi"] = rssi_text;
+            doc["snr"] = snr_text;
             serializeJson(doc, json);
             while(sendingJson){
                 vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1714,6 +1710,7 @@ void processReceivedStats(void * param){
             pthread_mutex_lock(&send_json_mutex);
             sendJSON(json);
             pthread_mutex_unlock(&send_json_mutex);
+            new_stats = false;
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
@@ -2248,26 +2245,34 @@ void send_message(lv_event_t * e){
                 unsigned char ciphertext[padded_len];
                 encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
                 memcpy(pkt.msg, ciphertext, padded_len);
+                strcpy(pkt.id, generate_ID(6).c_str());
                 pkt.msg_size = padded_len;
                 transmiting_packets.push_back(pkt);
                 // add the message to the contact's list of messages.
                 // This is used when we are assembling the chat messages list, every time we found me = true we are 
                 // creating a new button with the messages created by us with the title 'Me - Date time'. 
-                pkt.me = true;
-                strcpy(pkt.msg, msg);
-                Serial.print("Adding answer to ");
-                Serial.println(pkt.destiny);
-                Serial.println(pkt.msg);
-                // Get exclusive access to the messages_list.
-                pthread_mutex_lock(&messages_mutex);
-                    messages_list.addMessage(pkt);
-                pthread_mutex_unlock(&messages_mutex);
-                // Clear the asnwer text area, if fails for some reason you don't need to retype.
-                lv_textarea_set_text(frm_chat_text_ans, "");
-                
+                Contact * c = contacts_list.getContactByID(pkt.destiny);
+                if(c != NULL){
+                    ContactMessage cm = ContactMessage();
+                    strcpy(cm.dateTime, pkt.date_time);
+                    strcpy(cm.message, msg);
+                    strcpy(cm.messageID, pkt.id);
+                    cm.rssi = 0;
+                    cm.snr = 0;
+                    cm.me = true;
+                    Serial.print("Adding answer to ");
+                    Serial.println(pkt.destiny);
+                    Serial.println(pkt.msg);
+                    // Get exclusive access to the addMessage.
+                    pthread_mutex_lock(&messages_mutex);
+                    c->addMessage(cm);
+                    pthread_mutex_unlock(&messages_mutex);
+                    // Clear the asnwer text area, if fails for some reason you don't need to retype.
+                    lv_textarea_set_text(frm_chat_text_ans, "");
+                }
             }
         }else
-            Serial.println("Radio not configured");
+            Serial.println("send_message() - Radio not configured");
     }
 }
 /// @brief This is an event driven by touch and hold over a message on the messages list. It will copy the message to the
@@ -2280,11 +2285,12 @@ void copy_text(lv_event_t * e){
         lv_textarea_add_text(frm_chat_text_ans, lv_label_get_text(lbl));
     }
 }
-/// @brief Task that runs when a contact is selected through the contacts list.
+/// @brief Task that runs when a contact is selected through the contacts list. It updates the messages list
+/// object on the chat.
 /// @param param 
 void check_new_msg(void * param){
     // Vector that holds the contact's mesages.
-    vector<lora_packet> caller_msg;
+    vector<ContactMessage> * cm;
     // Save the actual messages count.
     uint32_t actual_count = 0;
     lv_obj_t * btn = NULL, * lbl = NULL;
@@ -2297,10 +2303,10 @@ void check_new_msg(void * param){
     while(true){
         // Get the contact's messages on a vector.
         pthread_mutex_lock(&messages_mutex);
-        caller_msg = messages_list.getMessages(actual_contact->getID().c_str());
+        cm = contacts_list.getContactMessages(actual_contact->getID().c_str());
         pthread_mutex_unlock(&messages_mutex);
         // Save the count.
-        actual_count = caller_msg.size();
+        actual_count = (*cm).size();
         // When actual_count is bigger than msg_count means that we have new messages.
         if(actual_count > msg_count){
             Serial.println("new messages");
@@ -2308,10 +2314,10 @@ void check_new_msg(void * param){
             for(uint32_t i = msg_count; i < actual_count; i++){
                 // We create a new entry on the messages list based on sender and destiny messages.
                 // If the message was sent by us we'll create a button with 'Me date time' on title.
-                if(caller_msg[i].me){
+                if((*cm)[i].me){
                     // The title 'Me date time'.
                     strcpy(name, "Me");
-                    strcat(name, caller_msg[i].date_time);
+                    strcat(name, (*cm)[i].dateTime);
                     Serial.println(name);
                     // Add on the list a simple text, there's a visual difference between a button.
                     pthread_mutex_lock(&lvgl_mutex);
@@ -2320,7 +2326,7 @@ void check_new_msg(void * param){
                 }else{
                     // If it is a confirmation message, show a 'V' like symbol(ok the contact received the last message).
                     // The messages will be buttons, the title will be text type.
-                    if(strcmp(caller_msg[i].status, "recv") == 0){
+                    if((*cm)[i].ack){
                         // LVGL's unsave thread access functions.
                         pthread_mutex_lock(&lvgl_mutex);
                         btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
@@ -2328,7 +2334,7 @@ void check_new_msg(void * param){
                     }else{
                         // If it is a message from the destination, create a text item with the title 'Contact name date time'.
                         strcpy(name, actual_contact->getName().c_str());
-                        strcat(name, caller_msg[i].date_time);
+                        strcat(name, (*cm)[i].dateTime);
                         // LVGL's unsave thread access functions.
                         pthread_mutex_lock(&lvgl_mutex);
                         lv_list_add_text(frm_chat_list, name);
@@ -2336,15 +2342,15 @@ void check_new_msg(void * param){
                         Serial.println(name);
                     }
                 }
-                Serial.println(caller_msg[i].msg);
+                Serial.println((*cm)[i].message);
                 // The 'recv' status packets doen't have messages, so if the packet is 'send' type we extract he message
                 // and create a button with it. lv_list_add_btn returns an instance of the button created with the message.
                 // We'll need to remove the scroll bars and add word wrap.
-                if(strcmp(caller_msg[i].status, "recv") != 0){
+                if(!(*cm)[i].ack){
                     // LVGL's unsave thread access functions.
                     pthread_mutex_lock(&lvgl_mutex);
                     // Crete a new instance on a button with the message.
-                    btn = lv_list_add_btn(frm_chat_list, NULL, caller_msg[i].msg);
+                    btn = lv_list_add_btn(frm_chat_list, NULL, (*cm)[i].message);
                     // Add the event 'copy message to answer text area'.
                     lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
                     pthread_mutex_unlock(&lvgl_mutex);
@@ -2354,7 +2360,7 @@ void check_new_msg(void * param){
                 lbl = lv_obj_get_child(btn, 0);
                 pthread_mutex_unlock(&lvgl_mutex);
                 // Test again if its not a recv packet type. If so, we pass through.
-                if(strcmp(caller_msg[i].status, "recv") != 0){
+                if(!(*cm)[i].ack){
                     pthread_mutex_lock(&lvgl_mutex);
                     // Set the font type, this one includes accents and latin chars.
                     lv_obj_set_style_text_font(lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
