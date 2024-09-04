@@ -1530,16 +1530,16 @@ void processPackets(void * param){
             }
             // If we receive an ack.
             else if(p.type = LORA_PACKET_ACK){
-                // Trade places with the sender.
-                strcpy(p.destiny, p.sender);
-                // This is used on the client side.
-                strcpy(p.msg, "[received]");
-                // Add to the sender's list of messages.
-                pthread_mutex_lock(&messages_mutex);
-                messages_list.addMessage(p);
-                pthread_mutex_unlock(&messages_mutex);
-                // Send his messages back to the client side. This updates the chat history.
-                sendContactMessages(p.sender);
+                // Update de ack status of the contact's message by message id.
+                Contact * c = contacts_list.getContactByID(p.sender);
+                if(c != NULL){
+                    ContactMessage *cm = c->getMessageByID(p.status);
+                    if(cm != NULL){
+                        cm->ack = true;
+                        // Send his messages back to the web client side. This updates the chat history.
+                        sendContactMessages(p.sender);
+                    }
+                }
             }
             // If we receive a ping solicitation.
             else if(strcmp(p.status, "ping") == 0 && strcmp(p.destiny, user_id) == 0){
