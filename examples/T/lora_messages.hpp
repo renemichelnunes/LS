@@ -4,7 +4,7 @@
 #include <exception>
 
 #define LORA_PKT_STATUS 0
-#define LORA_PKT_MSG 1
+#define LORA_PKT_DATA 1
 #define LORA_PKT_COMM 2
 #define LORA_PKT_ACK 3
 #define LORA_PKT_PING 4
@@ -31,9 +31,9 @@ struct lora_packet_comm{
 
 
 /// @brief Struct that is used when we send messages.
-struct lora_packet_msg{
+struct lora_packet_data{
     char id[7] = {'\0'};
-    uint8_t type = LORA_PKT_MSG;
+    uint8_t type = LORA_PKT_DATA;
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};

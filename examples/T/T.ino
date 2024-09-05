@@ -1001,7 +1001,7 @@ void parseCommands(std::string jsonString){
             lora_packet pkt;
             ContactMessage cm;
 
-            pkt.type = LORA_PKT_MSG;
+            pkt.type = LORA_PKT_DATA;
             strcpy(pkt.sender, user_id);
             strcpy(pkt.destiny, id);
             // There are two statuses, 'send' when sending to a destination, and 'recv' when we received a confirmation
@@ -1586,7 +1586,7 @@ void processPackets(void * param){
 void processTransmittingPackets(void * param){
     lora_packet p;
     lora_packet_status ps;
-    lora_packet_msg pm;
+    lora_packet_data pm;
     
     while(true){
         if(transmiting_packets.size() > 0){
@@ -1629,8 +1629,8 @@ void processTransmittingPackets(void * param){
                     vTaskDelay(10 / portTICK_PERIOD_MS);
                 // Change the squared status on home screen to red.
                 activity(lv_color_hex(0xff0000));
-                if(p.type == LORA_PKT_MSG){
-                    pm.type = LORA_PKT_MSG;
+                if(p.type == LORA_PKT_DATA){
+                    pm.type = LORA_PKT_DATA;
                     strcpy(pm.sender, p.sender);
                     strcpy(pm.destiny, p.destiny);
                     strcpy(pm.status, p.status);
