@@ -4549,6 +4549,7 @@ void announce(){
     // We don't set a destiny so this is heard by everyone in range.
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
+    hi.type = LORA_PKT_STATUS;
     transmiting_packets.push_back(hi);
     Serial.println("=======================================");
 }
