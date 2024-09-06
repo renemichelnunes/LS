@@ -13,6 +13,8 @@ int main(int argc, char** argv){
     strcpy(cm.messageID, "000000");
     strcpy(cm.dateTime, "26/08/2024");
     strcpy(cm.message, "isto é um teste");
+    cm.rssi = 12.5;
+    cm.snr = 8.25;
     c1 = cl.getContactByID("123456");
     c1->addMessage(cm);
     c1 = NULL;
@@ -50,8 +52,6 @@ int main(int argc, char** argv){
     strcpy(lp.destiny, "111111");
     strcpy(lp.status, "show");
     lp.hops = 2;
-    lp.rssi = 17.0;
-    lp.snr = 9.0;
     printf("has packets %d\n", lip.has_packets());
     lip.add(lp);
     printf("has packets %d\n", lip.has_packets());

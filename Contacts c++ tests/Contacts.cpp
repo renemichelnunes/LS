@@ -154,7 +154,7 @@ void Contact_list::setCheckPeriod(uint8_t min){
 }
 
 vector<Contact> * Contact_list::getContactsList(){
-    return &this->list;https://www.mercadolivre.com.br/amplificador-violo-meteoro-space-double-35w-cor-creme-110v220v/p/MLB21875749#reco_backend=comparator-default-odin&reco_client=pdp_comparator&reco_product_pos=1&reco_backend_type=low_level&reco_id=eb9528b5-fb04-48b4-adaa-6e7c7dff27ef
+    return &this->list;
 }
 
 vector<ContactMessage> * Contact_list::getContactMessages(const char * id){
@@ -167,6 +167,8 @@ bool Contact::addMessage(ContactMessage cm){
         // If the message list has more than 20 messages, exclude the oldest
         if(this->messages.size() > this->max_messages)
             this->messages.erase(this->messages.begin());
+        this->rssi = cm.rssi;
+        this->snr = cm.snr;
         // Adds the message at the end of the list
         this->messages.push_back(cm);
         return true;
@@ -189,6 +191,7 @@ bool Contact::existsMessage(const char * id){
 
 float Contact::getRSSI(){
     return this->rssi;
+}
 
 float Contact::getSNR(){
     return this->snr;

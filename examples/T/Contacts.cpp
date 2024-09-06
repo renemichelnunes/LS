@@ -168,12 +168,16 @@ bool Contact::addMessage(ContactMessage cm){
         // If the message list has more than 20 messages, exclude the oldest
         if(this->messages.size() > this->max_messages)
             this->messages.erase(this->messages.begin());
+        // Update rssi and snr 
+        this->rssi = cm.rssi;
+        this->snr = cm.snr;
         // Adds the message at the end of the list
         this->messages.push_back(cm);
         return true;
     }
     return false;
 }
+
 ContactMessage * Contact::getMessageByID(const char * id){
     for(uint8_t i = 0; i < this->messages.size(); i++)
         if(strcmp(id, this->messages[i].messageID) == 0)

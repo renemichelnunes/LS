@@ -6,22 +6,45 @@
 #include <cstdint>
 #include <cstring>
 
-#define STATUS_PACKET 0x0
-#define MESSAGE_PACKET 0x1
-#define COMMAND_PACKET 0x2
+#define LORA_PKT_STATUS 0
+#define LORA_PKT_DATA 1
+#define LORA_PKT_COMM 2
+#define LORA_PKT_ACK 3
+#define LORA_PKT_PING 4
 
 /// @brief Struct that is used to create a shorter LoRa packet with status info.
 struct lora_packet_status{
-    uint8_t type = MESSAGE_PACKET;
+    char id[7] = {'\0'};
+    uint8_t type = LORA_PKT_STATUS;
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    char status[7] = "recv";
-    uint8_t hops = 3;
+    char status[7] = "recv"; // can be used to ack (sender's message id)
+    uint8_t hops = 10;
+};
+
+struct lora_packet_comm{
+    char id[7] = {'\0'};
+    uint8_t type = LORA_PKT_COMM;
+    char sender[7] = {'\0'};
+    char destiny[7] = {'\0'};
+    uint8_t hops = 10;
+    uint8_t command;
+    char param[160] = {'\0'};
+};
+
+struct lora_packet_ping{
+    char id[7] = {'\0'};
+    uint8_t type = LORA_PKT_PING;
+    char sender[7] = {'\0'};
+    char destiny[7] = {'\0'};
+    char status[7] = "recv"; // can be used to ack (sender's message id)
+    uint8_t hops = 10;
 };
 
 /// @brief Struct that is used when we send messages.
-struct lora_packet_msg{
-    uint8_t type = 0x1;
+struct lora_packet_data{
+    char id[7] = {'\0'};
+    uint8_t type = LORA_PKT_DATA;
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
@@ -32,14 +55,15 @@ struct lora_packet_msg{
 
 /// @brief Struct to create a complete LoRa packet info, saved in a list.
 struct lora_packet{
+    char id[7] = {'\0'};
     uint8_t type;
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
     uint8_t hops = 3;
-    bool me = false;
     char msg[160] = {'\0'};
     uint8_t msg_size = 0;
+    char date_time[30] = {'\0'};
 };
 
 class lora_incomming_packets{

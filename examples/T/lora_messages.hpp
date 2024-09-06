@@ -29,6 +29,14 @@ struct lora_packet_comm{
     char param[160] = {'\0'};
 };
 
+struct lora_packet_ping{
+    char id[7] = {'\0'};
+    uint8_t type = LORA_PKT_PING;
+    char sender[7] = {'\0'};
+    char destiny[7] = {'\0'};
+    char status[7] = "recv"; // can be used to ack (sender's message id)
+    uint8_t hops = 10;
+};
 
 /// @brief Struct that is used when we send messages.
 struct lora_packet_data{
