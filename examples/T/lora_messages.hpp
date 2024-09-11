@@ -11,8 +11,8 @@
 
 /// @brief Struct that is used to create a shorter LoRa packet with status info.
 struct lora_packet_status{
-    char id[7] = {'\0'};
     uint8_t type = LORA_PKT_STATUS;
+    char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = "recv"; // can be used to ack (sender's message id)
@@ -20,8 +20,8 @@ struct lora_packet_status{
 };
 
 struct lora_packet_comm{
-    char id[7] = {'\0'};
     uint8_t type = LORA_PKT_COMM;
+    char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     uint8_t hops = 10;
@@ -30,8 +30,8 @@ struct lora_packet_comm{
 };
 
 struct lora_packet_ping{
-    char id[7] = {'\0'};
     uint8_t type = LORA_PKT_PING;
+    char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = "recv"; // can be used to ack (sender's message id)
@@ -40,8 +40,8 @@ struct lora_packet_ping{
 
 /// @brief Struct that is used when we send messages.
 struct lora_packet_data{
-    char id[7] = {'\0'};
     uint8_t type = LORA_PKT_DATA;
+    char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
@@ -52,8 +52,8 @@ struct lora_packet_data{
 
 /// @brief Struct to create a complete LoRa packet info, saved in a list.
 struct lora_packet{
-    char id[7] = {'\0'};
     uint8_t type;
+    char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
