@@ -10,7 +10,7 @@
 #define LORA_PKT_PING 4
 
 /// @brief Struct that is used to create a shorter LoRa packet with status info.
-struct lora_packet_status{
+struct lora_packet_status_ack{
     uint8_t type = LORA_PKT_STATUS;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
@@ -61,6 +61,8 @@ struct lora_packet{
     char msg[160] = {'\0'};
     uint8_t msg_size = 0;
     char date_time[30] = {'\0'};
+    bool confirmed = false;
+    uint32_t timeout = 0;
 };
 
 class lora_incomming_packets{

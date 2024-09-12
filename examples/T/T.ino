@@ -1583,9 +1583,23 @@ void processPackets(void * param){
     }
 }
 
+void processTransmitingPackets2(void * param){
+    while(true){
+        for(int i = 0; i < transmiting_packets.size(); i++){
+            // If a message gets an ack, delete it, if not, update his timeout ack.
+            if(transmiting_packets[i].confirmed){
+                Serial.printf("processTransmitingPackets2 - %s confirmed", transmiting_packets[i].id);
+                transmiting_packets.erase(transmiting_packets.begin() + i);
+            }
+            
+        }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+}
+
 void processTransmittingPackets(void * param){
     lora_packet p;
-    lora_packet_status ps;
+    lora_packet_status_ack ps;
     lora_packet_data pm;
     
     while(true){
@@ -1593,9 +1607,6 @@ void processTransmittingPackets(void * param){
             vTaskDelay(100 / portTICK_PERIOD_MS);
             p = transmiting_packets[0];
             transmiting_packets.erase(transmiting_packets.begin());
-            strcpy(ps.sender, p.sender);
-            strcpy(ps.destiny, p.destiny);
-            strcpy(ps.status, p.status);
             Serial.println("======processTransmittingPackets=======");
             Serial.print("Sender ");
             Serial.println(ps.sender);
@@ -1611,7 +1622,9 @@ void processTransmittingPackets(void * param){
             if(strcmp(p.status, "recv") == 0){
                 while(gotPacket)
                     vTaskDelay(10 / portTICK_PERIOD_MS);
-                
+                strcpy(ps.sender, p.sender);
+                strcpy(ps.destiny, p.destiny);
+                strcpy(ps.status, p.status);
                 transmiting = true;
                 // Get exclusive access through SPI.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
