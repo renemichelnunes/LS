@@ -46,8 +46,8 @@ struct lora_packet_data{
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
     uint8_t hops = 3;
-    char msg[160] = {'\0'};
-    uint8_t msg_size = 0;
+    char data[160] = {'\0'};
+    uint8_t data_size = 0;
 };
 
 /// @brief Struct to create a complete LoRa packet info, saved in a list.
@@ -58,8 +58,8 @@ struct lora_packet{
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
     uint8_t hops = 3;
-    char msg[160] = {'\0'};
-    uint8_t msg_size = 0;
+    char data[160] = {'\0'};
+    uint8_t data_size = 0;
     char date_time[30] = {'\0'};
     bool confirmed = false;
     uint32_t timeout = 0;

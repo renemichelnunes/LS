@@ -1008,14 +1008,14 @@ void parseCommands(std::string jsonString){
             // from the destination. This is how we know the destination received the message. Not guaranteed.
             strcpy(pkt.status, "send");
             //strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-            memcpy(pkt.msg, ciphertext, padded_len);
-            pkt.msg_size = padded_len;
+            memcpy(pkt.data, ciphertext, padded_len);
+            pkt.data_size = padded_len;
             transmiting_packets.push_back(pkt);
             // And add the unencrypted message.
-            strcpy(pkt.msg, msg);
+            strcpy(pkt.data, msg);
             Serial.print("Adding answer to ");
             Serial.println(pkt.destiny);
-            Serial.println(pkt.msg);
+            Serial.println(pkt.data);
 
             // Populating a contact message struct
             cm.me = true;
@@ -1310,7 +1310,7 @@ void setupServer(void * param){
     Serial.println("Creating ssl certificate...");
     lv_label_set_text(frm_home_title_lbl, "Creating ssl certificate...");
     lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    //vTaskDelay(1000 / portTICK_PERIOD_MS);
     SSLCert * cert;
     
     // Create a self signed certificate using the owner's id as part of the config.
@@ -1457,8 +1457,6 @@ void collectPackets(void * param){
     }
 }
 
-
-
 void processPackets(void * param){
     lora_packet p, pong;
     ContactMessage cm;
@@ -1486,18 +1484,18 @@ void processPackets(void * param){
 
                 if(c != NULL){
                     // Decrypt the message.
-                    unsigned char decrypted_text[p.msg_size + 1] = {'\0'};
-                    decrypt_text((unsigned char *)p.msg, (unsigned char*)c->getKey().c_str(), p.msg_size, decrypted_text);
-                    Serial.printf("msg size => %d\n", p.msg_size);
+                    unsigned char decrypted_text[p.data_size + 1] = {'\0'};
+                    decrypt_text((unsigned char *)p.data, (unsigned char*)c->getKey().c_str(), p.data_size, decrypted_text);
+                    Serial.printf("msg size => %d\n", p.data_size);
                     Serial.printf("Decrypted => %s\n", decrypted_text);
                     strcpy(dec_msg, (const char *)decrypted_text);
                     // Copy the decrypted message back to the packet.
-                    strcpy((char*)p.msg, dec_msg);
+                    strcpy((char*)p.data, dec_msg);
                     // The addMessage function sort the messages by destiny(contacts), so we trade places with the sender.
                     strcpy(p.destiny, p.sender);
                     strcpy(cm.messageID, p.id);
                     strcpy(cm.dateTime, p.date_time);
-                    strcpy(cm.message, p.msg);
+                    strcpy(cm.message, p.data);
                     // messages_list is accessed by other routines so we need to get exclusive access.
                     pthread_mutex_lock(&messages_mutex);
                     c->addMessage(cm);
@@ -1515,12 +1513,12 @@ void processPackets(void * param){
                     strcpy(message, c->getName().c_str());
                     strcat(message, ": ");
                     // This ensure the message is 149 bytes long.
-                    if(sizeof(p.msg) > 149){
+                    if(sizeof(p.data) > 149){
                         memcpy(pmsg, dec_msg, 149);
                         strcat(message, pmsg);
                     }
                     else
-                        strcat(message, p.msg);
+                        strcat(message, p.data);
                     // Eclipse the message if bigger then 30 bytes.
                     message[30] = '.';
                     message[31] = '.';
@@ -1647,8 +1645,8 @@ void processTransmittingPackets(void * param){
                     strcpy(pm.sender, p.sender);
                     strcpy(pm.destiny, p.destiny);
                     strcpy(pm.status, p.status);
-                    strcpy(pm.msg, p.msg);
-                    pm.msg_size = p.msg_size;
+                    strcpy(pm.data, p.data);
+                    pm.data_size = p.data_size;
                 }
                 transmiting = true; 
                 // Get exclusive access through SPI.
@@ -2257,9 +2255,9 @@ void send_message(lv_event_t * e){
                 uint8_t padded_len = ((text_length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
                 unsigned char ciphertext[padded_len];
                 encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
-                memcpy(pkt.msg, ciphertext, padded_len);
+                memcpy(pkt.data, ciphertext, padded_len);
                 strcpy(pkt.id, generate_ID(6).c_str());
-                pkt.msg_size = padded_len;
+                pkt.data_size = padded_len;
                 transmiting_packets.push_back(pkt);
                 // add the message to the contact's list of messages.
                 // This is used when we are assembling the chat messages list, every time we found me = true we are 
@@ -2275,7 +2273,7 @@ void send_message(lv_event_t * e){
                     cm.me = true;
                     Serial.print("Adding answer to ");
                     Serial.println(pkt.destiny);
-                    Serial.println(pkt.msg);
+                    Serial.println(pkt.data);
                     // Get exclusive access to the addMessage.
                     pthread_mutex_lock(&messages_mutex);
                     c->addMessage(cm);
