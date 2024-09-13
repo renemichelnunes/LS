@@ -1583,7 +1583,7 @@ void processPackets(void * param){
     }
 }
 
-void processTransmitingPackets2(void * param){
+void processTransmitingPackets2(void * param){  
     while(true){
         for(int i = 0; i < transmiting_packets.size(); i++){
             // If a message gets an ack, delete it, if not, update his timeout ack.
