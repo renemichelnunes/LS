@@ -1589,7 +1589,7 @@ void processTransmitingPackets2(void * param){
                 Serial.printf("processTransmitingPackets2 - %s confirmed", transmiting_packets[i].id);
                 transmiting_packets.erase(transmiting_packets.begin() + i);
             }
-            
+            parei aqui
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
