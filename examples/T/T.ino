@@ -1582,14 +1582,22 @@ void processPackets(void * param){
 }
 
 void processTransmitingPackets2(void * param){  
+    uint32_t r = 100;
+    uint32_t current_time = 0;
     while(true){
+        // Calculate in miliseconds between 1 and 5 seconds
+        r = rand() % 50;
+        if(r < 10)
+            r += 10;
+        r *= 100;
         for(int i = 0; i < transmiting_packets.size(); i++){
             // If a message gets an ack, delete it, if not, update his timeout ack.
             if(transmiting_packets[i].confirmed){
                 Serial.printf("processTransmitingPackets2 - %s confirmed", transmiting_packets[i].id);
                 transmiting_packets.erase(transmiting_packets.begin() + i);
+            }else if(transmiting_packets[i].timeout > millis() && !transmiting_packets[i].confirmed){ // If timedup and not confirmed, so renew the timeout (between 1 and 5 seconds, increments in hundreds of miliseconds)
+                transmiting_packets[i].timeout = millis() + r;
             }
-            parei aqui
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
