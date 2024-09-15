@@ -1848,7 +1848,7 @@ bool DXMode()
         }
 
         // set coding rate to 6
-        if (radio.setCodingRate(6) == RADIOLIB_ERR_INVALID_CODING_RATE) {
+        if (radio.setCodingRate(5) == RADIOLIB_ERR_INVALID_CODING_RATE) {
             Serial.println(F("Selected coding rate is invalid for this module!"));
             return false;
         }
