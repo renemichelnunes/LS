@@ -1563,7 +1563,7 @@ void processPackets(void * param){
                 notification_list.add(message, LV_SYMBOL_DOWNLOAD);
             }
             // Beacon type packet
-            else if(p.type == LORA_PKT_STATUS){
+            else if(p.type == LORA_PKT_ANNOUNCE){
                 // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
                 Contact * c = contacts_list.getContactByID(p.sender);
                 if(c != NULL){
@@ -1581,7 +1581,7 @@ void processPackets(void * param){
     }
 }
 
-void processTransmitingPackets2(void * param){  
+void processTransmitingPackets(void * param){  
     uint32_t r = 100;
     uint32_t current_time = 0;
     while(true){
@@ -1594,21 +1594,40 @@ void processTransmitingPackets2(void * param){
         for(int i = 0; i < transmiting_packets.size(); i++){
             // If a message gets an ack, delete it, if not, update his timeout ack.
             if(transmiting_packets[i].confirmed){
-                Serial.printf("processTransmitingPackets2 - %s confirmed", transmiting_packets[i].id);
+                Serial.printf("processTransmitingPackets - %s confirmed", transmiting_packets[i].id);
                 transmiting_packets.erase(transmiting_packets.begin() + i);
             }else if(transmiting_packets[i].timeout > millis() && !transmiting_packets[i].confirmed){ // If timedup and not confirmed, so renew the timeout (between 1 and 5 seconds, increments in hundreds of miliseconds)
                 transmiting_packets[i].timeout = millis() + r;
             }
         }
+        // Iterate through the packets queue
         for(int i = 0; i < transmiting_packets.size(); i++){
             if(!transmiting_packets[i].confirmed){
                 // Change the squared status on home screen to red.
                 pthread_mutex_lock(&lvgl_mutex);
                 activity(lv_color_hex(0xff0000));
                 pthread_mutex_unlock(&lvgl_mutex);
+
                 // If its a announcement packet
                 if(transmiting_packets[i].type == LORA_PKT_ANNOUNCE){
                     lora_packet_announce pkt;
+                    strcpy(pkt.sender, transmiting_packets[i].sender);
+                    pkt.type = transmiting_packets[i].type;
+                    strcpy(pkt.id, generate_ID(6).c_str());
+                    while(gotPacket)
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                    transmiting = true;
+                    // Get exclusive access through SPI.
+                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                        if(radio.transmit((uint8_t*)&pkt, sizeof(pkt)) == RADIOLIB_ERR_NONE){
+                            Serial.println("Announcement packet sent");
+                            transmiting_packets[i].confirmed = true;
+                        }
+                        else
+                            Serial.println("Announcement packet not sent");
+                        xSemaphoreGive(xSemaphore);
+                    }
+                    transmiting = false;
                 }
             }
         }
@@ -1616,105 +1635,6 @@ void processTransmitingPackets2(void * param){
     }
 }
 
-void processTransmittingPackets(void * param){
-    lora_packet p;
-    lora_packet_status_ack ps;
-    lora_packet_data pm;
-    
-    while(true){
-        if(transmiting_packets.size() > 0){
-            vTaskDelay(100 / portTICK_PERIOD_MS);
-            p = transmiting_packets[0];
-            transmiting_packets.erase(transmiting_packets.begin());
-            Serial.println("======processTransmittingPackets=======");
-            Serial.print("Sender ");
-            Serial.println(ps.sender);
-            Serial.print("Destiny ");
-            Serial.println(ps.destiny);
-            Serial.print("Status ");
-            Serial.println(ps.status);
-            // Change the squared status on home screen to red.
-            pthread_mutex_lock(&lvgl_mutex);
-            activity(lv_color_hex(0xff0000));
-            pthread_mutex_unlock(&lvgl_mutex);
-            // Send a confirmation of a message
-            if(strcmp(p.status, "recv") == 0){
-                while(gotPacket)
-                    vTaskDelay(10 / portTICK_PERIOD_MS);
-                strcpy(ps.sender, p.sender);
-                strcpy(ps.destiny, p.destiny);
-                strcpy(ps.status, p.status);
-                transmiting = true;
-                // Get exclusive access through SPI.
-                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                    if(radio.transmit((uint8_t*)&ps, sizeof(ps)) == RADIOLIB_ERR_NONE)
-                        Serial.println("Confirmation sent");
-                    else
-                        Serial.println("Confirmation not sent");
-                    xSemaphoreGive(xSemaphore);
-                }
-                transmiting = false;
-            }
-            // Send a message
-            if(strcmp(p.status, "send") == 0){
-                while(gotPacket)
-                    vTaskDelay(10 / portTICK_PERIOD_MS);
-                // Change the squared status on home screen to red.
-                activity(lv_color_hex(0xff0000));
-                if(p.type == LORA_PKT_DATA){
-                    pm.type = LORA_PKT_DATA;
-                    strcpy(pm.sender, p.sender);
-                    strcpy(pm.destiny, p.destiny);
-                    strcpy(pm.status, p.status);
-                    strcpy(pm.data, p.data);
-                    pm.data_size = p.data_size;
-                }
-                transmiting = true; 
-                // Get exclusive access through SPI.
-                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                    if(radio.transmit((uint8_t*)&pm, sizeof(pm)) == RADIOLIB_ERR_NONE)
-                        Serial.println("Message sent");
-                    else
-                        Serial.println("Message not sent");
-                    xSemaphoreGive(xSemaphore);
-                }
-                transmiting = false;
-            }
-            // Send a ping packet
-            if(strcmp(p.status, "ping") == 0){
-                while(gotPacket)
-                    vTaskDelay(10 / portTICK_PERIOD_MS);
-                transmiting = true;
-                // Get exclusive access through SPI.
-                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                    if(radio.transmit((uint8_t*)&ps, sizeof(ps)) == RADIOLIB_ERR_NONE)
-                        Serial.println("Ping sent");
-                    else
-                        Serial.println("Ping not sent");
-                    xSemaphoreGive(xSemaphore);
-                }
-                transmiting = false;
-            }
-            // Announcement packet
-            if(strcmp(p.status, "show") == 0){
-                while(gotPacket)
-                    vTaskDelay(10 / portTICK_PERIOD_MS);
-                transmiting = true;
-                // Get exclusive access through SPI.
-                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                    if(radio.transmit((uint8_t*)&ps, sizeof(ps)) == RADIOLIB_ERR_NONE)
-                        Serial.println("Announcement sent - Hi!");
-                    else
-                        Serial.println("Announcement not sent");
-                    xSemaphoreGive(xSemaphore);
-                }
-                transmiting = false;
-            }
-            Serial.println("=======================================");
-        }
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-}
 /// @brief Gets the status of the lora radio and send them to the web client
 /// @param param 
 void processReceivedStats(void * param){
@@ -4581,7 +4501,7 @@ void announce(){
     // We don't set a destiny so this is heard by everyone in range.
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
-    hi.type = LORA_PKT_STATUS;
+    hi.type = LORA_PKT_ANNOUNCE;
     transmiting_packets.push_back(hi);
     Serial.println("=======================================");
 }
@@ -4742,7 +4662,7 @@ void setup(){
     xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processPackets, "process_pkt", 5000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processTransmittingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processTransmitingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
 
     setup_sound();
 }

@@ -3,15 +3,23 @@
 #include <Arduino.h>
 #include <exception>
 
-#define LORA_PKT_STATUS 0
-#define LORA_PKT_DATA 1
-#define LORA_PKT_COMM 2
-#define LORA_PKT_ACK 3
-#define LORA_PKT_PING 4
+#define LORA_PKT_ANNOUNCE 0
+#define LORA_PKT_ACK 1
+#define LORA_PKT_DATA 2
+#define LORA_PKT_COMM 3
+#define LORA_PKT_ACK 4
+#define LORA_PKT_PING 5
 
 /// @brief Struct that is used to create a shorter LoRa packet with status info.
-struct lora_packet_status_ack{
-    uint8_t type = LORA_PKT_STATUS;
+struct lora_packet_announce{
+    uint8_t type = LORA_PKT_ANNOUNCE;
+    char id[7] = {'\0'};
+    char sender[7] = {'\0'};
+    uint8_t hops = 10;
+};
+
+struct lora_packet_ack{
+    uint8_t type = LORA_PKT_ACK;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
