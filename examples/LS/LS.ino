@@ -1590,6 +1590,7 @@ void processTransmitingPackets2(void * param){
         if(r < 10)
             r += 10;
         r *= 100;
+        // Remove the confirmed packets and set a new timeout for the unconfirmed ones.
         for(int i = 0; i < transmiting_packets.size(); i++){
             // If a message gets an ack, delete it, if not, update his timeout ack.
             if(transmiting_packets[i].confirmed){
@@ -1597,6 +1598,18 @@ void processTransmitingPackets2(void * param){
                 transmiting_packets.erase(transmiting_packets.begin() + i);
             }else if(transmiting_packets[i].timeout > millis() && !transmiting_packets[i].confirmed){ // If timedup and not confirmed, so renew the timeout (between 1 and 5 seconds, increments in hundreds of miliseconds)
                 transmiting_packets[i].timeout = millis() + r;
+            }
+        }
+        for(int i = 0; i < transmiting_packets.size(); i++){
+            if(!transmiting_packets[i].confirmed){
+                // Change the squared status on home screen to red.
+                pthread_mutex_lock(&lvgl_mutex);
+                activity(lv_color_hex(0xff0000));
+                pthread_mutex_unlock(&lvgl_mutex);
+                // If its a announcement packet
+                if(transmiting_packets[i].type == LORA_PKT_ANNOUNCE){
+                    lora_packet_announce pkt;
+                }
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
