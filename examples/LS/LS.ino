@@ -1584,6 +1584,7 @@ void processPackets(void * param){
 void processTransmitingPackets(void * param){  
     uint32_t r = 100;
     uint32_t current_time = 0;
+    
     while(true){
         // Calculate in miliseconds between 1 and 5 seconds
         r = rand() % 50;
@@ -1608,7 +1609,7 @@ void processTransmitingPackets(void * param){
                 activity(lv_color_hex(0xff0000));
                 pthread_mutex_unlock(&lvgl_mutex);
 
-                // If its a announcement packet
+                // If it's a announcement packet
                 if(transmiting_packets[i].type == LORA_PKT_ANNOUNCE){
                     lora_packet_announce pkt;
                     strcpy(pkt.sender, transmiting_packets[i].sender);
@@ -1629,6 +1630,39 @@ void processTransmitingPackets(void * param){
                     }
                     transmiting = false;
                 }
+
+                // If it's a ack packet
+                if(transmiting_packets[i].type == LORA_PKT_ACK){
+                    lora_packet_ack pkt;
+
+                    // Generating the packet info
+                    strcpy(pkt.id, generate_ID(6).c_str());
+                    strcpy(pkt.sender, transmiting_packets[i].sender);
+                    strcpy(pkt.destiny, transmiting_packets[i].destiny);
+                    pkt.type = transmiting_packets[i].type;
+                    // destiny message ID to ack
+                    strcpy(pkt.status, transmiting_packets[i].status); 
+
+                    while(gotPacket)
+                        vTaskDelay(10 / portTICK_PERIOD_MS);
+                    transmiting = true;
+                    // Get exclusive access through SPI.
+                    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                        if(radio.transmit((uint8_t*)&pkt, sizeof(pkt)) == RADIOLIB_ERR_NONE){
+                            Serial.println("Announcement packet sent");
+                            transmiting_packets[i].confirmed = true;
+                        }
+                        else
+                            Serial.println("Announcement packet not sent");
+                        xSemaphoreGive(xSemaphore);
+                    }
+                    transmiting = false;
+                }
+            }
+
+            // If it's a data packet
+            if(transmiting_packets[i].type == LORA_PKT_DATA){
+                
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
