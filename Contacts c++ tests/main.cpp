@@ -1,6 +1,8 @@
 #include "Contacts.hpp"
 #include "lora_messages.hpp"
+#include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 #include <iostream>
 
@@ -80,4 +82,23 @@ int main(int argc, char** argv){
     printf("%s\n", ctime(&timestamp));
     printf("%lu\n", timestamp);
     printf("%lu\n", sizeof(long));
+
+    uint32_t pkt_size = sizeof(lora_packet_ack);
+    void * pkt = malloc(pkt_size);
+    memset(pkt, '\0', pkt_size);
+    for(int i = 0; i < pkt_size; i++){
+        printf("%d ", *((unsigned char*)(pkt+i)));
+    }
+    strcpy(((struct lora_packet_ack *)pkt)->id, "121212");
+    strcpy(((struct lora_packet_ack *)pkt)->sender, "abcdef");
+    strcpy(((struct lora_packet_ack *)pkt)->destiny, "aaaaaa");
+    strcpy(((struct lora_packet_ack *)pkt)->status, "111222");
+    ((struct lora_packet_ack *)pkt)->type = LORA_PKT_ACK;
+    ((struct lora_packet_ack *)pkt)->hops = 10;
+    printf("packet size - %d\nid - %s\nsender - %s\ndestiny - %s\nmessage id - %s\npacket type - %d\nhops - %d\n", pkt_size,((struct lora_packet_ack *)pkt)->id, ((struct lora_packet_ack *)pkt)->sender, ((struct lora_packet_ack *)pkt)->destiny, ((struct lora_packet_ack *)pkt)->status, ((struct lora_packet_ack *)pkt)->type, ((struct lora_packet_ack *)pkt)->hops);
+    free(pkt);
+    for(int i = 0; i < pkt_size; i++){
+        printf("%d ", *((unsigned char*)(pkt+i)));
+    }
+    pkt = NULL;
 }

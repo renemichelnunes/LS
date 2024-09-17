@@ -7,8 +7,7 @@
 #define LORA_PKT_ACK 1
 #define LORA_PKT_DATA 2
 #define LORA_PKT_COMM 3
-#define LORA_PKT_ACK 4
-#define LORA_PKT_PING 5
+#define LORA_PKT_PING 4
 
 /// @brief Struct that is used to create a shorter LoRa packet with status info.
 struct lora_packet_announce{
