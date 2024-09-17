@@ -1649,6 +1649,12 @@ void processTransmitingPackets(void * param){
                     ((struct lora_packet_data *)pkt)->data_size = transmiting_packets[i].data_size;
                     Serial.println("Data packet ready");
                 }
+                else if(transmiting_packets[i].type == LORA_PKT_PING){
+
+                }
+                else if(transmiting_packets[i].type == LORA_PKT_COMM){
+
+                }
 
                 // Transmit the packet
                 if(pkt != NULL){
@@ -1756,7 +1762,7 @@ bool normalMode(){
         }
 
         // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-        if (radio.setOutputPower(17) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+        if (radio.setOutputPower(10) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
             Serial.println(F("Selected output power is invalid for this module!"));
             return false;
         }
@@ -1835,7 +1841,7 @@ bool DXMode()
         }
 
         // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-        if (radio.setOutputPower(22) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+        if (radio.setOutputPower(10) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
             Serial.println(F("Selected output power is invalid for this module!"));
             return false;
         }
@@ -1961,17 +1967,20 @@ void setupRadio(lv_event_t * e)
 /// @brief This sends a ping packet.
 /// @param e 
 void ping(lv_event_t * e){
-    // Lets send a status packet type 'ping'.
-    lora_packet my_packet;
-    notify_snd();
-    strcpy(my_packet.sender, user_id);
-    // We need to select a contact first, if not this does nothing.
-    if(actual_contact != NULL){
-        strcpy(my_packet.destiny, actual_contact->getID().c_str());
-        transmiting_packets.push_back(my_packet);
+    // Lets send a simple byte
+    while(gotPacket)
+        delay(10 / portTICK_PERIOD_MS);
+    // Get exclusive access through SPI.
+    transmiting = true;
+    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+        if(radio.transmit((uint8_t*)'\0', 1) == RADIOLIB_ERR_NONE){
+            Serial.println("Ping sent");
+        }
+        else
+            Serial.println("Ping not sent");
+        xSemaphoreGive(xSemaphore);
     }
-    else
-        return;
+    transmiting = false;
     
 }
 /// @brief This hides the contact list.
@@ -4716,13 +4725,13 @@ void loop(){
     
     if(secureServer != NULL)
         if(secureServer->isRunning()){
-        xSemaphoreTake(xSemaphore, portMAX_DELAY);
-        secureServer->loop();
+            xSemaphoreTake(xSemaphore, portMAX_DELAY);
+            secureServer->loop();
+            if(audio.isRunning()){
+                audio.loop();
+            delay(3);
+        }
         xSemaphoreGive(xSemaphore);
     }
     delay(5);
-    if(audio.isRunning()){
-        audio.loop();
-        delay(3);
-    }
 }
