@@ -98,6 +98,7 @@ uint32_t msg_count = 0;
 // List of contacts, LoRa packets and notification
 Contact_list contacts_list = Contact_list();
 lora_incomming_packets pkt_list = lora_incomming_packets();
+lora_outgoing_packets transmit_pkt_list = lora_outgoing_packets();
 lora_pkt_history pkt_history = lora_pkt_history();
 notification notification_list = notification();
 vector<lora_packet> received_packets;

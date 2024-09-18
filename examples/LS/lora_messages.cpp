@@ -22,6 +22,14 @@ bool lora_incomming_packets::has_packets(){
     return this->lora_packets.size() > 0;
 }
 
+void lora_outgoing_packets::add(lora_packet pkt){
+    this->lora_packets.push_back(pkt);
+}
+
+lora_packet lora_outgoing_packets::get(){
+    
+}
+
 bool lora_pkt_history::add(char * pkt_id){
     if(this->history.size() > 20)
         this->history.erase(this->history.begin());
