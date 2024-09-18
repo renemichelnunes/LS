@@ -1538,9 +1538,14 @@ void processPackets(void * param){
                         cm->ack = true;
                         // Send his messages back to the web client side. This updates the chat history.
                         sendContactMessages(p.sender);
+                        // If the message is in the transmission queue change its status to confirmed.
+                        for(uint8_t i = 0; i < transmiting_packets.size(); i++){
+                            if(strcmp(transmiting_packets[i].id, p.status) == 0)
+                                transmiting_packets[i].confirmed = true;
+                        }
                     }
                 }
-                c == NULL;
+                c = NULL;
             }
             // If we receive a ping solicitation.
             else if(p.type == LORA_PKT_PING && strcmp(p.destiny, user_id) == 0){
@@ -1584,9 +1589,9 @@ void processPackets(void * param){
 void processTransmitingPackets(void * param){  
     uint32_t r = 100;
     uint32_t current_time = 0;
-    void * pkt = NULL;
+    void * pkt = malloc(sizeof(lora_packet));
     uint32_t pkt_size = 0;
-    
+
     while(true){
         // Calculate in miliseconds between 1 and 5 seconds
         r = rand() % 50;
@@ -1614,8 +1619,7 @@ void processTransmitingPackets(void * param){
                 // Creating a packet accordingly by the type
                 if(transmiting_packets[i].type == LORA_PKT_ANNOUNCE){
                     pkt_size = sizeof(lora_packet_announce);
-                    pkt = malloc(pkt_size);
-                    memcpy(pkt, (void*)'\0', pkt_size);
+                    memcpy(pkt, (void*)'\0', sizeof(lora_packet));
                     // Generating packet info
                     strcpy(((struct lora_packet_announce *)pkt)->sender, transmiting_packets[i].sender);
                     ((struct lora_packet_announce *)pkt)->type = transmiting_packets[i].type;
@@ -1624,8 +1628,7 @@ void processTransmitingPackets(void * param){
                 }
                 else if(transmiting_packets[i].type == LORA_PKT_ACK){
                     pkt_size = sizeof(lora_packet_ack);
-                    pkt = malloc(pkt_size);
-                    memcpy(pkt, (void*)'\0', pkt_size);
+                    memcpy(pkt, (void*)'\0', sizeof(lora_packet));
                     // Generating packet info
                     strcpy(((struct lora_packet_ack *)pkt)->id, generate_ID(6).c_str());
                     strcpy(((struct lora_packet_ack *)pkt)->sender, transmiting_packets[i].sender);
@@ -1637,8 +1640,7 @@ void processTransmitingPackets(void * param){
                 }
                 else if(transmiting_packets[i].type == LORA_PKT_DATA){
                     pkt_size = sizeof(lora_packet_data);
-                    pkt = malloc(pkt_size);
-                    memcpy(pkt, (void*)'\0', pkt_size);
+                    memcpy(pkt, (void*)'\0', sizeof(lora_packet));
                     // Generating packet info
                     ((struct lora_packet_data *)pkt)->type = transmiting_packets[i].type;
                     strcpy(((struct lora_packet_data *)pkt)->id, generate_ID(6).c_str());
@@ -1666,7 +1668,6 @@ void processTransmitingPackets(void * param){
                         if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                             if(radio.transmit((uint8_t*)&pkt, pkt_size) == RADIOLIB_ERR_NONE){
                                 Serial.println("Packet sent");
-                                transmiting_packets[i].confirmed = true;
                             }
                             else
                                 Serial.println("Packet not sent");
@@ -1674,13 +1675,13 @@ void processTransmitingPackets(void * param){
                         }
                         transmiting = false;
                     }
-                    free(pkt);
-                    pkt = NULL;
                 }
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
+    free(pkt);
+    pkt = NULL;
 }
 
 /// @brief Gets the status of the lora radio and send them to the web client
