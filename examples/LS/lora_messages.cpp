@@ -26,6 +26,10 @@ void lora_outgoing_packets::add(lora_packet pkt){
     this->lora_packets.push_back(pkt);
 }
 
+lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t)){
+    this->transmit_func_callback = transmit_func_callback;
+}
+
 lora_packet lora_outgoing_packets::get(){
     
 }

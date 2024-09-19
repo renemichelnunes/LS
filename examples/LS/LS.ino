@@ -98,7 +98,8 @@ uint32_t msg_count = 0;
 // List of contacts, LoRa packets and notification
 Contact_list contacts_list = Contact_list();
 lora_incomming_packets pkt_list = lora_incomming_packets();
-lora_outgoing_packets transmit_pkt_list = lora_outgoing_packets();
+static int16_t transmit(uint8_t * data, size_t len);
+lora_outgoing_packets transmit_pkt_list = lora_outgoing_packets(transmit);
 lora_pkt_history pkt_history = lora_pkt_history();
 notification notification_list = notification();
 vector<lora_packet> received_packets;
@@ -236,7 +237,7 @@ static void loadContacts(){
         c.setKey(v[index + 2]);
         Serial.println(c.getID());
         Serial.println(c.getName());
-        contacts_list.add(c);
+        contacts_list.add(c); 
     }
     Serial.print(contacts_list.size());
     Serial.println(" contacts found");
@@ -1585,6 +1586,22 @@ void processPackets(void * param){
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
+}
+
+static int16_t transmit(uint8_t * data, size_t len){
+    int16_t r;
+    transmiting = true;
+    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+        r = radio.transmit((uint8_t*)data, len);
+        if(r == RADIOLIB_ERR_NONE){
+            Serial.println("Packet sent");
+        }
+        else
+            Serial.println("Packet not sent");
+        xSemaphoreGive(xSemaphore);
+    }
+    transmiting = false;
+    return r;
 }
 
 void processTransmitingPackets(void * param){  

@@ -84,9 +84,9 @@ class lora_incomming_packets{
 class lora_outgoing_packets{
     private:
         std::vector<lora_packet> lora_packets;
-        int16_t (*transmit_func_ptr)(uint8_t *, size_t);
+        int16_t (*transmit_func_callback)(uint8_t *, size_t);
     public:
-        lora_outgoing_packets(int16_t (*transmit_func_ptr)(uint8_t *, size_t));
+        lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t));
         void add(lora_packet pkt);
         lora_packet get();
         bool del(const char * id);

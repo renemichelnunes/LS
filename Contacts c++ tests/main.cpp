@@ -6,6 +6,15 @@
 #include <ctime>
 #include <iostream>
 
+int16_t transmit(uint8_t * data, size_t len){
+    printf("\ndata => %s\nlen => %lu\n", data, len);
+    return 0;
+}
+
+void teste(int16_t (*transmit_func_callback)(uint8_t *, size_t)){
+    transmit_func_callback((uint8_t*)"teste", 6);
+}
+
 int main(int argc, char** argv){
     Contact_list cl;
     Contact c, *c1;
@@ -101,4 +110,6 @@ int main(int argc, char** argv){
         printf("%d ", *((unsigned char*)(pkt+i)));
     }
     pkt = NULL;
+    teste(transmit);
+    lora_outgoing_packets outp = lora_outgoing_packets(transmit);
 }
