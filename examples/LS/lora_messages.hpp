@@ -9,14 +9,14 @@
 #define LORA_PKT_COMM 3
 #define LORA_PKT_PING 4
 
-/// @brief Struct that is used to create a shorter LoRa packet with status info.
+/// @brief Struct that is used to create a shorter LoRa packet with announcement info.
 struct lora_packet_announce{
     uint8_t type = LORA_PKT_ANNOUNCE;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     uint8_t hops = 10;
 };
-
+/// @brief Struct that is used to create a shorter LoRa packet with ack info.
 struct lora_packet_ack{
     uint8_t type = LORA_PKT_ACK;
     char id[7] = {'\0'};
@@ -25,7 +25,7 @@ struct lora_packet_ack{
     char status[7] = "recv"; // can be used to ack (sender's message id)
     uint8_t hops = 10;
 };
-
+/// @brief Struct that is used to create a shorter LoRa packet with command and parameters info.
 struct lora_packet_comm{
     uint8_t type = LORA_PKT_COMM;
     char id[7] = {'\0'};
@@ -35,7 +35,7 @@ struct lora_packet_comm{
     uint8_t command;
     char param[160] = {'\0'};
 };
-
+/// @brief Struct that is used to create a shorter LoRa packet with ping info.
 struct lora_packet_ping{
     uint8_t type = LORA_PKT_PING;
     char id[7] = {'\0'};
@@ -52,26 +52,26 @@ struct lora_packet_data{
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
-    uint8_t hops = 3;
+    uint8_t hops = 10;
     char data[160] = {'\0'};
     uint8_t data_size = 0;
 };
 
-/// @brief Struct to create a complete LoRa packet info, saved in a list.
+/// @brief Struct to create a complete LoRa packet info.
 struct lora_packet{
-    uint8_t type;
+    uint8_t type = 0;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     char status[7] = {'\0'};
-    uint8_t hops = 3;
+    uint8_t hops = 10;
     char data[160] = {'\0'};
     uint8_t data_size = 0;
     char date_time[30] = {'\0'};
     bool confirmed = false;
     uint32_t timeout = 0;
 };
-
+/// @brief Class to instatiate a queue of inscomming lora_packet gathered from the LoRa radio and managing functions.
 class lora_incomming_packets{
     private:
         std::vector<lora_packet> lora_packets;
@@ -81,23 +81,37 @@ class lora_incomming_packets{
         bool has_packets();
 };
 
+/// @brief Class to instatiate a queue of lora_packet and functions to manage a transmission using the LoRa radio transmission function.
 class lora_outgoing_packets{
     private:
+        // Vector that represents a queue of lora_packet to transmit.
         std::vector<lora_packet> lora_packets;
+        // LoRa radio transmit callback function.
         int16_t (*transmit_func_callback)(uint8_t *, size_t);
     public:
+        // Instatiate a lora_outgoing_packets object passing a LoRa radio transmit function.
         lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t));
+        // Add generic packets to the transmit queue.
         void add(lora_packet pkt);
-        lora_packet get();
+        // Loops through the queue for packets to being transmited, returns a copy of a lora_packet transmitted or a empty one.
+        lora_packet * check_packets();
+        // Delete a lora_packet from the transmission queue.
         bool del(const char * id);
+        // Update the timeout of all packets.
         void update_timeout();
+        // True if it has packets on the queue.
+        bool has_packets();
 };
-
+/// @brief Class to instantiate a queue of lora_packet IDs used as history of packets that already have passed through the node.
 class lora_pkt_history{
     private:
+        // Vector that holds the IDs.
         std::vector<char *> history;
+        // Vector max capacity.
         uint8_t max = 20;
     public:
+        // Adds a packet ID to the list.
         bool add(char * pkt_id);
+        // Checks if a packet ID already exists.
         bool exists(char * pkt_id);
 };
