@@ -3,7 +3,7 @@ Protocolo L2L
 
 Ao receber pacotes:
 ---------------------
-1 - ao receber um pacote, o id é adicionado a uma lista de ids que serve de histórico, uma maneira de dizer se determinado pacote já passou pelo nó. Se o id do pacote já estiver na lista, será descartado. Isso evita retransmissões do mesmo pacote e diminui o congestionamento da rede. Devido a memória limitada do aparelho talvez o tamanho da lista não passe de 20, à medida que novos pacotes chegam o id mais antigo sai da lista, considerando que raramente um id se repete.
+1 - ao receber um pacote, o id é adicionado a uma lista de ids que serve de histórico, uma maneira de dizer se determinado pacote já passou pelo nó. Se o id do pacote já estiver na lista, o pacote será descartado. Isso evita retransmissões do mesmo pacote e diminui o congestionamento da rede. Devido a memória limitada do aparelho talvez o tamanho da lista não passe de 20, à medida que novos pacotes chegam o id mais antigo sai da lista, considerando que raramente um id se repete.
 
 2 - Um pacote lora recebido tem tipos e tamanhos diferentes. A informação desses pacotes são transportadas para um tipo de pacote genérico que contém todas as propriedades usadas por todos os tipos. Assim podemos guardá-los em uma lista que será percorrida de tempos em tempos de onde é extraída a informação. Os tipos são anúncio de presença de um nó na rede, ping entre nós comparando os ids de usuário, configuração dos nós através de comandos e parâmetros, e mensagens criptografadas entre nó remetente e nó destinatário.
 
@@ -13,6 +13,13 @@ Ao transmitir pacotes:
 ------------------------
 1 - A transmissão de pacotes ocorre em intervalos de 1 a 5 segundos, tempo esse que permite com que outros nós que estão ao alcance possam fazer suas transmissões, evitando colisões (sincronização, dois ou mais nós transmitindo ao mesmo tempo). Mesmo com um intervalo de tempo variável colisões podem acontecer, porém com menor frequência.
 
-2 - Um pacote que precisa de confirmação só sai da lista de transmissão de pacotes quando é recebido um pacote de confirmação com o ID do pacote a ser confirmado.
+2 - Um pacote só sai da lista de transmissão de pacotes quando é recebido um pacote de confirmação com o mesmo ID do pacote que foi transmitido.
 
-2.1 - Pacotes de confirmação são retransmitidos apenas uma vez. 
+2.1 - Pacotes de confirmação são gerados sempre que o nó receber um pacote e são trasmitidos apenas uma vez para cada pacote recebido.
+
+Quanto a cobertura de sinal:
+----------------------------
+Supondo que um nó consegue emitir um sinal usando uma antena omnidirecional e que é recebido há uma distância máxima de 2km, a cobertura de sinal de uma rede formada por nós LoRa é equivalente a geometria da área formada pela geolocalização estratégica desses nós. Sendo que um nó ao transmitir cria uma região esférica de raio equivalente à máxima distantância entre nós, o volume da esfera é 4/3*(PI*R³), área 2*PI*R² e 'N' o número de nós da rede, a área de cobertura é N*2*PI*R² e o volume N*(4/3)*PI*R³.
+
+A performance da rede cai exponencialmente à medida que cresce o número de nós.
+
