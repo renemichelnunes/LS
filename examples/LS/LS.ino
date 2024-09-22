@@ -1991,6 +1991,8 @@ void ping(lv_event_t * e){
         delay(10 / portTICK_PERIOD_MS);
     // Get exclusive access through SPI.
     transmiting = true;
+    // Using a SDR radio and SDR++ set the radio to listen to 915 MHz, put this device on DX mode,
+    // touch 'ping' button and watch the waterfall ou record the screen to analyse further more.
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         if(radio.transmit((uint8_t*)'\0', 1) == RADIOLIB_ERR_NONE){
             Serial.println("Ping sent");

@@ -44,7 +44,7 @@ lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(u
     this->transmit_func_callback = transmit_func_callback;
 }
 
-void lora_outgoing_packets::update_timeout(){
+lora_packet * lora_outgoing_packets::check_packets(){
     uint32_t r = 100;
     // Calculate in miliseconds between 1 and 5 seconds
     r = rand() % 50;
@@ -57,13 +57,11 @@ void lora_outgoing_packets::update_timeout(){
         if(this->lora_packets[i].confirmed){
             Serial.printf("processTransmitingPackets - %s confirmed", this->lora_packets[i].id);
             this->lora_packets.erase(this->lora_packets.begin() + i);
-        }else if(this->lora_packets[i].timeout > millis() && !this->lora_packets[i].confirmed){ // If timedup and not confirmed, so renew the timeout (between 1 and 5 seconds, increments in hundreds of miliseconds)
+        }else if(this->lora_packets[i].timeout > millis() && !this->lora_packets[i].confirmed){ // If time is up and not confirmed, renew the timeout (between 1 and 5 seconds, increments in hundreds of miliseconds)
             this->lora_packets[i].timeout = millis() + r;
         }
     }
-}
 
-lora_packet * lora_outgoing_packets::check_packets(){
     
 }
 

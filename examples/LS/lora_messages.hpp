@@ -97,8 +97,6 @@ class lora_outgoing_packets{
         lora_packet * check_packets();
         // Delete a lora_packet from the transmission queue.
         bool del(const char * id);
-        // Update the timeout of all packets.
-        void update_timeout();
         // True if it has packets on the queue.
         bool has_packets();
 };
