@@ -47,7 +47,7 @@ lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(u
 /// @brief Creates a string with a sequence of 6 chars between letters and numbers randomly, the contact's id.
 /// @param size 
 /// @return std::string
-std::string generate_ID(uint8_t size){
+static std::string generate_ID(uint8_t size){
   srand(time(NULL));
   static const char alphanum[] = "0123456789"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
