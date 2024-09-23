@@ -22,7 +22,19 @@ bool lora_incomming_packets::has_packets(){
     return this->lora_packets.size() > 0;
 }
 
+static uint16_t getPktTimeout(uint16_t t1, uint16_t t2){
+    uint32_t r = 100;
+    if(t1 < t2){
+        r = rand() % 50;
+        if(r < 10)
+            r += 10;
+        r *= 100;
+    }
+    return r;
+}
+
 void lora_outgoing_packets::add(lora_packet pkt){
+    pkt.timeout = getPktTimeout(1, 5);
     this->lora_packets.push_back(pkt);
 }
 
@@ -65,10 +77,7 @@ lora_packet * lora_outgoing_packets::check_packets(){
     uint32_t pkt_size = 0;
     
     // Calculate in miliseconds between 1 and 5 seconds
-    r = rand() % 50;
-    if(r < 10)
-        r += 10;
-    r *= 100;
+    r = getPktTimeout(1, 5);
     // Remove the confirmed packets and set a new timeout for the unconfirmed ones.
     for(int i = 0; i < this->lora_packets.size(); i++){
         // If a message gets an ack, delete it, if not, update his timeout ack.
