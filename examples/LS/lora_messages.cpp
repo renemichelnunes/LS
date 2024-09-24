@@ -91,7 +91,7 @@ lora_packet * lora_outgoing_packets::check_packets(){
 
     for(int i = 0; i < this->lora_packets.size(); i++){
         if(this->lora_packets[i].timeout < millis()){
-            // Creating a packet accordingly by the type
+            // Creating a packet by type
             if(lora_packets[i].type == LORA_PKT_ANNOUNCE){
                 pkt_size = sizeof(lora_packet_announce);
                 memcpy(pkt, (void*)'\0', sizeof(lora_packet));
