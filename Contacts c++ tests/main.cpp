@@ -112,4 +112,10 @@ int main(int argc, char** argv){
     pkt = NULL;
     teste(transmit);
     lora_outgoing_packets outp = lora_outgoing_packets(transmit);
+    printf("lora_packet_announce size => %ul\n", sizeof(lora_packet_announce));
+    printf("lora_packet_ack size => %ul\n", sizeof(lora_packet_ack));
+    printf("lora_packet_comm size => %ul\n", sizeof(lora_packet_comm));
+    printf("lora_packet_ping size => %ul\n", sizeof(lora_packet_ping));
+    printf("lora_packet_data size => %ul\n", sizeof(lora_packet_data));
+    printf("lora_packet size => %ul\n", sizeof(lora_packet));
 }

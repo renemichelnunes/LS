@@ -14,6 +14,7 @@ struct lora_packet_announce{
     uint8_t type = LORA_PKT_ANNOUNCE;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
+    char destiny[7] = {'\0'};
     uint8_t hops = 10;
 };
 /// @brief Struct that is used to create a shorter LoRa packet with ack info.
@@ -22,8 +23,8 @@ struct lora_packet_ack{
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    char status[7] = "recv"; // can be used to ack (sender's message id)
     uint8_t hops = 10;
+    char status[7] = "recv"; // can be used to ack (sender's message id)
 };
 /// @brief Struct that is used to create a shorter LoRa packet with command and parameters info.
 struct lora_packet_comm{
@@ -41,8 +42,8 @@ struct lora_packet_ping{
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    char status[7] = "recv"; // can be used to ack (sender's message id)
     uint8_t hops = 10;
+    char status[7] = "recv"; // can be used to ack (sender's message id)
 };
 
 /// @brief Struct that is used when we send messages.
@@ -51,9 +52,9 @@ struct lora_packet_data{
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    char status[7] = {'\0'};
     uint8_t hops = 10;
-    char data[160] = {'\0'};
+    char status[7] = {'\0'};
+    char data[208] = {'\0'};
     uint8_t data_size = 0;
 };
 
@@ -63,9 +64,9 @@ struct lora_packet{
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    char status[7] = {'\0'};
     uint8_t hops = 10;
-    char data[160] = {'\0'};
+    char status[7] = {'\0'};
+    char data[200] = {'\0'};
     uint8_t data_size = 0;
     char date_time[30] = {'\0'};
     bool confirmed = false;
@@ -74,10 +75,14 @@ struct lora_packet{
 /// @brief Class to instatiate a queue of inscomming lora_packet gathered from the LoRa radio and managing functions.
 class lora_incomming_packets{
     private:
+        // Vector that simulates a queue of received lora_packets.
         std::vector<lora_packet> lora_packets;
     public:
+        // Adds a lora_packet to the queue.
         void add(lora_packet pkt);
+        // Returns the first removed lora_packet from the queue.
         lora_packet get();
+        // Checks if a received lora_packet already exists by ID.
         bool has_packets();
 };
 

@@ -1431,7 +1431,7 @@ void collectPackets(void * param){
                 radio.standby();
                 packet_size = radio.getPacketLength();
                 radio.readData((uint8_t*)&p, packet_size);
-                // Convert the info to a exact representation on a string.
+                // Convert the info to an exact representation on a string.
                 rssi = radio.getRSSI();
                 snr = radio.getSNR();
                 new_stats = true;
