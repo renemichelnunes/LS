@@ -1422,6 +1422,7 @@ void update_rssi_snr_graph(float rssi, float snr){
 void collectPackets(void * param){
     lora_packet p;
     uint16_t packet_size;
+    bool invalid_pkt_size = false;
 
     while(true){
         if(gotPacket){
@@ -1440,19 +1441,32 @@ void collectPackets(void * param){
                 radio.startReceive();
                 xSemaphoreGive(xSemaphore);
             }
+
+            // Check if the packet is valid.
+            if(packet_size == sizeof(lora_packet_ack) || packet_size == sizeof(lora_packet_announce) ||
+                packet_size == sizeof(lora_packet_comm) || packet_size == sizeof(lora_packet_data) || 
+                packet_size == sizeof(lora_packet_ping))
+                invalid_pkt_size = false;
+            else{
+                invalid_pkt_size = true;
+                Serial.println("Invalid packet");
+            }
+
             // Save the packet id on received_packets.
-            if(packet_size > 0 && packet_size <= sizeof(lora_packet)){
+            if(!invalid_pkt_size){
                 // Lets add a date time of arrival.
                 strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                 // If we receive the same packet we transmitted, drop it. This is a thing that happen
-                // as soon as we send a packet. Maybe the radio uses the same buffer to transmit and receive.
-                if(strcmp(p.sender, user_id) != 0 && !pkt_history.exists(p.id)){
+                // as soon as we send a packet. The radio uses the same buffer to transmit and receive.
+                if(!pkt_history.exists(p.id)){
                     pkt_history.add(p.id);
                     received_packets.push_back(p);
                     Serial.print("Updating rssi graph...");
                     update_rssi_snr_graph(rssi, snr);
                     Serial.println("rssi graph updated.");
                 }
+                else
+                    Serial.printf("Packet %s already received\n", p.id);
             }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
