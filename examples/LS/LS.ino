@@ -1473,6 +1473,36 @@ void collectPackets(void * param){
     }
 }
 
+void processPackets2(void * param){
+    lora_packet p;
+
+    while(true){
+        if(pkt_list.has_packets()){
+            // Change the squared status on home screen to green.
+            pthread_mutex_lock(&lvgl_mutex);
+            activity(lv_color_hex(0x00ff00));
+            pthread_mutex_unlock(&lvgl_mutex);
+            p = pkt_list.get();
+            if(p.type == LORA_PKT_ANNOUNCE){
+                // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
+                Contact * c = contacts_list.getContactByID(p.sender);
+                if(c != NULL){
+                    // Set this to true if the contact is in range.
+                    c->inrange = true;
+                    // There's a time out in minutes, if the contacts don't send a "show" status in time they will be
+                    // shown as out of range with a greyish squared mark after their names.
+                    c->timeout = millis();
+                    Serial.println("Announcement packet received");
+                    c = NULL;
+                }else{// If not in contact_list, go to the discovery service.
+                    Serial.printf("Discovery service  - ID %s", p.id);
+                }
+            }
+        }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+}
+
 void processPackets(void * param){
     lora_packet p, pong;
     ContactMessage cm;
@@ -4655,7 +4685,7 @@ void setup(){
     // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. So we're using core 1
     // to run this task forever.
     xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 3000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processPackets, "process_pkt", 5000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processPackets2, "process_pkt", 5000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processTransmitingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
 
