@@ -102,7 +102,7 @@ class lora_outgoing_packets{
         lora_packet * check_packets();
         // Delete a lora_packet from the transmission queue.
         bool del(const char * id);
-        // True if it has packets on the queue.
+        // True if the queue has packets.
         bool has_packets();
 };
 /// @brief Class to instantiate a queue of lora_packet IDs used as history of packets that already have passed through the node.
