@@ -3,11 +3,12 @@
 #include <Arduino.h>
 #include <exception>
 
-#define LORA_PKT_ANNOUNCE 0
-#define LORA_PKT_ACK 1
-#define LORA_PKT_DATA 2
-#define LORA_PKT_COMM 3
-#define LORA_PKT_PING 4
+#define LORA_PKT_EMPTY 0
+#define LORA_PKT_ANNOUNCE 1
+#define LORA_PKT_ACK 2
+#define LORA_PKT_DATA 3
+#define LORA_PKT_COMM 4
+#define LORA_PKT_PING 5
 
 /// @brief Struct that is used to create a shorter LoRa packet with announcement info.
 struct lora_packet_announce{
@@ -99,7 +100,7 @@ class lora_outgoing_packets{
         // Add generic packets to the transmit queue.
         void add(lora_packet pkt);
         // Loops through the queue for packets to being transmited, returns a copy of a lora_packet transmitted or a empty one.
-        lora_packet * check_packets();
+        lora_packet check_packets();
         // Delete a lora_packet from the transmission queue.
         bool del(const char * id);
         // True if the queue has packets.

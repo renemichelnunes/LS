@@ -80,6 +80,7 @@ volatile bool sendingJson = false;
 volatile bool server_ready = false;
 volatile bool parsing = false;
 volatile bool new_stats = false;
+volatile bool using_transmit_pkt_list = false;
 // Hardware inputs
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
@@ -1449,7 +1450,7 @@ void collectPackets(void * param){
                 invalid_pkt_size = false;
             else{
                 invalid_pkt_size = true;
-                Serial.println("Invalid packet");
+                Serial.printf("Unknown packet size - %d bytes\n", packet_size);
             }
 
             // Save the packet id on received_packets.
@@ -1635,10 +1636,15 @@ void processPackets(void * param){
 static int16_t transmit(uint8_t * data, size_t len){
     int16_t r;
     transmiting = true;
+    pthread_mutex_lock(&lvgl_mutex);
+    activity(lv_color_hex(0xff0000));
+    pthread_mutex_unlock(&lvgl_mutex);
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+        Serial.println("Transmitting packet...");
         r = radio.transmit((uint8_t*)data, len);
         if(r == RADIOLIB_ERR_NONE){
             Serial.println("Packet sent");
+            Serial.printf("On Air time => %d miliseconds\n", radio.getTimeOnAir(len) / 1000);
         }
         else
             Serial.println("Packet not sent");
@@ -1650,7 +1656,11 @@ static int16_t transmit(uint8_t * data, size_t len){
 
 void processTransmitingPackets(void * param){  
     while(true){
-        transmit_pkt_list.check_packets();
+        if(!using_transmit_pkt_list){
+            using_transmit_pkt_list = true;
+            transmit_pkt_list.check_packets();
+            using_transmit_pkt_list = false;
+        }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
@@ -2493,7 +2503,7 @@ void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst
     timeinfo.tm_sec = sec;
     timeinfo.tm_isdst = isDst;  // 1 or 0
     time_t t = mktime(&timeinfo);
-    Serial.printf("Setting time: %s", asctime(&timeinfo));
+    Serial.printf("Setting time: %s\n", asctime(&timeinfo));
     struct timeval now = { .tv_sec = t };
     settimeofday(&now, NULL);
     notification_list.add("date & time updated", LV_SYMBOL_SETTINGS);
@@ -4496,7 +4506,7 @@ void wifi_auto_connect(void * param){
                 datetime();
                 if(param != NULL){
                     // Launch the web server task.
-                    xTaskCreatePinnedToCore(setupServer, "server", 12000, (void*)"ok", 1, NULL, 1);
+                    //xTaskCreatePinnedToCore(setupServer, "server", 12000, (void*)"ok", 1, NULL, 1);
                     //setupServer(NULL);
                 }
             }else{
@@ -4527,7 +4537,7 @@ void announce(){
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
     hi.type = LORA_PKT_ANNOUNCE;
-    transmiting_packets.push_back(hi);
+    transmit_pkt_list.add(hi);
     Serial.println("=======================================");
 }
 
@@ -4682,30 +4692,25 @@ void setup(){
     xTaskCreatePinnedToCore(notify, "notify", 4000, NULL, 1, &task_not, 1);
     // Launch de beacon task.
     xTaskCreatePinnedToCore(task_beacon, "beacon", 4000, NULL, 1, NULL, 1);
-    // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. So we're using core 1
-    // to run this task forever.
+    // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. 
     xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processPackets2, "process_pkt", 5000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processTransmitingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
 
-    setup_sound();
 }
 
 void loop(){
     pthread_mutex_lock(&lvgl_mutex);
     lv_task_handler();
     pthread_mutex_unlock(&lvgl_mutex);
-    
+    /*
     if(secureServer != NULL)
         if(secureServer->isRunning()){
             xSemaphoreTake(xSemaphore, portMAX_DELAY);
             secureServer->loop();
-            if(audio.isRunning()){
-                audio.loop();
-            delay(3);
-        }
-        xSemaphoreGive(xSemaphore);
-    }
+            xSemaphoreGive(xSemaphore);
+        }*/
+        
     delay(5);
 }

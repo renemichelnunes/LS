@@ -39,7 +39,10 @@ void lora_outgoing_packets::add(lora_packet pkt){
 }
 
 bool lora_outgoing_packets::has_packets(){
-    return this->lora_packets.size() > 0;
+    if(this->lora_packets.size() == 0)
+        return false;
+    else
+        return true;
 }
 
 bool lora_outgoing_packets::del(const char * id){
@@ -53,6 +56,7 @@ bool lora_outgoing_packets::del(const char * id){
 }
 
 lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t)){
+    this->lora_packets.clear();
     this->transmit_func_callback = transmit_func_callback;
 }
 
@@ -71,76 +75,88 @@ static std::string generate_ID(uint8_t size){
   return ss;
 }
 
-lora_packet * lora_outgoing_packets::check_packets(){
+lora_packet lora_outgoing_packets::check_packets(){
     uint32_t r = 100;
-    void * pkt = malloc(sizeof(lora_packet));
+    void * pkt = NULL;
     uint32_t pkt_size = 0;
-    
-    // Calculate in miliseconds between 1 and 5 seconds
-    r = getPktTimeout(1, 5);
-    // Remove the confirmed packets and set a new timeout for the unconfirmed ones.
-    for(int i = 0; i < this->lora_packets.size(); i++){
-        // If a message gets an ack, delete it, if not, update his timeout ack.
-        if(this->lora_packets[i].confirmed){
-            Serial.printf("processTransmitingPackets - %s confirmed", this->lora_packets[i].id);
-            this->lora_packets.erase(this->lora_packets.begin() + i);
-        }else if(this->lora_packets[i].timeout > millis() && !this->lora_packets[i].confirmed){ // If time is up and not confirmed, renew the timeout (between 1 and 5 seconds, increments in hundreds of miliseconds)
-            this->lora_packets[i].timeout = millis() + r;
-        }
-    }
+    lora_packet p;
 
-    for(int i = 0; i < this->lora_packets.size(); i++){
-        if(this->lora_packets[i].timeout < millis()){
-            // Creating a packet by type
-            if(lora_packets[i].type == LORA_PKT_ANNOUNCE){
-                pkt_size = sizeof(lora_packet_announce);
-                memcpy(pkt, (void*)'\0', sizeof(lora_packet));
-                // Generating packet info
-                strcpy(((struct lora_packet_announce *)pkt)->sender, lora_packets[i].sender);
-                ((struct lora_packet_announce *)pkt)->type = lora_packets[i].type;
-                strcpy(((struct lora_packet_announce *)pkt)->id, generate_ID(6).c_str());
-                Serial.println("Announcement packet ready");
-            }
-            else if(lora_packets[i].type == LORA_PKT_ACK){
-                pkt_size = sizeof(lora_packet_ack);
-                memcpy(pkt, (void*)'\0', sizeof(lora_packet));
-                // Generating packet info
-                strcpy(((struct lora_packet_ack *)pkt)->id, generate_ID(6).c_str());
-                strcpy(((struct lora_packet_ack *)pkt)->sender, lora_packets[i].sender);
-                strcpy(((struct lora_packet_ack *)pkt)->destiny, lora_packets[i].destiny);
-                ((struct lora_packet_ack *)pkt)->type = lora_packets[i].type;
-                // destiny message ID to ack
-                strcpy(((struct lora_packet_ack *)pkt)->status, lora_packets[i].status); 
-                Serial.println("ACK packet ready");
-            }
-            else if(lora_packets[i].type == LORA_PKT_DATA){
-                pkt_size = sizeof(lora_packet_data);
-                memcpy(pkt, (void*)'\0', sizeof(lora_packet));
-                // Generating packet info
-                ((struct lora_packet_data *)pkt)->type = lora_packets[i].type;
-                strcpy(((struct lora_packet_data *)pkt)->id, generate_ID(6).c_str());
-                strcpy(((struct lora_packet_data *)pkt)->sender, lora_packets[i].sender);
-                strcpy(((struct lora_packet_data *)pkt)->destiny, lora_packets[i].destiny);
-                ((struct lora_packet_data *)pkt)->hops = 10;
-                strncpy(((struct lora_packet_data *)pkt)->data, lora_packets[i].data, lora_packets[i].data_size);
-                ((struct lora_packet_data *)pkt)->data_size = lora_packets[i].data_size;
-                Serial.println("Data packet ready");
-            }
-            else if(lora_packets[i].type == LORA_PKT_PING){
-
-            }
-            else if(lora_packets[i].type == LORA_PKT_COMM){
-
-            }
-
-            // Transmit the packet.
-            if(pkt != NULL){
-                this->transmit_func_callback((uint8_t*)pkt, pkt_size);
+    if(this->has_packets()){
+        // Calculate in miliseconds between 1 and 5 seconds
+        r = getPktTimeout(1, 5);
+        // Remove the confirmed packets and set a new timeout for the unconfirmed ones.
+        if(this->has_packets()){
+            for(int i = 0; i < this->lora_packets.size(); i++){
+                // If a message gets an ack, delete it, if not, update his timeout ack.
+                if(this->lora_packets[i].confirmed){
+                    Serial.printf("processTransmitingPackets - %s confirmed", this->lora_packets[i].id);
+                    this->lora_packets.erase(this->lora_packets.begin() + i);
+                }else if(this->lora_packets[i].timeout > millis() && !this->lora_packets[i].confirmed){ // If time is up and not confirmed, renew the timeout (between 1 and 5 seconds, increments in hundreds of miliseconds)
+                    this->lora_packets[i].timeout = millis() + r;
+                }
             }
         }
+        
+        if(this->has_packets()){
+            for(int i = 0; i < this->lora_packets.size(); i++){
+                if(this->lora_packets[i].timeout < millis()){
+                    // Creating a packet by type
+                    if(lora_packets[i].type == LORA_PKT_ANNOUNCE){
+                        pkt_size = sizeof(lora_packet_announce);
+                        pkt = calloc(pkt_size, sizeof(char));
+                        // Generating packet info
+                        strcpy(((struct lora_packet_announce *)pkt)->sender, lora_packets[i].sender);
+                        ((struct lora_packet_announce *)pkt)->type = lora_packets[i].type;
+                        strcpy(((struct lora_packet_announce *)pkt)->id, generate_ID(6).c_str());
+                        p = lora_packets[i];
+                        lora_packets.erase(lora_packets.begin() + i);
+                        Serial.println("Announcement packet ready");
+                    }
+                    else if(lora_packets[i].type == LORA_PKT_ACK){
+                        pkt_size = sizeof(lora_packet_ack);
+                        pkt = calloc(pkt_size, sizeof(char));
+                        // Generating packet info
+                        strcpy(((struct lora_packet_ack *)pkt)->id, generate_ID(6).c_str());
+                        strcpy(((struct lora_packet_ack *)pkt)->sender, lora_packets[i].sender);
+                        strcpy(((struct lora_packet_ack *)pkt)->destiny, lora_packets[i].destiny);
+                        ((struct lora_packet_ack *)pkt)->type = lora_packets[i].type;
+                        // destiny message ID to ack
+                        strcpy(((struct lora_packet_ack *)pkt)->status, lora_packets[i].status); 
+                        Serial.println("ACK packet ready");
+                    }
+                    else if(lora_packets[i].type == LORA_PKT_DATA){
+                        pkt_size = sizeof(lora_packet_data);
+                        pkt = calloc(pkt_size, sizeof(char));
+                        // Generating packet info
+                        ((struct lora_packet_data *)pkt)->type = lora_packets[i].type;
+                        strcpy(((struct lora_packet_data *)pkt)->id, generate_ID(6).c_str());
+                        strcpy(((struct lora_packet_data *)pkt)->sender, lora_packets[i].sender);
+                        strcpy(((struct lora_packet_data *)pkt)->destiny, lora_packets[i].destiny);
+                        ((struct lora_packet_data *)pkt)->hops = 10;
+                        strncpy(((struct lora_packet_data *)pkt)->data, lora_packets[i].data, lora_packets[i].data_size);
+                        ((struct lora_packet_data *)pkt)->data_size = lora_packets[i].data_size;
+                        Serial.println("Data packet ready");
+                    }
+                    else if(lora_packets[i].type == LORA_PKT_PING){
+
+                    }
+                    else if(lora_packets[i].type == LORA_PKT_COMM){
+
+                    }
+
+                    // Transmit the packet.
+                    if(pkt != NULL){
+                        this->transmit_func_callback((uint8_t*)pkt, pkt_size);
+                    }
+                }
+            }
+        }
     }
-    free(pkt);
-    pkt = NULL;
+    if(pkt){
+        free(pkt);
+        pkt = NULL;
+    }
+    return p;
 }
 
 bool lora_pkt_history::add(char * pkt_id){
