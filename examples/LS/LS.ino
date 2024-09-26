@@ -345,6 +345,8 @@ static void notify(void * param){
             notification_list.pop(n, b);
             // This happen really fast, we show the notification object with his message and symbols empty.
             lv_obj_clear_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
+            // Set to foreground
+            lv_obj_move_foreground(frm_not);
             // Set the symbol and message on the labels.
             lv_label_set_text(frm_not_lbl, n);
             lv_label_set_text(frm_not_symbol_lbl, b);
@@ -3407,11 +3409,13 @@ void rssi_chart_zoom(lv_event_t * e){
 
     if(code == LV_EVENT_CLICKED){
         if(!chart_zoomed){
-            lv_obj_set_size(frm_home_rssi_chart, 300, 210);
+            lv_obj_set_size(frm_home_rssi_chart, 295, 200);
+            lv_obj_move_foreground(frm_home_rssi_chart);
             chart_zoomed = true;
         }
         else{
             lv_obj_set_size(frm_home_rssi_chart, rssi_chart_width, rssi_chart_height);
+            lv_obj_move_background(frm_home_rssi_chart);
             chart_zoomed = false;
         }
     }
