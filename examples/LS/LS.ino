@@ -73,6 +73,9 @@ bool kbDected = false;
 bool hasRadio = false; 
 bool wifi_connected = false;
 bool isDX = false;
+bool chart_zoomed = false;
+uint8_t rssi_chart_width = 90;
+uint8_t rssi_chart_height = 55;
 volatile bool transmiting = false;
 volatile bool processing = false;
 volatile bool gotPacket = false;
@@ -1461,7 +1464,7 @@ void collectPackets(void * param){
                 // as soon as we send a packet. The radio uses the same buffer to transmit and receive.
                 if(!pkt_history.exists(p.id)){
                     pkt_history.add(p.id);
-                    received_packets.push_back(p);
+                    pkt_list.add(p);
                     Serial.print("Updating rssi graph...");
                     update_rssi_snr_graph(rssi, snr);
                     Serial.println("rssi graph updated.");
@@ -3398,6 +3401,22 @@ void tz_event(lv_event_t * e){
     }
 }
 
+void rssi_chart_zoom(lv_event_t * e){
+    lv_obj_t * rssi_chart = (lv_obj_t *)lv_event_get_target(e);
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED){
+        if(!chart_zoomed){
+            lv_obj_set_size(frm_home_rssi_chart, 300, 210);
+            chart_zoomed = true;
+        }
+        else{
+            lv_obj_set_size(frm_home_rssi_chart, rssi_chart_width, rssi_chart_height);
+            chart_zoomed = false;
+        }
+    }
+}
+
 /// @brief Function to initilize all lvgl objects.
 void ui(){
     //style**************************************************************
@@ -3452,6 +3471,7 @@ void ui(){
     lv_chart_set_next_value(frm_home_rssi_chart, frm_home_rssi_series, -147);
     lv_chart_set_next_value(frm_home_rssi_chart, frm_home_snr_series, 0);
     lv_chart_refresh(frm_home_rssi_chart);
+    lv_obj_add_event_cb(frm_home_rssi_chart, rssi_chart_zoom, LV_EVENT_CLICKED, NULL);
 
     //date time background
     frm_home_frm_date_time = lv_obj_create(frm_home);
