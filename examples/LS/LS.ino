@@ -1660,11 +1660,13 @@ static int16_t transmit(uint8_t * data, size_t len){
 }
 
 void processTransmitingPackets(void * param){  
+    lora_packet p;
     while(true){
         if(!using_transmit_pkt_list){
             using_transmit_pkt_list = true;
-            transmit_pkt_list.check_packets();
+            p = transmit_pkt_list.check_packets();
             using_transmit_pkt_list = false;
+            Serial.printf("%s -> %s\n%d\n%d\n", p.sender, p.destiny, p.type, p.hops);
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }

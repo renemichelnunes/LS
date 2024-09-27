@@ -21,5 +21,5 @@ Quanto a cobertura de sinal:
 ----------------------------
 Supondo que um nó consegue emitir um sinal usando uma antena omnidirecional e que é recebido há uma distância máxima de 2km, a cobertura de sinal de uma rede formada por nós LoRa é equivalente a geometria da área formada pela geolocalização estratégica desses nós. Sendo que um nó ao transmitir cria uma região esférica de raio equivalente à máxima distantância entre nós, o volume da esfera é 4/3*(PI*R³), área 2*PI*R² e 'N' o número de nós da rede, a área de cobertura é N*2*PI*R² e o volume N*(4/3)*PI*R³.
 
-A performance da rede cai exponencialmente à medida que cresce o número de nós.
+A performance da rede cai linearmente à medida que cresce o número de nós.
 
