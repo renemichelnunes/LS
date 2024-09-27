@@ -1460,19 +1460,25 @@ void collectPackets(void * param){
 
             // Save the packet id on received_packets.
             if(!invalid_pkt_size){
-                // Lets add a date time of arrival.
-                strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                // If we receive the same packet we transmitted, drop it. This is a thing that happen
-                // as soon as we send a packet. The radio uses the same buffer to transmit and receive.
-                if(!pkt_history.exists(p.id)){
-                    pkt_history.add(p.id);
-                    pkt_list.add(p);
-                    Serial.print("Updating rssi graph...");
-                    update_rssi_snr_graph(rssi, snr);
-                    Serial.println("rssi graph updated.");
+                if(p.hops > 0){
+                    // Decrement the TTL
+                    p.hops--;
+                    // Lets add a date time of arrival.
+                    strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                    // If we receive the same packet we transmitted, drop it. This is a thing that happen
+                    // as soon as we send a packet. The radio uses the same buffer to transmit and receive.
+                    if(!pkt_history.exists(p.id)){
+                        pkt_history.add(p.id);
+                        pkt_list.add(p);
+                        Serial.print("Updating rssi graph...");
+                        update_rssi_snr_graph(rssi, snr);
+                        Serial.println("rssi graph updated.");
+                    }
+                    else
+                        Serial.printf("Packet %s already received\n", p.id);
                 }
                 else
-                    Serial.printf("Packet %s already received\n", p.id);
+                    Serial.printf("Packet %s dropped\ntype %d\n", p.id, p.type);
             }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
