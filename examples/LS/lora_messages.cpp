@@ -7,8 +7,7 @@ void lora_incomming_packets::add(lora_packet pkt){
         this->lora_packets.push_back(pkt);
     }
     catch(std::exception &e){
-        Serial.println("lora_incomming_packets::add error ");
-        Serial.println(e.what());
+        Serial.printf("lora_incomming_packets::add error - %s\n", e.what());
     }
 }
 
@@ -170,8 +169,7 @@ bool lora_pkt_history::add(char * pkt_id){
         this->history.push_back(pkt_id);
         return true;
     }catch(std::exception &e){
-        Serial.print("lora_pkt_history::add error ");
-        Serial.println(e.what());
+        Serial.printf("lora_pkt_history::add error - %s\n", e.what());
         return false;
     }
 }

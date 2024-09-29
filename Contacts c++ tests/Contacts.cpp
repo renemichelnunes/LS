@@ -4,15 +4,15 @@
 #include <algorithm>
 #include <iostream>
 /// @brief Constructor with name and id as parameters.
-/// @param name 
-/// @param id 
+/// @param name
+/// @param id
 Contact::Contact(String name, String id){
     this->name = name;
     this->id = id;
 }
 /// @brief Contructor.
 Contact::Contact(){
-    
+
 }
 /// @brief Get the name of the contact.
 /// @return String
@@ -30,35 +30,35 @@ String Contact::getKey(){
     return this->key;
 }
 /// @brief Used with an iterator to compare contacts by ID.
-/// @param other 
+/// @param other
 /// @return bool
 bool Contact::operator==( Contact other){
     return (id == other.id);
 }
 /// @brief Set a contact's name.
-/// @param name 
+/// @param name
 void Contact::setName(String name){
     this->name = name;
 }
 /// @brief Set a contact's ID.
-/// @param id 
+/// @param id
 void Contact::setID(String id){
     this->id = id;
 }
 /// @brief Set a contact's key.
-/// @param key 
+/// @param key
 void Contact::setKey(String key){
     this->key = key;
 }
 /// @brief Used to compare contacts by name in a sort method.
-/// @param c1 
-/// @param c2 
+/// @param c1
+/// @param c2
 /// @return static bool
 static bool cmp_name( Contact &c1,  Contact &c2){
     return c1.getName() < c2.getName();
 }
 /// @brief Add a contact and sort the list by name.
-/// @param c 
+/// @param c
 /// @return bool
 bool Contact_list::add(Contact c){
     try{
@@ -73,19 +73,19 @@ bool Contact_list::add(Contact c){
     return true;
 }
 Contact_list::Contact_list(){
-    
+
 }
 
 Contact_list::~Contact_list(){
     this->list.clear();
 }
 /// @brief Return the actual list size.
-/// @return 
+/// @return
 uint32_t Contact_list::size(){
     return this->list.size();
 }
 /// @brief Return a copy of a contact object from the list at the given index.
-/// @param index 
+/// @param index
 /// @return Contact
 Contact  Contact_list::getContact(uint32_t index){
     try{
@@ -98,7 +98,7 @@ Contact  Contact_list::getContact(uint32_t index){
     }
 }
 /// @brief Return a pointer to the contact on the list.
-/// @param id 
+/// @param id
 /// @return Contact *
 Contact *Contact_list::getContactByID(const char * id)
 {
@@ -110,7 +110,7 @@ Contact *Contact_list::getContactByID(const char * id)
     return NULL;
 }
 /// @brief Delete a contact from the list.
-/// @param c 
+/// @param c
 /// @return bool
 bool Contact_list::del(Contact c){
     std::vector<Contact>::iterator it = std::find(this->list.begin(), this->list.end(), c);
@@ -122,7 +122,7 @@ bool Contact_list::del(Contact c){
         return false;
 }
 /// @brief Return true if a contact is found.
-/// @param c 
+/// @param c
 /// @return bool
 bool Contact_list::find(Contact &c){
     std::vector<Contact>::iterator it = std::find(this->list.begin(), this->list.end(), c);
@@ -147,7 +147,7 @@ void Contact_list::check_inrange(){
     }
 }
 /// @brief Set the inrange timeout period in minutes.
-/// @param min 
+/// @param min
 void Contact_list::setCheckPeriod(uint8_t min){
     if(min >= 1)
         this->check_period = min * 60 * 1000L;

@@ -5,12 +5,18 @@
 
 #include <cstdint>
 #include <cstring>
+#include <stdio.h>
+#include <cstdlib>
+#include <string>
+#include <ctime>
+#include <chrono>
 
-#define LORA_PKT_ANNOUNCE 0
-#define LORA_PKT_ACK 1
-#define LORA_PKT_DATA 2
-#define LORA_PKT_COMM 3
-#define LORA_PKT_PING 4
+#define LORA_PKT_EMPTY 0
+#define LORA_PKT_ANNOUNCE 1
+#define LORA_PKT_ACK 2
+#define LORA_PKT_DATA 3
+#define LORA_PKT_COMM 4
+#define LORA_PKT_PING 5
 
 /// @brief Struct that is used to create a shorter LoRa packet with announcement info.
 struct lora_packet_announce{
@@ -75,33 +81,50 @@ struct lora_packet{
     bool confirmed = false;
     uint32_t timeout = 0;
 };
-
+/// @brief Class to instatiate a queue of inscomming lora_packet gathered from the LoRa radio and managing functions.
 class lora_incomming_packets{
     private:
+        // Vector that simulates a queue of received lora_packets.
         std::vector<lora_packet> lora_packets;
     public:
+        // Adds a lora_packet to the queue.
         void add(lora_packet pkt);
+        // Returns the first removed lora_packet from the queue.
         lora_packet get();
+        // Checks if a received lora_packet already exists by ID.
         bool has_packets();
 };
 
+/// @brief Class to instatiate a queue of lora_packet and functions to manage a transmission using the LoRa radio transmission function.
 class lora_outgoing_packets{
     private:
+        // Vector that represents a queue of lora_packet to transmit.
         std::vector<lora_packet> lora_packets;
+        // LoRa radio transmit callback function.
         int16_t (*transmit_func_callback)(uint8_t *, size_t);
     public:
+        // Instatiate a lora_outgoing_packets object passing a LoRa radio transmit function.
         lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t));
+        // Add generic packets to the transmit queue.
         void add(lora_packet pkt);
-        lora_packet get();
+        // Loops through the queue for packets to being transmited, returns a copy of a lora_packet transmitted or a empty one.
+        lora_packet check_packets();
+        // Delete a lora_packet from the transmission queue.
         bool del(const char * id);
-        void update_timeout();
+        // True if the queue has packets.
+        bool has_packets();
 };
-
+/// @brief Class to instantiate a queue of lora_packet IDs used as history of packets that already have passed through the node.
 class lora_pkt_history{
     private:
+        // Vector that holds the IDs.
         std::vector<char *> history;
+        // Vector max capacity.
         uint8_t max = 20;
     public:
+        // Adds a packet ID to the list.
         bool add(char * pkt_id);
+        // Checks if a packet ID already exists.
         bool exists(char * pkt_id);
 };
+

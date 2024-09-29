@@ -16,7 +16,7 @@ void teste(int16_t (*transmit_func_callback)(uint8_t *, size_t)){
 }
 
 int main(int argc, char** argv){
-    Contact_list cl;
+    Contact_list cl = Contact_list();
     Contact c, *c1;
     c.setName("René");
     c.setID("123456");
@@ -61,6 +61,8 @@ int main(int argc, char** argv){
 
     lora_incomming_packets lip;
     lora_packet lp;
+    lora_outgoing_packets lop = lora_outgoing_packets(transmit);
+
     lp.type = 0x00;
     strcpy(lp.sender, "123456");
     strcpy(lp.destiny, "111111");
@@ -112,10 +114,10 @@ int main(int argc, char** argv){
     pkt = NULL;
     teste(transmit);
     lora_outgoing_packets outp = lora_outgoing_packets(transmit);
-    printf("lora_packet_announce size => %ul\n", sizeof(lora_packet_announce));
-    printf("lora_packet_ack size => %ul\n", sizeof(lora_packet_ack));
-    printf("lora_packet_comm size => %ul\n", sizeof(lora_packet_comm));
-    printf("lora_packet_ping size => %ul\n", sizeof(lora_packet_ping));
-    printf("lora_packet_data size => %ul\n", sizeof(lora_packet_data));
-    printf("lora_packet size => %ul\n", sizeof(lora_packet));
+    printf("lora_packet_announce size => %lu\n", sizeof(lora_packet_announce));
+    printf("lora_packet_ack size => %lu\n", sizeof(lora_packet_ack));
+    printf("lora_packet_comm size => %lu\n", sizeof(lora_packet_comm));
+    printf("lora_packet_ping size => %lu\n", sizeof(lora_packet_ping));
+    printf("lora_packet_data size => %lu\n", sizeof(lora_packet_data));
+    printf("lora_packet size => %lu\n", sizeof(lora_packet));
 }
