@@ -137,7 +137,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                         strcpy(((struct lora_packet_data *)pkt)->sender, p.sender);
                         strcpy(((struct lora_packet_data *)pkt)->destiny, p.destiny);
                         ((struct lora_packet_data *)pkt)->hops = 10;
-                        strncpy(((struct lora_packet_data *)pkt)->data, p.data, p.data_size);
+                        memcpy(((struct lora_packet_data *)pkt)->data, p.data, p.data_size);
                         ((struct lora_packet_data *)pkt)->data_size = p.data_size;
                         Serial.println("Data packet ready");
                     }
