@@ -67,7 +67,7 @@ struct lora_packet{
     char destiny[7] = {'\0'};
     uint8_t hops = 10;
     char status[7] = {'\0'};
-    char data[200] = {'\0'};
+    char data[208] = {'\0'};
     uint8_t data_size = 0;
     char date_time[30] = {'\0'};
     bool confirmed = false;
