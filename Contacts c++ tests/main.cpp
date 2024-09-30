@@ -61,7 +61,6 @@ int main(int argc, char** argv){
 
     lora_incomming_packets lip;
     lora_packet lp;
-    lora_outgoing_packets lop = lora_outgoing_packets(transmit);
 
     lp.type = 0x00;
     strcpy(lp.sender, "123456");
@@ -113,11 +112,19 @@ int main(int argc, char** argv){
     }
     pkt = NULL;
     teste(transmit);
-    lora_outgoing_packets outp = lora_outgoing_packets(transmit);
+    lora_outgoing_packets lop = lora_outgoing_packets(transmit);
     printf("lora_packet_announce size => %lu\n", sizeof(lora_packet_announce));
     printf("lora_packet_ack size => %lu\n", sizeof(lora_packet_ack));
     printf("lora_packet_comm size => %lu\n", sizeof(lora_packet_comm));
     printf("lora_packet_ping size => %lu\n", sizeof(lora_packet_ping));
     printf("lora_packet_data size => %lu\n", sizeof(lora_packet_data));
     printf("lora_packet size => %lu\n", sizeof(lora_packet));
+
+    lora_packet p, p2;
+    strcpy(p.id, "vadsdf");
+    p.type = LORA_PKT_ANNOUNCE;
+    lop.add(p);
+    printf("lop.has_packets() => %d\n", lop.has_packets());
+    p2 = lop.check_packets();
+    printf("sent packet id => %s\n", p2.id);
 }

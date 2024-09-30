@@ -51,7 +51,7 @@ bool lora_outgoing_packets::del(const char * id){
                 this->lora_packets.erase(this->lora_packets.begin() + i);
                 return true;
             }
-        return false;
+    return false;
 }
 
 lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t)){
@@ -91,6 +91,7 @@ lora_packet lora_outgoing_packets::check_packets(){
     if(this->has_packets()){
         // Calculate in miliseconds between 1 and 5 seconds
         r = getPktTimeout(1, 5);
+        printf("timeout => %dms\n", r);
         // Remove the confirmed packets and set a new timeout for the unconfirmed ones.
         if(this->has_packets()){
             for(int i = 0; i < this->lora_packets.size(); i++){
