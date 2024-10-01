@@ -21,7 +21,7 @@ bool lora_incomming_packets::has_packets(){
     return this->lora_packets.size() > 0;
 }
 
-static uint16_t getPktTimeout(uint16_t t1, uint16_t t2){
+uint32_t lora_outgoing_packets::getPktTimeout(uint16_t t1, uint16_t t2){
     uint32_t r = 100;
     if(t1 < t2){
         r = rand() % 50;
