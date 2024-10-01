@@ -150,14 +150,18 @@ lora_packet lora_outgoing_packets::check_packets(){
                     // Transmit the packet.
                     if(pkt != NULL){
                         this->transmit_func_callback((uint8_t*)pkt, pkt_size);
+                        if(pkt){
+                            free(pkt);
+                            pkt = NULL;
+                        }
+                        if(!this->has_packets())
+                            return lora_packet();
+                        if(p.confirmed)
+                            lora_packets.erase(lora_packets.begin() + i);
                     }
                 }
             }
         }
-    }
-    if(pkt){
-        free(pkt);
-        pkt = NULL;
     }
     return p;
 }

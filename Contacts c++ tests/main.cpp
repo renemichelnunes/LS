@@ -120,11 +120,20 @@ int main(int argc, char** argv){
     printf("lora_packet_data size => %lu\n", sizeof(lora_packet_data));
     printf("lora_packet size => %lu\n", sizeof(lora_packet));
 
-    lora_packet p, p2;
+    lora_packet p, p2, p3;
     strcpy(p.id, "vadsdf");
+    strcpy(p2.id, "abcdef");
+    p2.type = LORA_PKT_DATA;
     p.type = LORA_PKT_ANNOUNCE;
+	p.timeout = lop.genPktTimeout(1, 5);
+	p2.timeout = lop.genPktTimeout(1, 5);
     lop.add(p);
-    printf("lop.has_packets() => %d\n", lop.has_packets());
-    p2 = lop.check_packets();
-    printf("sent packet id => %s\n", p2.id);
+    lop.add(p2);
+    while(true){
+        p3 = lop.check_packets();
+        if(p3.type != LORA_PKT_EMPTY){
+            printf("lop.has_packets() => %d\n", lop.has_packets());
+            printf("sent packet id => %s\n\n", p3.id);
+        }
+    }
 }
