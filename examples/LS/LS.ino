@@ -1459,7 +1459,7 @@ void collectPackets(void * param){
 
             // Save the packet id on received_packets.
             if(!invalid_pkt_size){
-                if(p.hops > 0){
+                if(p.hops >= 0){
                     // Decrement the TTL
                     p.hops--;
                     // Lets add a date time of arrival.
@@ -1508,6 +1508,9 @@ void processPackets2(void * param){
                 }else{// If not in contact_list, go to the discovery service.
                     Serial.printf("Discovery service  - ID %s", p.id);
                 }
+            }
+            else if(p.type == LORA_PKT_DATA){
+
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
