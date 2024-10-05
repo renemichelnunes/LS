@@ -114,7 +114,7 @@ class lora_pkt_history{
         // Vector that holds the IDs.
         std::vector<char *> history;
         // Vector max capacity.
-        uint8_t max = 20;
+        uint8_t max = 200;
     public:
         // Adds a packet ID to the list.
         bool add(char * pkt_id);
