@@ -1510,7 +1510,13 @@ void processPackets2(void * param){
                 }
             }
             else if(p.type == LORA_PKT_DATA){
-
+                // Create a ack packet
+                lora_packet ack;
+                strcpy(ack.id, generate_ID(6).c_str());
+                strcpy(ack.sender, user_id);
+                strcpy(ack.status, p.id);
+                // Put on the transmit queue
+                transmit_pkt_list.add(ack);
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);

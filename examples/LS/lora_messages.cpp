@@ -90,7 +90,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                 if(this->lora_packets[i].confirmed){
                     Serial.printf("processTransmitingPackets - %s confirmed", this->lora_packets[i].id);
                     this->lora_packets.erase(this->lora_packets.begin() + i);
-                }else if(this->lora_packets[i].timeout > millis() && !this->lora_packets[i].confirmed){ // If time is up and not confirmed, renew the timeout (between 1 and 5 seconds, increments in hundreds of miliseconds)
+                }else if(this->lora_packets[i].timeout < millis() && !this->lora_packets[i].confirmed){ // If time is up and not confirmed, renew the timeout (between 1 and 5 seconds, increments in hundreds of miliseconds)
                     this->lora_packets[i].timeout = millis() + r;
                 }
             }
@@ -98,39 +98,34 @@ lora_packet lora_outgoing_packets::check_packets(){
         
         if(this->has_packets()){
             for(int i = 0; i < this->lora_packets.size(); i++){
-                if(this->lora_packets[i].timeout < millis()){
+                p = lora_packets[i];
+                if(p.timeout < millis()){
                     // Creating a packet by type
-                    if(lora_packets[i].type == LORA_PKT_ANNOUNCE){
+                    if(p.type == LORA_PKT_ANNOUNCE){
                         pkt_size = sizeof(lora_packet_announce);
                         pkt = calloc(pkt_size, sizeof(char));
                         // Generating packet info
-                        p = lora_packets[i];
-                        lora_packets.erase(lora_packets.begin() + i);
                         strcpy(((struct lora_packet_announce *)pkt)->sender, p.sender);
                         ((struct lora_packet_announce *)pkt)->type = p.type;
                         strcpy(((struct lora_packet_announce *)pkt)->id, generate_ID(6).c_str());
                         Serial.println("Announcement packet ready");
                     }
-                    else if(lora_packets[i].type == LORA_PKT_ACK){
+                    else if(p.type == LORA_PKT_ACK){
                         pkt_size = sizeof(lora_packet_ack);
                         pkt = calloc(pkt_size, sizeof(char));
                         // Generating packet info
-                        p = lora_packets[i];
-                        lora_packets.erase(lora_packets.begin() + i);
                         strcpy(((struct lora_packet_ack *)pkt)->id, generate_ID(6).c_str());
                         strcpy(((struct lora_packet_ack *)pkt)->sender, p.sender);
                         strcpy(((struct lora_packet_ack *)pkt)->destiny, p.destiny);
                         ((struct lora_packet_ack *)pkt)->type = p.type;
                         // destiny message ID to ack
-                        strcpy(((struct lora_packet_ack *)pkt)->status, p.status); 
+                        strcpy(((struct lora_packet_ack *)pkt)->status, p.id); 
                         Serial.println("ACK packet ready");
                     }
-                    else if(lora_packets[i].type == LORA_PKT_DATA){
+                    else if(p.type == LORA_PKT_DATA){
                         pkt_size = sizeof(lora_packet_data);
                         pkt = calloc(pkt_size, sizeof(char));
                         // Generating packet info
-                        p = lora_packets[i];
-                        lora_packets.erase(lora_packets.begin() + i);
                         ((struct lora_packet_data *)pkt)->type = p.type;
                         strcpy(((struct lora_packet_data *)pkt)->id, generate_ID(6).c_str());
                         strcpy(((struct lora_packet_data *)pkt)->sender, p.sender);
@@ -140,10 +135,10 @@ lora_packet lora_outgoing_packets::check_packets(){
                         ((struct lora_packet_data *)pkt)->data_size = p.data_size;
                         Serial.println("Data packet ready");
                     }
-                    else if(lora_packets[i].type == LORA_PKT_PING){
+                    else if(p.type == LORA_PKT_PING){
 
                     }
-                    else if(lora_packets[i].type == LORA_PKT_COMM){
+                    else if(p.type == LORA_PKT_COMM){
 
                     }
 
