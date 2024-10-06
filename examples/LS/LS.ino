@@ -318,15 +318,15 @@ static void refresh_contact_list(){
 /// @param size 
 /// @return std::string
 std::string generate_ID(uint8_t size){
-  srand(time(NULL));
-  static const char alphanum[] = "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  std::string ss;
+    char sss[size + 1] = {'\0'};
+    srand(time(NULL));
+    static const char alphanum[] = "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-  for (int i = 0; i < size; ++i) {
-    ss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-  }
-  return ss;
+    for (int i = 0; i < size; ++i) {
+        sss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+    }
+    return sss;
 }
 
 /// @brief This task runs forever and every 100 ms. We watch for a new message and show in a small area on top of the screen
@@ -1440,7 +1440,6 @@ void collectPackets(void * param){
                 radio.readData((uint8_t*)&p, packet_size);
                 rssi = radio.getRSSI();
                 snr = radio.getSNR();
-                new_stats = true;
                 gotPacket = false;
                 // Put the radio to listen.
                 radio.startReceive();
@@ -1450,8 +1449,10 @@ void collectPackets(void * param){
             // Check if the packet is valid.
             if(packet_size == sizeof(lora_packet_ack) || packet_size == sizeof(lora_packet_announce) ||
                 packet_size == sizeof(lora_packet_comm) || packet_size == sizeof(lora_packet_data) || 
-                packet_size == sizeof(lora_packet_ping))
+                packet_size == sizeof(lora_packet_ping)){
                 invalid_pkt_size = false;
+                new_stats = true;
+            }
             else{
                 invalid_pkt_size = true;
                 Serial.printf("Unknown packet size - %d bytes\n", packet_size);
@@ -1663,7 +1664,7 @@ static int16_t transmit(uint8_t * data, size_t len){
         r = radio.transmit((uint8_t*)data, len);
         if(r == RADIOLIB_ERR_NONE){
             Serial.println("Packet sent");
-            Serial.printf("On Air time => %d miliseconds\n", radio.getTimeOnAir(len) / 1000);
+            Serial.printf("On Air time => %1.3fs\n", (float)radio.getTimeOnAir(len) / 1000000);
         }
         else
             Serial.println("Packet not sent");
@@ -1674,13 +1675,14 @@ static int16_t transmit(uint8_t * data, size_t len){
 }
 
 void processTransmitingPackets(void * param){  
-    lora_packet p;
+    uint32_t r = 100;
     while(true){
         if(!using_transmit_pkt_list){
             using_transmit_pkt_list = true;
-            p = transmit_pkt_list.check_packets();
+            lora_packet p = transmit_pkt_list.check_packets();
             using_transmit_pkt_list = false;
-            Serial.printf("%s -> %s\n%d\n%d\n", p.sender, p.destiny, p.type, p.hops);
+            //if(p.type != LORA_PKT_EMPTY)
+            //    Serial.printf("%s -> %s\n%d\n%d\n", p.sender, p.destiny, p.type, p.hops);
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
@@ -4574,10 +4576,13 @@ void announce(){
 
     Serial.println("================announce===============");
     // We don't set a destiny so this is heard by everyone in range.
+    strcpy(hi.id, generate_ID(6).c_str());
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
     hi.type = LORA_PKT_ANNOUNCE;
     transmit_pkt_list.add(hi);
+    if(!pkt_history.exists(hi.id))
+        pkt_history.add(hi.id);
     Serial.println("=======================================");
 }
 
@@ -4587,8 +4592,6 @@ void task_beacon(void * param){
         r = rand() % 30;
         if(r < 10)
             r += 10;
-        Serial.print("R = ");
-        Serial.println(r);
         vTaskDelay(1000 * r / portTICK_PERIOD_MS);
         announce();
     }
