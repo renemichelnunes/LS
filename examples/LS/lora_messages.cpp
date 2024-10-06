@@ -21,7 +21,7 @@ bool lora_incomming_packets::has_packets(){
     return this->lora_packets.size() > 0;
 }
 
-uint32_t lora_outgoing_packets::getPktTimeout(uint16_t t1, uint16_t t2){
+uint32_t lora_outgoing_packets::genPktTimeout(uint16_t t1, uint16_t t2){
     uint32_t r = 100;
     if(t1 < t2){
         r = rand() % 50;
@@ -33,7 +33,7 @@ uint32_t lora_outgoing_packets::getPktTimeout(uint16_t t1, uint16_t t2){
 }
 
 void lora_outgoing_packets::add(lora_packet pkt){
-    pkt.timeout = getPktTimeout(1, 5);
+    pkt.timeout = genPktTimeout(1, 5);
     this->lora_packets.push_back(pkt);
 }
 
@@ -82,7 +82,7 @@ lora_packet lora_outgoing_packets::check_packets(){
 
     if(this->has_packets()){
         // Calculate in miliseconds between 1 and 5 seconds
-        r = getPktTimeout(1, 5);
+        r = genPktTimeout(1, 5);
         // Remove the confirmed packets and set a new timeout for the unconfirmed ones.
         if(this->has_packets()){
             for(int i = 0; i < this->lora_packets.size(); i++){
