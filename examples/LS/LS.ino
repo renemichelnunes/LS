@@ -3467,10 +3467,12 @@ void rssi_chart_zoom(lv_event_t * e){
         if(!chart_zoomed){
             lv_obj_set_size(frm_home_rssi_chart, 295, 200);
             lv_obj_move_foreground(frm_home_rssi_chart);
+            lv_chart_set_div_line_count(frm_home_rssi_chart, 5, 8);
             chart_zoomed = true;
         }
         else{
             lv_obj_set_size(frm_home_rssi_chart, rssi_chart_width, rssi_chart_height);
+            lv_chart_set_div_line_count(frm_home_rssi_chart, 3, 5);
             lv_obj_move_background(frm_home_rssi_chart);
             chart_zoomed = false;
         }
