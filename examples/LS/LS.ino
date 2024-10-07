@@ -317,7 +317,7 @@ static void refresh_contact_list(){
 /// @brief Creates a string with a sequence of 6 chars between letters and numbers randomly, the contact's id.
 /// @param size 
 /// @return std::string
-std::string generate_ID(uint8_t size){
+char * generate_ID(uint8_t size){
     char sss[size + 1] = {'\0'};
     srand(time(NULL));
     static const char alphanum[] = "0123456789"
@@ -1029,7 +1029,7 @@ void parseCommands(std::string jsonString){
             cm.me = true;
             strftime(cm.dateTime, sizeof(cm.dateTime)," - %a, %b %d %Y %H:%M", &timeinfo);
             strcpy(cm.message, msg);
-            strcpy(cm.messageID, generate_ID(6).c_str());
+            strcpy(cm.messageID, generate_ID(6));
 
             // Mutex to avoid errors, curruptions and concurrency.
             pthread_mutex_lock(&messages_mutex);
@@ -1513,7 +1513,7 @@ void processPackets2(void * param){
             else if(p.type == LORA_PKT_DATA){
                 // Create a ack packet
                 lora_packet ack;
-                strcpy(ack.id, generate_ID(6).c_str());
+                strcpy(ack.id, generate_ID(6));
                 strcpy(ack.sender, user_id);
                 strcpy(ack.status, p.id);
                 // Put on the transmit queue
@@ -2255,7 +2255,7 @@ void send_message(lv_event_t * e){
                 unsigned char ciphertext[padded_len];
                 encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
                 memcpy(pkt.data, ciphertext, padded_len);
-                strcpy(pkt.id, generate_ID(6).c_str());
+                strcpy(pkt.id, generate_ID(6));
                 pkt.data_size = padded_len;
                 transmiting_packets.push_back(pkt);
                 // add the message to the contact's list of messages.
@@ -2454,13 +2454,13 @@ void del_contact(lv_event_t * e){
 /// @param e 
 void generateID(lv_event_t * e){
     uint8_t size = (int)lv_event_get_user_data(e);
-    lv_textarea_set_text(frm_settings_id, generate_ID(size).c_str());
+    lv_textarea_set_text(frm_settings_id, generate_ID(size));
 }
 /// @brief This event calls for generate_ID and set the string returned into the text area.
 /// @param e 
 void generateKEY(lv_event_t * e){
     uint8_t size = (int)lv_event_get_user_data(e);
-    lv_textarea_set_text(frm_settings_key, generate_ID(size).c_str());
+    lv_textarea_set_text(frm_settings_key, generate_ID(size));
 }
 
 /// @brief This event checks the DX toggle switch and apply the apropriate configuration on the radio module.
@@ -4576,7 +4576,7 @@ void announce(){
 
     Serial.println("================announce===============");
     // We don't set a destiny so this is heard by everyone in range.
-    strcpy(hi.id, generate_ID(6).c_str());
+    strcpy(hi.id, generate_ID(6));
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
     hi.type = LORA_PKT_ANNOUNCE;
