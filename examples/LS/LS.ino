@@ -1616,7 +1616,7 @@ void processPackets(void * param){
             }
             // If we receive a ping solicitation.
             else if(p.type == LORA_PKT_PING && strcmp(p.destiny, user_id) == 0){
-                // Display a simple sotification.
+                // Display a simple notification
                 notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
                 // We'll send back a pong status.
                 strcpy(pong.sender, user_id);

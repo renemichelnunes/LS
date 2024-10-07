@@ -61,21 +61,20 @@ lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(u
 /// @brief Creates a string with a sequence of 6 chars between letters and numbers randomly, the contact's id.
 /// @param size 
 /// @return std::string
-static std::string generate_ID(uint8_t size){
-  srand(time(NULL));
-  static const char alphanum[] = "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  std::string ss;
+static char * generate_ID(uint8_t size){
+    char sss[size] = {'\0'};
+    srand(time(NULL));
+    static const char alphanum[] = "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-  for (int i = 0; i < size; ++i) {
-    ss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-  }
-  return ss;
+    for (int i = 0; i < size; ++i) {
+        sss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+    }
+    return sss;
 }
 
 lora_packet lora_outgoing_packets::check_packets(){
     uint32_t r = 100;
-    void * pkt = NULL;
     uint32_t pkt_size = 0;
     lora_packet p;
 
@@ -107,7 +106,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                 // Transmit the packet.
                 if(p.type != LORA_PKT_EMPTY){
                     this->transmit_func_callback((uint8_t*)&p, pkt_size);
-                    r = this->genPktTimeout(5);
+                    r = this->genPktTimeout(6);
                     Serial.printf("Next transmission in %1.1fs\n--------------------------------\n", (float)r / 1000);
                     vTaskDelay(r / portTICK_PERIOD_MS);
                     if(!this->has_packets())
