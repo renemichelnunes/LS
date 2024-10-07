@@ -144,6 +144,7 @@ const uint8_t maxClients = 1;
 #define BLOCK_SIZE 16  // AES bloco size (16 bytes)
 volatile bool wifi_got_ip = false;
 float rssi, snr;
+#define APP_LORA_CHAT 0
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -312,21 +313,6 @@ static void refresh_contact_list(){
     // After this, we save the list o contacts, there are other routines that modifies the contacts info
     // so for now this is the best place to save the contacts every time its info changes. Not perfect.
     saveContacts();
-}
-
-/// @brief Creates a string with a sequence of 6 chars between letters and numbers randomly, the contact's id.
-/// @param size 
-/// @return std::string
-char * generate_ID(uint8_t size){
-    char sss[size + 1] = {'\0'};
-    srand(time(NULL));
-    static const char alphanum[] = "0123456789"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
-    for (int i = 0; i < size; ++i) {
-        sss[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-    }
-    return sss;
 }
 
 /// @brief This task runs forever and every 100 ms. We watch for a new message and show in a small area on top of the screen
@@ -1029,7 +1015,7 @@ void parseCommands(std::string jsonString){
             cm.me = true;
             strftime(cm.dateTime, sizeof(cm.dateTime)," - %a, %b %d %Y %H:%M", &timeinfo);
             strcpy(cm.message, msg);
-            strcpy(cm.messageID, generate_ID(6));
+            strcpy(cm.messageID, generate_ID(6).c_str());
 
             // Mutex to avoid errors, curruptions and concurrency.
             pthread_mutex_lock(&messages_mutex);
@@ -1487,6 +1473,8 @@ void collectPackets(void * param){
 
 void processPackets2(void * param){
     lora_packet p;
+    ContactMessage cm;
+    Contact * c = NULL;
 
     while(true){
         if(pkt_list.has_packets()){
@@ -1501,8 +1489,7 @@ void processPackets2(void * param){
                 if(c != NULL){
                     // Set this to true if the contact is in range.
                     c->inrange = true;
-                    // There's a time out in minutes, if the contacts don't send a "show" status in time they will be
-                    // shown as out of range with a greyish squared mark after their names.
+                    // There's a time out in minutes, if the contacts don't send a "show" status in time they will be shown as out of range with a greyish squared mark after their names.
                     c->timeout = millis();
                     Serial.println("Announcement packet received");
                     c = NULL;
@@ -1513,11 +1500,60 @@ void processPackets2(void * param){
             else if(p.type == LORA_PKT_DATA){
                 // Create a ack packet
                 lora_packet ack;
-                strcpy(ack.id, generate_ID(6));
+                strcpy(ack.id, generate_ID(6).c_str());
                 strcpy(ack.sender, user_id);
                 strcpy(ack.status, p.id);
                 // Put on the transmit queue
                 transmit_pkt_list.add(ack);
+                // Redirect the data to its application
+                if(p.app_id == APP_LORA_CHAT){
+                    c = contacts_list.getContactByID(p.sender);
+                    if(c){
+                        strcpy(cm.messageID, generate_ID(6).c_str());
+                        // Decrypt the message.
+                        unsigned char decrypted_text[p.data_size + 1] = {'\0'};
+                        decrypt_text((unsigned char *)p.data, (unsigned char*)c->getKey().c_str(), p.data_size, decrypted_text);
+                        Serial.printf("msg size => %d\n", p.data_size);
+                        Serial.printf("Decrypted => %s\n", decrypted_text);
+                        strcpy(cm.message, (const char *)decrypted_text);
+                        pthread_mutex_lock(&messages_mutex);
+                        c->addMessage(cm);
+                        pthread_mutex_unlock(&messages_mutex);
+                        sendContactMessages(p.sender);
+                        while(sendingJson){
+                            vTaskDelay(100 / portTICK_PERIOD_MS);
+                        }
+                        // On client side there is a javascript function that reproduces a sound when a message is received.
+                        pthread_mutex_lock(&send_json_mutex);
+                        sendJSON("{\"command\" : \"playNewMessage\"}");
+                        pthread_mutex_unlock(&send_json_mutex);
+                        // Now w prepare a string to be shown on the notification area.
+                        char message[208] = {'\0'};
+                        char cmsg[208] = {'\0'};
+                        strcpy(message, c->getName().c_str());
+                        strcat(message, ": ");
+                        // This ensure the message is 149 bytes long.
+                        if(sizeof(p.data) > 207){
+                            memcpy(cmsg, cm.message, 207);
+                            strcat(message, cmsg);
+                        }
+                        else
+                            strcat(message, cm.message);
+                        // Eclipse the message if bigger than 30 bytes.
+                        message[30] = '.';
+                        message[31] = '.';
+                        message[32] = '.';
+                        message[33] = '\0';
+                        // Add to the notification list, there is a task to process it.
+                        notification_list.add(message, LV_SYMBOL_ENVELOPE);
+                    }
+                    else{
+                        
+                    }
+                }
+            }
+            else if(p.type == LORA_PKT_ACK){
+
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -1580,13 +1616,13 @@ void processPackets(void * param){
                     strcpy(message, c->getName().c_str());
                     strcat(message, ": ");
                     // This ensure the message is 149 bytes long.
-                    if(sizeof(p.data) > 149){
-                        memcpy(pmsg, dec_msg, 149);
+                    if(sizeof(p.data) > 207){
+                        memcpy(pmsg, dec_msg, 207);
                         strcat(message, pmsg);
                     }
                     else
                         strcat(message, p.data);
-                    // Eclipse the message if bigger then 30 bytes.
+                    // Eclipse the message if bigger than 30 bytes.
                     message[30] = '.';
                     message[31] = '.';
                     message[32] = '.';
@@ -1972,6 +2008,7 @@ void setupRadio(lv_event_t * e)
 /// @brief This sends a ping packet.
 /// @param e 
 void ping(lv_event_t * e){
+    /*
     // Lets send a simple byte
     while(gotPacket)
         delay(10 / portTICK_PERIOD_MS);
@@ -1980,7 +2017,7 @@ void ping(lv_event_t * e){
     // Using a SDR radio and SDR++ set the radio to listen to 915 MHz, put this device on DX mode,
     // touch 'ping' button and watch the waterfall ou record the screen to analyse further more.
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        if(radio.transmit((uint8_t*)'\0', 1) == RADIOLIB_ERR_NONE){
+        if(radio.transmit((uint8_t*)'A', 1) == RADIOLIB_ERR_NONE){
             Serial.println("Ping sent");
         }
         else
@@ -1988,7 +2025,7 @@ void ping(lv_event_t * e){
         xSemaphoreGive(xSemaphore);
     }
     transmiting = false;
-    
+    */
 }
 /// @brief This hides the contact list.
 /// @param e 
@@ -2231,6 +2268,7 @@ void send_message(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     String enc_msg;
     char msg[200] = {'\0'};
+    char * id;
     
     if(code == LV_EVENT_SHORT_CLICKED){
         // Lets assemble a lora packet.
@@ -2255,7 +2293,7 @@ void send_message(lv_event_t * e){
                 unsigned char ciphertext[padded_len];
                 encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
                 memcpy(pkt.data, ciphertext, padded_len);
-                strcpy(pkt.id, generate_ID(6));
+                strcpy(pkt.id, generate_ID(6).c_str());
                 pkt.data_size = padded_len;
                 transmiting_packets.push_back(pkt);
                 // add the message to the contact's list of messages.
@@ -2454,13 +2492,13 @@ void del_contact(lv_event_t * e){
 /// @param e 
 void generateID(lv_event_t * e){
     uint8_t size = (int)lv_event_get_user_data(e);
-    lv_textarea_set_text(frm_settings_id, generate_ID(size));
+    lv_textarea_set_text(frm_settings_id, generate_ID(size).c_str());
 }
 /// @brief This event calls for generate_ID and set the string returned into the text area.
 /// @param e 
 void generateKEY(lv_event_t * e){
     uint8_t size = (int)lv_event_get_user_data(e);
-    lv_textarea_set_text(frm_settings_key, generate_ID(size));
+    lv_textarea_set_text(frm_settings_key, generate_ID(size).c_str());
 }
 
 /// @brief This event checks the DX toggle switch and apply the apropriate configuration on the radio module.
@@ -4576,7 +4614,7 @@ void announce(){
 
     Serial.println("================announce===============");
     // We don't set a destiny so this is heard by everyone in range.
-    strcpy(hi.id, generate_ID(6));
+    strcpy(hi.id, generate_ID(6).c_str());
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
     hi.type = LORA_PKT_ANNOUNCE;

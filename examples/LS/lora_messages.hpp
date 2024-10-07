@@ -57,6 +57,7 @@ struct lora_packet_data{
     char status[7] = {'\0'};
     char data[208] = {'\0'};
     uint8_t data_size = 0;
+    uint8_t app_id = 0;
 };
 
 /// @brief Struct to create a complete LoRa packet info.
@@ -69,10 +70,14 @@ struct lora_packet{
     char status[7] = {'\0'};
     char data[208] = {'\0'};
     uint8_t data_size = 0;
+    uint8_t app_id = 0;
     char date_time[30] = {'\0'};
     bool confirmed = false;
     uint32_t timeout = 0;
 };
+
+std::string generate_ID(uint8_t size);
+
 /// @brief Class to instatiate a queue of inscomming lora_packet gathered from the LoRa radio and managing functions.
 class lora_incomming_packets{
     private:
