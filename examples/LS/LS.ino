@@ -1418,7 +1418,9 @@ void collectPackets(void * param){
 
     while(true){
         if(gotPacket){
-            //activity(lv_color_hex(0x00ff00));
+            pthread_mutex_lock(&lvgl_mutex);
+            activity(lv_color_hex(0x00ff00));
+            pthread_mutex_unlock(&lvgl_mutex);
             // Get exclusive access to the radio module and read the payload.
             if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                 radio.standby();
@@ -1456,7 +1458,7 @@ void collectPackets(void * param){
                     if(!pkt_history.exists(p.id)){
                         pkt_history.add(p.id);
                         pkt_list.add(p);
-                        Serial.print("Updating rssi graph...");
+                        Serial.println("\nUpdating rssi graph...");
                         update_rssi_snr_graph(rssi, snr);
                         Serial.println("rssi graph updated.");
                     }
@@ -1494,7 +1496,7 @@ void processPackets2(void * param){
                     Serial.println("Announcement packet received");
                     c = NULL;
                 }else{// If not in contact_list, go to the discovery service.
-                    Serial.printf("Discovery service  - ID %s", p.id);
+                    Serial.printf("Discovery service  - ID %s\n", p.id);
                 }
             }
             else if(p.type == LORA_PKT_DATA){
@@ -4620,6 +4622,7 @@ void announce(){
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
     hi.type = LORA_PKT_ANNOUNCE;
+    Serial.printf("creating announce packet ID %s\n", hi.id);
     transmit_pkt_list.add(hi);
     if(!pkt_history.exists(hi.id))
         pkt_history.add(hi.id);

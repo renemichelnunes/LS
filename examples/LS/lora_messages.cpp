@@ -64,7 +64,7 @@ lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(u
 std::string generate_ID(uint8_t size){
     //char * s = (char*)calloc(size + 1, sizeof(char));
     char s[size + 1] = {'\0'};
-    srand(time(NULL));
+    srand(millis());
     static const char alphanum[] = "0123456789"
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
@@ -127,10 +127,12 @@ lora_packet lora_outgoing_packets::check_packets(){
 }
 
 bool lora_pkt_history::add(char * pkt_id){
+    char s[7] = {'\0'};
+    strcpy(s, pkt_id);
     if(this->history.size() > 20)
         this->history.erase(this->history.begin());
     try{
-        this->history.push_back(pkt_id);
+        this->history.push_back(s);
         return true;
     }catch(std::exception &e){
         Serial.printf("lora_pkt_history::add error - %s\n", e.what());
@@ -139,8 +141,9 @@ bool lora_pkt_history::add(char * pkt_id){
 }
 
 bool lora_pkt_history::exists(char * pkt_id){
-    for(uint8_t i = 0; i < this->history.size(); i++)
-        if(strcmp(this->history[i], pkt_id) == 0)
+    for(uint8_t i = 0; i < this->history.size(); i++){
+        if(strcmp(this->history[i].c_str(), pkt_id) == 0)
             return true;
+    }
     return false;
 }

@@ -117,7 +117,7 @@ class lora_outgoing_packets{
 class lora_pkt_history{
     private:
         // Vector that holds the IDs.
-        std::vector<char *> history;
+        std::vector<String> history;
         // Vector max capacity.
         uint8_t max = 200;
     public:
