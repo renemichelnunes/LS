@@ -4650,7 +4650,6 @@ void announce(){
     lora_packet hi;
 
     Serial.println("==============announcement=============");
-    // We don't set a destiny so this is heard by everyone in range.
     strcpy(hi.id, generate_ID(6).c_str());
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
