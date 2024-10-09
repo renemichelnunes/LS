@@ -1439,7 +1439,6 @@ void collectPackets(void * param){
                 packet_size == sizeof(lora_packet_comm) || packet_size == sizeof(lora_packet_data) || 
                 packet_size == sizeof(lora_packet_ping)){
                 invalid_pkt_size = false;
-                new_stats = true;
             }
             else{
                 invalid_pkt_size = true;
@@ -1447,7 +1446,8 @@ void collectPackets(void * param){
             }
 
             // Save the packet id on received_packets.
-            if(!invalid_pkt_size){
+            if(!invalid_pkt_size && strcmp(p.sender, user_id) != 0){
+                new_stats = true;
                 if(p.hops >= 0){
                     // Decrement the TTL
                     p.hops--;
@@ -4616,13 +4616,13 @@ void wifi_auto_connect(void * param){
 void announce(){
     lora_packet hi;
 
-    Serial.println("================announce===============");
+    Serial.println("==============announcement=============");
     // We don't set a destiny so this is heard by everyone in range.
     strcpy(hi.id, generate_ID(6).c_str());
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
     hi.type = LORA_PKT_ANNOUNCE;
-    Serial.printf("creating announce packet ID %s\n", hi.id);
+    Serial.printf("creating announcement packet ID %s\n", hi.id);
     transmit_pkt_list.add(hi);
     if(!pkt_history.exists(hi.id))
         pkt_history.add(hi.id);

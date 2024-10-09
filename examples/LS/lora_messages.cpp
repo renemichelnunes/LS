@@ -82,7 +82,6 @@ lora_packet lora_outgoing_packets::check_packets(){
     if(this->has_packets()){
         for(int i = 0; i < this->lora_packets.size(); i++){
             p = lora_packets[i];
-            Serial.printf("Type %i ID %s\n", p.type, p.id);
             if(p.timeout < millis()){
                 // Creating a packet by type
                 if(p.type == LORA_PKT_ANNOUNCE){
