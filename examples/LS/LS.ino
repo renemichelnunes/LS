@@ -29,6 +29,7 @@
 #include "script.h"
 //#include "favicon.h"
 #include "ArduinoJson.hpp"
+#include "app_discovery.hpp"
 
 using namespace httpsserver;
 using namespace ArduinoJson;
