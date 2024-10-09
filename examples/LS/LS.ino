@@ -2274,6 +2274,8 @@ void send_message(lv_event_t * e){
     if(code == LV_EVENT_SHORT_CLICKED){
         // Lets assemble a lora packet.
         lora_packet pkt;
+        // Set the lora_packet type to DATA
+        pkt.type = LORA_PKT_DATA;
         // The sender is the owner.
         strcpy(pkt.sender, user_id);
         // The destiny is the selected contact.
