@@ -146,6 +146,7 @@ const uint8_t maxClients = 1;
 volatile bool wifi_got_ip = false;
 float rssi, snr;
 #define APP_LORA_CHAT 0
+discovery_app discoveryApp = discovery_app();
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -1467,6 +1468,7 @@ void collectPackets(void * param){
                         if(p.type == LORA_PKT_DATA){
                             lora_packet ack;
                             ack.type = LORA_PKT_ACK;
+                            ack.app_id = p.app_id;
                             strcpy(ack.id, generate_ID(6).c_str());
                             strcpy(ack.sender, user_id);
                             strcpy(ack.status, p.id);
@@ -1497,6 +1499,12 @@ void processPackets2(void * param){
             pthread_mutex_unlock(&lvgl_mutex);
             p = pkt_list.get();
             if(p.type == LORA_PKT_ANNOUNCE){
+                // Save the node ID in the discovery list
+                discovery_node dn = discovery_node(p.sender, MAX_HOPS - p.hops);
+                if(discoveryApp.add(dn))
+                    Serial.printf("Node ID %s added to discovery list\n", dn.node_id);
+                else
+                    Serial.printf("Node ID %s already exists in discovery list\n", dn.node_id);
                 // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
                 Contact * c = contacts_list.getContactByID(p.sender);
                 if(c != NULL){
@@ -1514,6 +1522,7 @@ void processPackets2(void * param){
                 // Create a ack packet
                 lora_packet ack;
                 ack.type = LORA_PKT_ACK;
+                ack.app_id = p.app_id;
                 strcpy(ack.id, generate_ID(6).c_str());
                 strcpy(ack.sender, user_id);
                 strcpy(ack.status, p.id);
@@ -1567,23 +1576,28 @@ void processPackets2(void * param){
                 }
             }
             else if(p.type == LORA_PKT_ACK){
-                Serial.printf("Received an ACK from %s to message ID %s\n", p.sender, p.status);
-                Contact * c = contacts_list.getContactByID(p.sender);
-                if(c){
-                    Serial.printf("ACK to %s\n", c->getName());
-                    ContactMessage * cm = c->getMessageByID(p.status);
-                    if(cm){
-                        cm->ack = true;
-                        if(!transmit_pkt_list.del(p.status))
-                            Serial.printf("Couldn't delete packet from transmit list\n");
-                        Serial.printf("ACK confirmed to message ID %s\n", cm->messageID);
+                if(p.app_id == APP_LORA_CHAT){
+                    Serial.printf("Received an ACK from %s to message ID %s\n", p.sender, p.status);
+                    Contact * c = contacts_list.getContactByID(p.sender);
+                    if(c){
+                        Serial.printf("ACK to %s\n", c->getName());
+                        ContactMessage * cm = c->getMessageByID(p.status);
+                        if(cm){
+                            cm->ack = true;
+                            if(!transmit_pkt_list.del(p.status))
+                                Serial.printf("Couldn't delete packet from transmit list\n");
+                            Serial.printf("ACK confirmed to message ID %s\n", cm->messageID);
+                        }
+                        else{
+                            Serial.printf("Message ID %s not found in contact's messages\n", p.status);
+                        }
                     }
                     else{
-                        Serial.printf("Message ID %s not found in contact's messages\n", p.status);
+                        Serial.printf("Contact ID %s not found in contact list\n", p.sender);
                     }
                 }
-                else{
-                    Serial.printf("Contact ID %s not found in contact list\n", p.sender);
+                else if(p.app_id == APP_DISCOVERY){
+
                 }
             }
         }

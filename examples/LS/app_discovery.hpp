@@ -11,13 +11,13 @@ class discovery_node{
         discovery_node(char * node_id, uint8_t hops);
 };
 
-class discovery{
+class discovery_app{
     private:
         std::vector<discovery_node> list;
     public:
         bool exists(const char * node_id);
-        void add(discovery_node node);
+        bool add(discovery_node node);
         discovery_node * getNode(const char * node_id);
-        uint32_t deliveryTime(const char * node_id);
-        uint32_t responseTime(const char * node_id);
+        uint32_t estimatedDeliveryTime(const char * node_id);
+        uint32_t estimatedResponseTime(const char * node_id);
 };
