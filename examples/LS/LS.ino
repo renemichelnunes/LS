@@ -3824,7 +3824,7 @@ void ui(){
     frm_chat_text_ans = lv_textarea_create(frm_chat);
     lv_obj_set_size(frm_chat_text_ans, 260, 50);
     lv_obj_align(frm_chat_text_ans, LV_ALIGN_BOTTOM_LEFT, -15, 15);
-    lv_textarea_set_max_length(frm_chat_text_ans, 120);
+    lv_textarea_set_max_length(frm_chat_text_ans, 207);
     lv_textarea_set_placeholder_text(frm_chat_text_ans, "Answer");
     lv_obj_set_style_text_font(frm_chat_text_ans, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
 
