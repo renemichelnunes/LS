@@ -111,7 +111,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                     vTaskDelay(r / portTICK_PERIOD_MS);
                     if(!this->has_packets())
                         return lora_packet();
-                    if(p.confirmed || p.type == LORA_PKT_ANNOUNCE){
+                    if(p.confirmed || p.type == LORA_PKT_ANNOUNCE || p.type == LORA_PKT_ACK){
                         Serial.printf("Erasing ID %s\n", p.id);
                         this->lora_packets.erase(this->lora_packets.begin() + i);
                     }

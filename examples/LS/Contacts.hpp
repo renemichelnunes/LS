@@ -10,7 +10,7 @@ struct ContactMessage{
     char dateTime[30] = {'\0'};
     bool ack = false;
     bool me = false;
-    char message[160] = {'\0'};
+    char message[208] = {'\0'};
     float rssi = 0;
     float snr = 0;
 };

@@ -11,7 +11,7 @@ notification::~notification()
 /// @brief Add a notification struct to the list.
 /// @param msg 
 /// @param symbol 
-void notification::add(char * msg, char * symbol){
+void notification::add(const char * msg, const char * symbol){
     char n[300] = {'\0'};
     char b[13] = {'\0'};
     notification_struct notification;

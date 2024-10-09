@@ -1463,8 +1463,18 @@ void collectPackets(void * param){
                         update_rssi_snr_graph(rssi, snr);
                         Serial.println("rssi graph updated.");
                     }
-                    else
+                    else{
+                        if(p.type == LORA_PKT_DATA){
+                            lora_packet ack;
+                            ack.type = LORA_PKT_ACK;
+                            strcpy(ack.id, generate_ID(6).c_str());
+                            strcpy(ack.sender, user_id);
+                            strcpy(ack.status, p.id);
+                            transmit_pkt_list.add(ack);
+                            Serial.printf("Retransmitting ACK to %s\n", p.id);
+                        }
                         Serial.printf("Packet %s already received\n", p.id);
+                    }
                 }
                 else
                     Serial.printf("Packet %s dropped\ntype %d\n", p.id, p.type);
@@ -1503,6 +1513,7 @@ void processPackets2(void * param){
             else if(p.type == LORA_PKT_DATA){
                 // Create a ack packet
                 lora_packet ack;
+                ack.type = LORA_PKT_ACK;
                 strcpy(ack.id, generate_ID(6).c_str());
                 strcpy(ack.sender, user_id);
                 strcpy(ack.status, p.id);
@@ -1556,7 +1567,24 @@ void processPackets2(void * param){
                 }
             }
             else if(p.type == LORA_PKT_ACK){
-
+                Serial.printf("Received an ACK from %s to message ID %s\n", p.sender, p.status);
+                Contact * c = contacts_list.getContactByID(p.sender);
+                if(c){
+                    Serial.printf("ACK to %s\n", c->getName());
+                    ContactMessage * cm = c->getMessageByID(p.status);
+                    if(cm){
+                        cm->ack = true;
+                        if(!transmit_pkt_list.del(p.status))
+                            Serial.printf("Couldn't delete packet from transmit list\n");
+                        Serial.printf("ACK confirmed to message ID %s\n", cm->messageID);
+                    }
+                    else{
+                        Serial.printf("Message ID %s not found in contact's messages\n", p.status);
+                    }
+                }
+                else{
+                    Serial.printf("Contact ID %s not found in contact list\n", p.sender);
+                }
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -1566,9 +1594,9 @@ void processPackets2(void * param){
 void processPackets(void * param){
     lora_packet p, pong;
     ContactMessage cm;
-    char dec_msg[200] = {'\0'};
-    char message[200] = {'\0'};
-    char pmsg[200] = {'\0'};
+    char dec_msg[208] = {'\0'};
+    char message[208] = {'\0'};
+    char pmsg[208] = {'\0'};
 
     while(true){
         if(received_packets.size() > 0){
@@ -2411,9 +2439,9 @@ void check_new_msg(void * param){
                     pthread_mutex_unlock(&lvgl_mutex);
                 }
                 // Get the label of the button which holds the message.
-                pthread_mutex_lock(&lvgl_mutex);
+                //pthread_mutex_lock(&lvgl_mutex);
                 lbl = lv_obj_get_child(btn, 0);
-                pthread_mutex_unlock(&lvgl_mutex);
+                //pthread_mutex_unlock(&lvgl_mutex);
                 // Test again if its not a ack packet type. If so, we pass through.
                 if(!(*cm)[i].ack){
                     pthread_mutex_lock(&lvgl_mutex);

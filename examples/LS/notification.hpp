@@ -16,7 +16,7 @@ public:
     notification();
     ~notification();
 
-    void add(char * msg, char * symbol);
+    void add(const char * msg, const char * symbol);
     void pop(char * msg, char * symbol);
     uint32_t size();
 };

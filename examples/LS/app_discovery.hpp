@@ -15,9 +15,9 @@ class discovery{
     private:
         std::vector<discovery_node> list;
     public:
-        bool exists(char * node_id);
+        bool exists(const char * node_id);
         void add(discovery_node node);
-        discovery_node * getNode(char * node_id);
-        uint32_t deliveryTime(char * node_id);
-        uint32_t responseTime(char * node_id);
+        discovery_node * getNode(const char * node_id);
+        uint32_t deliveryTime(const char * node_id);
+        uint32_t responseTime(const char * node_id);
 };
