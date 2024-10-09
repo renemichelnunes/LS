@@ -2265,7 +2265,9 @@ void show_chat(lv_event_t * e){
     }
 }
 
-void send_message2(lv_event_t * e){
+/// @brief Transmits a message through the LoRa module. Used with the chat dialog.
+/// @param e 
+void send_message(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     char msg[208] = {'\0'};
 
@@ -2325,67 +2327,6 @@ void send_message2(lv_event_t * e){
     }
 }
 
-/// @brief Transmits a message through the LoRa module. Used with the chat dialog.
-/// @param e 
-void send_message(lv_event_t * e){
-    lv_event_code_t code = lv_event_get_code(e);
-    String enc_msg;
-    char msg[200] = {'\0'};
-    char * id;
-    
-    if(code == LV_EVENT_SHORT_CLICKED){
-        // Lets assemble a lora packet.
-        lora_packet pkt;
-        // The sender is the owner.
-        strcpy(pkt.sender, user_id);
-        // The destiny is the selected contact.
-        strcpy(pkt.destiny, actual_contact->getID().c_str());
-        // 'send' to a normal packet, we'll expect to receive a 'recv' packet from the contact(not guaranteed).
-        strcpy(pkt.status, "send");
-        // Put the actual date and time.
-        strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-        
-        if(hasRadio){
-            // We won't send an empty message.
-            if(strcmp(lv_textarea_get_text(frm_chat_text_ans), "") != 0){
-                // Get the message from the answer text area.
-                strcpy(msg, lv_textarea_get_text(frm_chat_text_ans));
-                // Encrypt the message with our key.
-                uint8_t text_length = strlen(msg);
-                uint8_t padded_len = ((text_length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
-                unsigned char ciphertext[padded_len];
-                encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
-                memcpy(pkt.data, ciphertext, padded_len);
-                strcpy(pkt.id, generate_ID(6).c_str());
-                pkt.data_size = padded_len;
-                transmiting_packets.push_back(pkt);
-                // add the message to the contact's list of messages.
-                // This is used when we are assembling the chat messages list, every time we found me = true we are 
-                // creating a new button with the messages created by us with the title 'Me - Date time'. 
-                Contact * c = contacts_list.getContactByID(pkt.destiny);
-                if(c != NULL){
-                    ContactMessage cm = ContactMessage();
-                    strcpy(cm.dateTime, pkt.date_time);
-                    strcpy(cm.message, msg);
-                    strcpy(cm.messageID, pkt.id);
-                    cm.rssi = 0;
-                    cm.snr = 0;
-                    cm.me = true;
-                    Serial.print("Adding answer to ");
-                    Serial.println(pkt.destiny);
-                    Serial.println(pkt.data);
-                    // Get exclusive access to the addMessage.
-                    pthread_mutex_lock(&messages_mutex);
-                    c->addMessage(cm);
-                    pthread_mutex_unlock(&messages_mutex);
-                    // Clear the asnwer text area, if fails for some reason you don't need to retype.
-                    lv_textarea_set_text(frm_chat_text_ans, "");
-                }
-            }
-        }else
-            Serial.println("send_message() - Radio not configured");
-    }
-}
 /// @brief This is an event driven by touch and hold over a message on the messages list. It will copy the message to the
 // answer text area, avoiding retyping on that tini tiny keyboard.
 /// @param e 
@@ -2454,7 +2395,7 @@ void check_new_msg(void * param){
                     }
                 }
                 Serial.println((*cm)[i].message);
-                // The 'recv' status packets doen't have messages, so if the packet is 'send' type we extract he message
+                // The 'recv' status packets doesn't have messages, so if the packet is not an ack type we extract the message
                 // and create a button with it. lv_list_add_btn returns an instance of the button created with the message.
                 // We'll need to remove the scroll bars and add word wrap.
                 if(!(*cm)[i].ack){
@@ -2470,7 +2411,7 @@ void check_new_msg(void * param){
                 pthread_mutex_lock(&lvgl_mutex);
                 lbl = lv_obj_get_child(btn, 0);
                 pthread_mutex_unlock(&lvgl_mutex);
-                // Test again if its not a recv packet type. If so, we pass through.
+                // Test again if its not a ack packet type. If so, we pass through.
                 if(!(*cm)[i].ack){
                     pthread_mutex_lock(&lvgl_mutex);
                     // Set the font type, this one includes accents and latin chars.
