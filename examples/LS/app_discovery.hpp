@@ -4,6 +4,18 @@
 
 #define APP_DISCOVERY 1
 
+struct node_vicinity{
+    char node_id[7] = {'\0'};
+    char nb1[7] = {'\0'};
+    char nb1[7] = {'\0'};
+    char nb1[7] = {'\0'};
+    char nb1[7] = {'\0'};
+    char nb1[7] = {'\0'};
+    char nb1[7] = {'\0'};
+    char nb1[7] = {'\0'};
+    char nb1[7] = {'\0'};
+};
+
 class discovery_node{
     public:
         char node_id[7];
