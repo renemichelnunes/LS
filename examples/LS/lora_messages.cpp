@@ -32,6 +32,14 @@ uint32_t lora_outgoing_packets::genPktTimeout(uint16_t seconds){
     return r;
 }
 
+bool lora_outgoing_packets::hasType(uint8_t lora_pkt_type)
+{
+    for(lora_packet pkt : this->lora_packets)
+        if(pkt.type == LORA_PKT_ANNOUNCE)
+            return true;
+    return false;
+}
+
 void lora_outgoing_packets::add(lora_packet pkt){
     this->lora_packets.push_back(pkt);
 }

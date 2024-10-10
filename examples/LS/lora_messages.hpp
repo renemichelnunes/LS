@@ -115,6 +115,7 @@ class lora_outgoing_packets{
         bool has_packets();
         // Returns in milliseconds a calculated time out between two numbers in seconds
         uint32_t genPktTimeout(uint16_t seconds);
+        bool hasType(uint8_t lora_pkt_type);
 };
 /// @brief Class to instantiate a queue of lora_packet IDs used as history of packets that already have passed through the node.
 class lora_pkt_history{

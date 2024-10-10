@@ -1848,7 +1848,7 @@ bool normalMode(){
         }
 
         // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-        if (radio.setOutputPower(10) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+        if (radio.setOutputPower(1) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
             Serial.println(F("Selected output power is invalid for this module!"));
             return false;
         }
@@ -4669,9 +4669,14 @@ void announce(){
     strcpy(hi.status, "show");
     hi.type = LORA_PKT_ANNOUNCE;
     Serial.printf("creating announcement packet ID %s\n", hi.id);
-    transmit_pkt_list.add(hi);
-    if(!pkt_history.exists(hi.id))
-        pkt_history.add(hi.id);
+    if(!transmit_pkt_list.hasType(LORA_PKT_ANNOUNCE)){
+        transmit_pkt_list.add(hi);
+        if(!pkt_history.exists(hi.id))
+            pkt_history.add(hi.id);
+    }
+    else{
+        Serial.printf("Announcement packet already on transmit queue\n");
+    }
     Serial.println("=======================================");
 }
 
@@ -4681,7 +4686,7 @@ void task_beacon(void * param){
         r = rand() % 30;
         if(r < 10)
             r += 10;
-        vTaskDelay(1000 * r / portTICK_PERIOD_MS);
+        vTaskDelay(6000 / portTICK_PERIOD_MS);
         announce();
     }
     vTaskDelete(NULL);
