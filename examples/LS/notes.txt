@@ -9,7 +9,7 @@ Ao receber pacotes:
 
 2.1 - Ao receber um pacote de tipo LORA_PKT_ANNOUNCE é verificado se o remetente está na lista de contatos. Se sim, o status 'in range' é mudado para verdadeiro. Um contato possui uma variável que armazena o tempo máximo de timeout , e caso não se tenha recebido nenhum pacote deste tipo até o timeout limite o status 'in range' do contato é mudado para falso. Este tipo de pacote é retransmitido apenas uma vez, assim aumenta a probabilidade de um nó distante perceber a presença de outros nós que estão fora do alcance.
 
-2.2 - Ao receber um pacote de tipo LORA_PKT_DATA é importante redirecionar os dados do pacote para a aplicação que vai utilizá-lo. Para isso, cria-se uma rotina que verifica a propriedade app_id do pacote. Cada aplicativo que coleta ou transmite seus dados possui seu proprio app_id, por exemplo "p.app_id == APP_LORA_CHAT" utilizado pelo aplicativo de mensagens instantânea. A implementação é feita na rotina processPackets.
+2.2 - Ao receber um pacote de tipo LORA_PKT_DATA é importante redirecionar os dados do pacote para a aplicação que vai utilizá-lo. Para isso, cria-se uma rotina que verifica a propriedade app_id do pacote. Cada aplicativo que coleta ou transmite seus dados possui seu proprio app_id, por exemplo "p.app_id == APP_LORA_CHAT" utilizado pelo aplicativo de mensagens instantâneas. A implementação é feita na rotina processPackets.
 
 Ao transmitir pacotes:
 ------------------------
