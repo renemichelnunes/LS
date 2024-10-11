@@ -145,7 +145,8 @@ const uint8_t maxClients = 1;
 #define BLOCK_SIZE 16  // AES bloco size (16 bytes)
 volatile bool wifi_got_ip = false;
 float rssi, snr;
-#define APP_LORA_CHAT 0
+#define APP_SYSTEM 0
+#define APP_LORA_CHAT 1
 discovery_app discoveryApp = discovery_app();
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
@@ -1500,11 +1501,11 @@ void processPackets2(void * param){
             p = pkt_list.get();
             if(p.type == LORA_PKT_ANNOUNCE){
                 // Save the node ID in the discovery list
-                discovery_node dn = discovery_node(p.sender, MAX_HOPS - p.hops);
+                discovery_node dn = discovery_node(p.sender, MAX_HOPS - p.hops, 0, 0);
                 if(discoveryApp.add(dn))
-                    Serial.printf("Node ID %s added to discovery list\n", dn.node_id);
+                    Serial.printf("Node ID %s added to discovery list\n", dn.gridLocalization.node_id);
                 else
-                    Serial.printf("Node ID %s already exists in discovery list\n", dn.node_id);
+                    Serial.printf("Node ID %s already exists in discovery list\n", dn.gridLocalization.node_id);
                 // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
                 Contact * c = contacts_list.getContactByID(p.sender);
                 if(c != NULL){
