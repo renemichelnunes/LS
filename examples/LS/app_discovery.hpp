@@ -6,8 +6,6 @@
 // App ID
 #define APP_DISCOVERY 2
 
-
-
 struct grid_localization{
     char node_id[7] = {'\0'};
     uint16_t gridX = 0;
@@ -31,18 +29,18 @@ class discovery_app{
         lv_obj_t * frm_discovery_btn_title_lbl;
         lv_obj_t * frm_discovery_btn_back;
         lv_obj_t * frm_discovery_btn_back_lbl;
-        void initUI();
-        void updateNodeList();
         lv_obj_t * createNodeListObj(lv_obj_t * btn, const char * node_id, uint32_t hops);
-
         std::vector<discovery_node> list;
+        bool new_node;
     public:
-        discovery_app(lv_obj_t * parent);
+        discovery_app();
         bool exists(const char * node_id);
         bool add(discovery_node node);
         discovery_node * getNode(const char * node_id);
         uint32_t hopsTo(const char * node_id);
         void showUI();
         void hideUI();
+        void initUI(lv_obj_t * parent);
+        void updateNodeList();
 };
 

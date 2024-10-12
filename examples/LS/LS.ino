@@ -147,7 +147,7 @@ volatile bool wifi_got_ip = false;
 float rssi, snr;
 #define APP_SYSTEM 0
 #define APP_LORA_CHAT 1
-discovery_app discoveryApp = discovery_app(lv_scr_act());
+discovery_app discoveryApp = discovery_app();
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -1464,6 +1464,7 @@ void collectPackets(void * param){
                         Serial.println("\nUpdating rssi graph...");
                         update_rssi_snr_graph(rssi, snr);
                         Serial.println("rssi graph updated.");
+                        Serial.flush();
                     }
                     else{
                         if(p.type == LORA_PKT_DATA){
@@ -3529,6 +3530,10 @@ void rssi_chart_zoom(lv_event_t * e){
     }
 }
 
+void show_discovery_app(lv_event_t * e){
+    discoveryApp.showUI();
+}
+
 /// @brief Function to initilize all lvgl objects.
 void ui(){
     //style**************************************************************
@@ -3639,6 +3644,19 @@ void ui(){
     lv_label_set_text(lbl_btn_test, "Ping");
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_test, ping, LV_EVENT_SHORT_CLICKED, NULL);
+
+    // Nodes button
+    discoveryApp.initUI(lv_scr_act());
+    delay(2000);
+    btn_nodes = lv_btn_create(frm_home);
+    lv_obj_set_size(btn_nodes, 50, 20);
+    lv_obj_align(btn_nodes, LV_ALIGN_BOTTOM_RIGHT, 0, -50);
+
+    btn_nodes_lbl = lv_label_create(btn_nodes);
+    lv_obj_set_style_text_font(btn_nodes_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(btn_nodes_lbl, "Nodes");
+    lv_obj_align(btn_nodes_lbl, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(btn_nodes, show_discovery_app, LV_EVENT_SHORT_CLICKED, NULL);
 
     // Activity led 
     frm_home_activity_led = lv_obj_create(frm_home);
@@ -4719,7 +4737,7 @@ void setup(){
     //delay(3000);
 
     //time interval checking online contacts.
-    contacts_list.setCheckPeriod(1);
+    contacts_list.setCheckPeriod(5);
     //Load contacts
     loadContacts();
 
