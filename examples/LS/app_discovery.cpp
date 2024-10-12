@@ -107,6 +107,37 @@ void discovery_app::initUI()
     lv_obj_set_style_border_width(this->frm_discovery_nodeList, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
+void node_info(lv_event_t * e){
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * btn = (lv_obj_t *)lv_event_get_target(e);
+
+    if(code == LV_EVENT_SHORT_CLICKED){
+        Serial.println("Node info");
+    }
+}
+
+void discovery_app::updateNodeList()
+{
+    lv_obj_t * btn = NULL;
+    char msg[100] = {'\0'};
+    if(this->list.size() > 0){
+        lv_obj_clean(this->frm_discovery_nodeList);
+        for(discovery_node node : this->list){
+            sprintf(msg, "%s is %i hops from you", node.gridLocalization.node_id, this->hopsTo(node.gridLocalization.node_id));
+            btn = lv_list_add_btn(this->frm_discovery_nodeList, NULL, msg);
+            lv_obj_add_event_cb(btn, node_info, LV_EVENT_SHORT_CLICKED, btn);
+        }
+    }
+}
+
+lv_obj_t *discovery_app::createNodeListObj(lv_obj_t * btn, const char *node_id, uint32_t hops)
+{
+    if(this->frm_discovery_nodeList){
+
+    }
+    return nullptr;
+}
+
 void discovery_app::showUI()
 {
     if(this->frm_discovery){

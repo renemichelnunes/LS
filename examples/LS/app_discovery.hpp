@@ -32,7 +32,9 @@ class discovery_app{
         lv_obj_t * frm_discovery_btn_back;
         lv_obj_t * frm_discovery_btn_back_lbl;
         void initUI();
-        
+        void updateNodeList();
+        lv_obj_t * createNodeListObj(lv_obj_t * btn, const char * node_id, uint32_t hops);
+
         std::vector<discovery_node> list;
     public:
         discovery_app(lv_obj_t * parent);
