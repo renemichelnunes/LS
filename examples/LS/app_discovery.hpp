@@ -2,12 +2,11 @@
 #include <Arduino.h>
 #include <vector>
 #include <lvgl.h>
-
+#include <algorithm>
 // App ID
 #define APP_DISCOVERY 2
 
-// LVGL objects
-lv_obj_t frm_discovery;
+
 
 struct grid_localization{
     char node_id[7] = {'\0'};
@@ -24,6 +23,13 @@ class discovery_node{
 
 class discovery_app{
     private:
+        // LVGL objects
+        lv_obj_t * frm_discovery;
+        lv_obj_t * nodeList;
+        // LVGL functions
+        void show(lv_event_t * e);
+        void hide(lv_event_t * e);
+        
         std::vector<discovery_node> list;
     public:
         bool exists(const char * node_id);

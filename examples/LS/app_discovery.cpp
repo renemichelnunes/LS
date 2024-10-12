@@ -8,6 +8,16 @@ discovery_node::discovery_node(char * node_id, uint8_t hops, uint16_t gridX, uin
     this->gridLocalization.gridY = gridY;
 }
 
+void discovery_app::show(lv_event_t *e)
+{
+    lv_obj_clear_flag(this->frm_discovery, LV_OBJ_FLAG_HIDDEN);
+}
+
+void discovery_app::hide(lv_event_t *e)
+{
+    lv_obj_add_flag(this->frm_discovery, LV_OBJ_FLAG_HIDDEN);
+}
+
 bool discovery_app::exists(const char *node_id)
 {
     for(discovery_node node : this->list){
@@ -18,12 +28,17 @@ bool discovery_app::exists(const char *node_id)
     return false;
 }
 
+bool compareByHops(const grid_localization & a, const grid_localization & b){
+    return a.hops < b.hops;
+}
+
 bool discovery_app::add(discovery_node node)
 {
     for(discovery_node dn : this->list)
         if(strcmp(dn.gridLocalization.node_id, node.gridLocalization.node_id) == 0)
             return false;
     this->list.push_back(node);
+    std::sort(this->list.begin(), this->list.end(), compareByHops);
     return true;
 }
 
