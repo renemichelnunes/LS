@@ -24,18 +24,23 @@ class discovery_node{
 class discovery_app{
     private:
         // LVGL objects
+        lv_obj_t * parent;
         lv_obj_t * frm_discovery;
-        lv_obj_t * nodeList;
-        // LVGL functions
-        void show(lv_event_t * e);
-        void hide(lv_event_t * e);
+        lv_obj_t * frm_discovery_nodeList;
+        lv_obj_t * frm_discovery_btn_title;
+        lv_obj_t * frm_discovery_btn_title_lbl;
+        lv_obj_t * frm_discovery_btn_back;
+        lv_obj_t * frm_discovery_btn_back_lbl;
+        void initUI();
         
         std::vector<discovery_node> list;
     public:
+        discovery_app(lv_obj_t * parent);
         bool exists(const char * node_id);
         bool add(discovery_node node);
         discovery_node * getNode(const char * node_id);
         uint32_t hopsTo(const char * node_id);
-        void initUI(lv_obj_t * parent);
+        void showUI();
+        void hideUI();
 };
 

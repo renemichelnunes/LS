@@ -147,7 +147,7 @@ volatile bool wifi_got_ip = false;
 float rssi, snr;
 #define APP_SYSTEM 0
 #define APP_LORA_CHAT 1
-discovery_app discoveryApp = discovery_app();
+discovery_app discoveryApp = discovery_app(lv_scr_act());
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){

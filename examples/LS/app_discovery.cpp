@@ -8,14 +8,27 @@ discovery_node::discovery_node(char * node_id, uint8_t hops, uint16_t gridX, uin
     this->gridLocalization.gridY = gridY;
 }
 
-void discovery_app::show(lv_event_t *e)
+void show(lv_event_t *e)
 {
-    lv_obj_clear_flag(this->frm_discovery, LV_OBJ_FLAG_HIDDEN);
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * frm = (lv_obj_t*)lv_event_get_target(e);
+    if(frm)
+        lv_obj_clear_flag(frm, LV_OBJ_FLAG_HIDDEN);
 }
 
-void discovery_app::hide(lv_event_t *e)
+void hide(lv_event_t *e)
 {
-    lv_obj_add_flag(this->frm_discovery, LV_OBJ_FLAG_HIDDEN);
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * frm = (lv_obj_t*)lv_event_get_target(e);
+    if(frm)
+        lv_obj_add_flag(frm, LV_OBJ_FLAG_HIDDEN);
+}
+
+discovery_app::discovery_app(lv_obj_t * parent)
+{
+    this->parent = parent;
+    this->initUI();
+
 }
 
 bool discovery_app::exists(const char *node_id)
@@ -28,8 +41,8 @@ bool discovery_app::exists(const char *node_id)
     return false;
 }
 
-bool compareByHops(const grid_localization & a, const grid_localization & b){
-    return a.hops < b.hops;
+bool compareByHops(const discovery_node & a, const discovery_node & b){
+    return a.gridLocalization.hops < b.gridLocalization.hops;
 }
 
 bool discovery_app::add(discovery_node node)
@@ -58,4 +71,52 @@ uint32_t discovery_app::hopsTo(const char *node_id)
         if(strcmp(node.gridLocalization.node_id, node_id) == 0)
             return node.gridLocalization.hops;
     return 0;
+}
+
+void discovery_app::initUI()
+{
+    // Main form
+    this->frm_discovery = lv_obj_create(this->parent);
+    lv_obj_set_size(this->frm_discovery, 300, 200);
+    lv_obj_add_flag(this->frm_discovery, LV_OBJ_FLAG_HIDDEN);
+
+    // Title button
+    this->frm_discovery_btn_title = lv_btn_create(this->frm_discovery);
+    lv_obj_set_size(this->frm_discovery_btn_title, 200, 20);
+    lv_obj_align(this->frm_discovery_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
+
+    this->frm_discovery_btn_title_lbl = lv_label_create(this->frm_discovery_btn_title);
+    lv_label_set_text(this->frm_discovery_btn_title_lbl, "Discovered nodes");
+    lv_obj_set_align(this->frm_discovery_btn_title_lbl, LV_ALIGN_LEFT_MID);
+
+    // Close button
+    this->frm_discovery_btn_back = lv_btn_create(this->frm_discovery);
+    lv_obj_set_size(this->frm_discovery_btn_back, 50, 20);
+    lv_obj_align(this->frm_discovery_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
+    //lv_obj_set_pos(btn_contacts, 10, -10);
+    this->frm_discovery_btn_back_lbl = lv_label_create(this->frm_discovery_btn_back);
+    lv_label_set_text(this->frm_discovery_btn_back_lbl, "Back");
+    lv_obj_set_align(this->frm_discovery_btn_back_lbl, LV_ALIGN_CENTER);
+    lv_obj_add_event_cb(this->frm_discovery_btn_back_lbl, hide, LV_EVENT_SHORT_CLICKED, this->frm_discovery);
+
+    // Add list object
+    this->frm_discovery_nodeList = lv_list_create(this->frm_discovery);
+    lv_obj_set_size(this->frm_discovery_nodeList, LV_HOR_RES, 220);
+    lv_obj_align(this->frm_discovery_nodeList, LV_ALIGN_TOP_MID, 0, 5);
+    lv_obj_set_style_border_opa(this->frm_discovery_nodeList, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(this->frm_discovery_nodeList, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
+
+void discovery_app::showUI()
+{
+    if(this->frm_discovery){
+        lv_obj_clear_flag(this->frm_discovery, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void discovery_app::hideUI()
+{
+    if(this->frm_discovery){
+        lv_obj_add_flag(this->frm_discovery, LV_OBJ_FLAG_HIDDEN);
+    }
 }
