@@ -145,8 +145,8 @@ const uint8_t maxClients = 1;
 #define BLOCK_SIZE 16  // AES bloco size (16 bytes)
 volatile bool wifi_got_ip = false;
 float rssi, snr;
-#define APP_SYSTEM 0
-#define APP_LORA_CHAT 1
+#define APP_SYSTEM 1
+#define APP_LORA_CHAT 2
 discovery_app discoveryApp = discovery_app();
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
@@ -1469,12 +1469,13 @@ void collectPackets(void * param){
                         if(p.type == LORA_PKT_DATA){
                             lora_packet ack;
                             ack.type = LORA_PKT_ACK;
+                            Serial.printf("collectPackets - p.app_id %d\n");
                             ack.app_id = p.app_id;
                             strcpy(ack.id, generate_ID(6).c_str());
                             strcpy(ack.sender, user_id);
                             strcpy(ack.status, p.id);
                             transmit_pkt_list.add(ack);
-                            Serial.printf("Retransmitting ACK to %s\n", p.id);
+                            Serial.printf("Retransmitting ACK app_id %d to %s\n", ack.app_id, p.id);
                         }
                         Serial.printf("Packet %s already received\n", p.id);
                     }
@@ -1521,6 +1522,7 @@ void processPackets2(void * param){
             }
             else if(p.type == LORA_PKT_DATA){
                 // Create a ack packet
+                Serial.printf("DATA packet received p.app_id %d\n", p.app_id);
                 lora_packet ack;
                 ack.type = LORA_PKT_ACK;
                 ack.app_id = p.app_id;
@@ -1530,7 +1532,17 @@ void processPackets2(void * param){
                 // Put on the transmit queue
                 transmit_pkt_list.add(ack);
                 // Redirect the data to its application
+                if(p.app_id == APP_LORA_CHAT)
+                    Serial.println("APP_LORA_CHAT");
+                else if(p.app_id == APP_DISCOVERY)
+                    Serial.println("APP_DISCOVERY");
+                else if(p.app_id == APP_SYSTEM)
+                    Serial.println("APP_SYSTEM");
+                else
+                    Serial.println("APP_ID UNKNOWN");
+
                 if(p.app_id == APP_LORA_CHAT){
+                    Serial.println("LoRa Chat packet");
                     c = contacts_list.getContactByID(p.sender);
                     if(c){
                         strcpy(cm.messageID, generate_ID(6).c_str());
@@ -1572,11 +1584,12 @@ void processPackets2(void * param){
                         notification_list.add(message, LV_SYMBOL_ENVELOPE);
                     }
                     else{
-                        
+                        Serial.printf("Contact ID %s not found\n", p.sender);
                     }
                 }
             }
             else if(p.type == LORA_PKT_ACK){
+                Serial.printf("p.app_id %d\n", p.app_id);
                 if(p.app_id == APP_LORA_CHAT){
                     Serial.printf("Received an ACK from %s to message ID %s\n", p.sender, p.status);
                     Contact * c = contacts_list.getContactByID(p.sender);
@@ -1600,140 +1613,15 @@ void processPackets2(void * param){
                 else if(p.app_id == APP_DISCOVERY){
 
                 }
+                else{
+                    Serial.println("process_ackets2 - APP_ID UNKNOWN");
+                }
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
-void processPackets(void * param){
-    lora_packet p, pong;
-    ContactMessage cm;
-    char dec_msg[208] = {'\0'};
-    char message[208] = {'\0'};
-    char pmsg[208] = {'\0'};
-
-    while(true){
-        if(received_packets.size() > 0){
-            // Change the squared status on home screen to green.
-            pthread_mutex_lock(&lvgl_mutex);
-            activity(lv_color_hex(0x00ff00));
-            pthread_mutex_unlock(&lvgl_mutex);
-            p = received_packets[0];
-            received_packets.erase(received_packets.begin());
-            // Case chat message
-            if(strcmp(p.status, "send") == 0){
-                lora_packet s;
-                strcpy(s.status, "recv");
-                strcpy(s.sender, user_id);
-                strcpy(s.destiny, p.sender);
-                strcpy(s.id, p.id);
-                transmiting_packets.push_back(s);
-                Contact * c = contacts_list.getContactByID(p.sender);
-
-                if(c != NULL){
-                    // Decrypt the message.
-                    unsigned char decrypted_text[p.data_size + 1] = {'\0'};
-                    decrypt_text((unsigned char *)p.data, (unsigned char*)c->getKey().c_str(), p.data_size, decrypted_text);
-                    Serial.printf("msg size => %d\n", p.data_size);
-                    Serial.printf("Decrypted => %s\n", decrypted_text);
-                    strcpy(dec_msg, (const char *)decrypted_text);
-                    // Copy the decrypted message back to the packet.
-                    strcpy((char*)p.data, dec_msg);
-                    // The addMessage function sort the messages by destiny(contacts), so we trade places with the sender.
-                    strcpy(p.destiny, p.sender);
-                    strcpy(cm.messageID, p.id);
-                    strcpy(cm.dateTime, p.date_time);
-                    strcpy(cm.message, p.data);
-                    // messages_list is accessed by other routines so we need to get exclusive access.
-                    pthread_mutex_lock(&messages_mutex);
-                    c->addMessage(cm);
-                    pthread_mutex_unlock(&messages_mutex);
-                    // This send a JSON representation of the messages list of the contact.
-                    sendContactMessages(p.sender);
-                    while(sendingJson){
-                        vTaskDelay(10 / portTICK_PERIOD_MS);
-                    }
-                    // On client side there is a javascript function that reproduces a sound when a message is received.
-                    pthread_mutex_lock(&send_json_mutex);
-                    sendJSON("{\"command\" : \"playNewMessage\"}");
-                    pthread_mutex_unlock(&send_json_mutex);
-                    // Now w prepare a string to be shown on the notification area.
-                    strcpy(message, c->getName().c_str());
-                    strcat(message, ": ");
-                    // This ensure the message is 149 bytes long.
-                    if(sizeof(p.data) > 207){
-                        memcpy(pmsg, dec_msg, 207);
-                        strcat(message, pmsg);
-                    }
-                    else
-                        strcat(message, p.data);
-                    // Eclipse the message if bigger than 30 bytes.
-                    message[30] = '.';
-                    message[31] = '.';
-                    message[32] = '.';
-                    message[33] = '\0';
-                    // Add to the notification list, there is a task to process it.
-                    notification_list.add(message, LV_SYMBOL_ENVELOPE);
-                }
-            }
-            // If we receive an ack.
-            else if(p.type = LORA_PKT_ACK){
-                // Update de ack status of the contact's message by message id(status).
-                Contact * c = contacts_list.getContactByID(p.sender);
-                if(c != NULL){
-                    ContactMessage *cm = c->getMessageByID(p.status);
-                    if(cm != NULL){
-                        cm->ack = true;
-                        // Send his messages back to the web client side. This updates the chat history.
-                        sendContactMessages(p.sender);
-                        // If the message is in the transmission queue change its status to confirmed.
-                        for(uint8_t i = 0; i < transmiting_packets.size(); i++){
-                            if(strcmp(transmiting_packets[i].id, p.status) == 0)
-                                transmiting_packets[i].confirmed = true;
-                        }
-                    }
-                }
-                c = NULL;
-            }
-            // If we receive a ping solicitation.
-            else if(p.type == LORA_PKT_PING && strcmp(p.destiny, user_id) == 0){
-                // Display a simple notification
-                notification_list.add("ping", LV_SYMBOL_DOWNLOAD);
-                // We'll send back a pong status.
-                strcpy(pong.sender, user_id);
-                strcpy(pong.destiny, p.sender);
-                strcpy(pong.status, "pong");
-                transmiting_packets.push_back(pong);
-            }
-            // If we receive a confirmation ping.
-            else if(strcmp(p.status, "pong") == 0 && strcmp(p.destiny, user_id) == 0){
-                // Reproduce a sound(disabled by now).
-                notify_snd();
-                Serial.println("pong");
-                // Format a message with rssi and s/n ratio statistics.
-                strcpy(message, "pong ");
-                // Adds the message to the notification, we'll see on top of the screen.
-                notification_list.add(message, LV_SYMBOL_DOWNLOAD);
-            }
-            // Beacon type packet
-            else if(p.type == LORA_PKT_ANNOUNCE){
-                // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
-                Contact * c = contacts_list.getContactByID(p.sender);
-                if(c != NULL){
-                    // Set this to true if the contact is in range.
-                    c->inrange = true;
-                    // There's a time out in minutes, if the contacts don't send a "show" status in time they will be
-                    // shown as out of range with a greyish squared mark after their names.
-                    c->timeout = millis();
-                    Serial.println("Announcement packet received");
-                    c = NULL;
-                }
-            }
-        }
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-}
 
 static int16_t transmit(uint8_t * data, size_t len){
     int16_t r;
@@ -1849,7 +1737,7 @@ bool normalMode(){
         }
 
         // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-        if (radio.setOutputPower(1) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+        if (radio.setOutputPower(10) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
             Serial.println(F("Selected output power is invalid for this module!"));
             return false;
         }
@@ -1910,7 +1798,7 @@ bool DXMode()
         }
 
         // set spreading factor to 10
-        if (radio.setSpreadingFactor(12) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
+        if (radio.setSpreadingFactor(10) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
             Serial.println(F("Selected spreading factor is invalid for this module!"));
             return false;
         }
@@ -2320,6 +2208,8 @@ void send_message(lv_event_t * e){
         lora_packet pkt;
         // Set the lora_packet type to DATA
         pkt.type = LORA_PKT_DATA;
+        // Set the app id
+        pkt.app_id = APP_LORA_CHAT;
         // The sender is the owner.
         strcpy(pkt.sender, user_id);
         // The destiny is the selected contact.

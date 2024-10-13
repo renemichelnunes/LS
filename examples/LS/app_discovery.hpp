@@ -4,7 +4,7 @@
 #include <lvgl.h>
 #include <algorithm>
 // App ID
-#define APP_DISCOVERY 2
+#define APP_DISCOVERY 3
 
 struct grid_localization{
     char node_id[7] = {'\0'};
