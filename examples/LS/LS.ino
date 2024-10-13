@@ -1464,7 +1464,6 @@ void collectPackets(void * param){
                         Serial.println("\nUpdating rssi graph...");
                         update_rssi_snr_graph(rssi, snr);
                         Serial.println("rssi graph updated.");
-                        Serial.flush();
                     }
                     else{
                         if(p.type == LORA_PKT_DATA){
