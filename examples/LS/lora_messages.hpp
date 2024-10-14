@@ -28,7 +28,7 @@ struct lora_packet_ack{
     char destiny[7] = {'\0'};
     uint8_t hops = MAX_HOPS;
     char status[7] = "recv"; // can be used to ack (sender's message id)
-    char app_id[7] = {'\0'};
+    uint8_t app_id = 0;
 };
 /// @brief Struct that is used to create a shorter LoRa packet with command and parameters info.
 struct lora_packet_comm{

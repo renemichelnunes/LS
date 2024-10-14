@@ -1415,73 +1415,80 @@ void update_rssi_snr_graph(float rssi, float snr){
 /// @brief Collects lora packets and save them in received_packets.
 /// @param param 
 void collectPackets(void * param){
-    lora_packet p;
+    void * packet = NULL;
+    lora_packet * p;
     uint16_t packet_size;
     bool invalid_pkt_size = false;
 
     while(true){
         if(gotPacket){
-            pthread_mutex_lock(&lvgl_mutex);
-            activity(lv_color_hex(0x00ff00));
-            pthread_mutex_unlock(&lvgl_mutex);
-            // Get exclusive access to the radio module and read the payload.
-            if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-                radio.standby();
-                packet_size = radio.getPacketLength();
-                radio.readData((uint8_t*)&p, packet_size);
-                rssi = radio.getRSSI();
-                snr = radio.getSNR();
-                gotPacket = false;
-                // Put the radio to listen.
-                radio.startReceive();
-                xSemaphoreGive(xSemaphore);
-            }
-
-            // Check if the packet is valid.
-            if(packet_size == sizeof(lora_packet_ack) || packet_size == sizeof(lora_packet_announce) ||
-                packet_size == sizeof(lora_packet_comm) || packet_size == sizeof(lora_packet_data) || 
-                packet_size == sizeof(lora_packet_ping)){
-                invalid_pkt_size = false;
-            }
-            else{
-                invalid_pkt_size = true;
-                Serial.printf("Unknown packet size - %d bytes\n", packet_size);
-            }
-
-            // Save the packet id on received_packets.
-            if(!invalid_pkt_size && strcmp(p.sender, user_id) != 0){
-                new_stats = true;
-                if(p.hops >= 0){
-                    // Decrement the TTL
-                    p.hops--;
-                    // Lets add a date time of arrival.
-                    strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                    // If we receive the same packet we transmitted, drop it. This is a thing that happen
-                    // as soon as we send a packet. The radio uses the same buffer to transmit and receive.
-                    if(!pkt_history.exists(p.id)){
-                        pkt_history.add(p.id);
-                        pkt_list.add(p);
-                        Serial.println("\nUpdating rssi graph...");
-                        update_rssi_snr_graph(rssi, snr);
-                        Serial.println("rssi graph updated.");
-                    }
-                    else{
-                        if(p.type == LORA_PKT_DATA){
-                            lora_packet ack;
-                            ack.type = LORA_PKT_ACK;
-                            Serial.printf("collectPackets - p.app_id %d\n");
-                            ack.app_id = p.app_id;
-                            strcpy(ack.id, generate_ID(6).c_str());
-                            strcpy(ack.sender, user_id);
-                            strcpy(ack.status, p.id);
-                            transmit_pkt_list.add(ack);
-                            Serial.printf("Retransmitting ACK app_id %d to %s\n", ack.app_id, p.id);
-                        }
-                        Serial.printf("Packet %s already received\n", p.id);
-                    }
+            packet = calloc(1, sizeof(lora_packet));
+            if(packet){
+                pthread_mutex_lock(&lvgl_mutex);
+                activity(lv_color_hex(0x00ff00));
+                pthread_mutex_unlock(&lvgl_mutex);
+                // Get exclusive access to the radio module and read the payload.
+                if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
+                    radio.standby();
+                    packet_size = radio.getPacketLength();
+                    radio.readData((uint8_t*)packet, packet_size);
+                    rssi = radio.getRSSI();
+                    snr = radio.getSNR();
+                    gotPacket = false;
+                    // Put the radio to listen.
+                    radio.startReceive();
+                    xSemaphoreGive(xSemaphore);
                 }
-                else
-                    Serial.printf("Packet %s dropped\ntype %d\n", p.id, p.type);
+
+                // Check if the packet is valid.
+                if(packet_size == sizeof(lora_packet_ack) || packet_size == sizeof(lora_packet_announce) ||
+                    packet_size == sizeof(lora_packet_comm) || packet_size == sizeof(lora_packet_data) || 
+                    packet_size == sizeof(lora_packet_ping)){
+                    invalid_pkt_size = false;
+                }
+                else{
+                    invalid_pkt_size = true;
+                    Serial.printf("Unknown packet size - %d bytes\n", packet_size);
+                }
+
+                // Save the packet id on received_packets.
+                if(!invalid_pkt_size && strcmp(p.sender, user_id) != 0){
+                    if(p.type == LORA_PKT_DATA || p.type == LORA_PKT_ACK){
+                        Serial.printf("ID %s\nAPP ID %d\nTYPE %d\nSENDER %s\nSTATUS %s\nDATA SIZE %d\nDATA %s\n\n", p.id, p.app_id, p.type, p.sender, p.status, p.data_size, p.data);
+                    }
+                    new_stats = true;
+                    if(p.hops >= 0){
+                        // Decrement the TTL
+                        p.hops--;
+                        // Lets add a date time of arrival.
+                        strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        // If we receive the same packet we transmitted, drop it. This is a thing that happen
+                        // as soon as we send a packet. The radio uses the same buffer to transmit and receive.
+                        if(!pkt_history.exists(p.id)){
+                            pkt_history.add(p.id);
+                            pkt_list.add(p);
+                            //Serial.println("\nUpdating rssi graph...");
+                            update_rssi_snr_graph(rssi, snr);
+                            //Serial.println("rssi graph updated.");
+                        }
+                        else{
+                            if(p.type == LORA_PKT_DATA){
+                                lora_packet ack;
+                                ack.type = LORA_PKT_ACK;
+                                //Serial.printf("collectPackets - p.app_id %d\n");
+                                ack.app_id = p.app_id;
+                                strcpy(ack.id, generate_ID(6).c_str());
+                                strcpy(ack.sender, user_id);
+                                strcpy(ack.status, p.id);
+                                transmit_pkt_list.add(ack);
+                                Serial.printf("Retransmitting ACK app_id %d to %s\n", ack.app_id, p.id);
+                            }
+                            Serial.printf("Packet %s already received\n", p.id);
+                        }
+                    }
+                    else
+                        Serial.printf("Packet %s dropped\ntype %d\n", p.id, p.type);
+                }
             }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1503,10 +1510,12 @@ void processPackets2(void * param){
             if(p.type == LORA_PKT_ANNOUNCE){
                 // Save the node ID in the discovery list
                 discovery_node dn = discovery_node(p.sender, MAX_HOPS - p.hops, 0, 0);
-                if(discoveryApp.add(dn))
-                    Serial.printf("Node ID %s added to discovery list\n", dn.gridLocalization.node_id);
-                else
-                    Serial.printf("Node ID %s already exists in discovery list\n", dn.gridLocalization.node_id);
+                if(discoveryApp.add(dn)){
+                    //Serial.printf("Node ID %s added to discovery list\n", dn.gridLocalization.node_id);
+                }
+                else{
+                    //Serial.printf("Node ID %s already exists in discovery list\n", dn.gridLocalization.node_id);
+                }
                 // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
                 Contact * c = contacts_list.getContactByID(p.sender);
                 if(c != NULL){
@@ -1514,7 +1523,7 @@ void processPackets2(void * param){
                     c->inrange = true;
                     // There's a time out in minutes, if the contacts don't send a "show" status in time they will be shown as out of range with a greyish squared mark after their names.
                     c->timeout = millis();
-                    Serial.println("Announcement packet received");
+                    //Serial.println("Announcement packet received");
                     c = NULL;
                 }else{// If not in contact_list, go to the discovery service.
                     Serial.printf("Discovery service  - ID %s\n", p.id);
@@ -1524,10 +1533,10 @@ void processPackets2(void * param){
                 // Create a ack packet
                 Serial.printf("DATA packet received p.app_id %d\n", p.app_id);
                 lora_packet ack;
-                ack.type = LORA_PKT_ACK;
                 ack.app_id = p.app_id;
                 strcpy(ack.id, generate_ID(6).c_str());
                 strcpy(ack.sender, user_id);
+                strcpy(ack.destiny, p.destiny);
                 strcpy(ack.status, p.id);
                 // Put on the transmit queue
                 transmit_pkt_list.add(ack);
@@ -1589,7 +1598,7 @@ void processPackets2(void * param){
                 }
             }
             else if(p.type == LORA_PKT_ACK){
-                Serial.printf("p.app_id %d\n", p.app_id);
+                
                 if(p.app_id == APP_LORA_CHAT){
                     Serial.printf("Received an ACK from %s to message ID %s\n", p.sender, p.status);
                     Contact * c = contacts_list.getContactByID(p.sender);
@@ -1614,7 +1623,7 @@ void processPackets2(void * param){
 
                 }
                 else{
-                    Serial.println("process_ackets2 - APP_ID UNKNOWN");
+                    Serial.println("process_packets2 - APP_ID UNKNOWN");
                 }
             }
         }
@@ -1630,11 +1639,11 @@ static int16_t transmit(uint8_t * data, size_t len){
     activity(lv_color_hex(0xff0000));
     pthread_mutex_unlock(&lvgl_mutex);
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        Serial.println("Transmitting packet...");
+        //Serial.println("Transmitting packet...");
         r = radio.transmit((uint8_t*)data, len);
         if(r == RADIOLIB_ERR_NONE){
-            Serial.println("Packet sent");
-            Serial.printf("On Air time => %1.3fs\n", (float)radio.getTimeOnAir(len) / 1000000);
+            //Serial.println("Packet sent");
+            //Serial.printf("On Air time => %1.3fs\n", (float)radio.getTimeOnAir(len) / 1000000);
         }
         else
             Serial.println("Packet not sent");
@@ -1670,7 +1679,7 @@ void processReceivedStats(void * param){
             sprintf(rssi_text, "%.2f", rssi);
             sprintf(snr_text, "%.2f", snr);
             // Lets print this statistics on console.
-            Serial.printf("[RSSI:%.2f dBm SNR:%.2f dBm]\n", rssi, snr);
+            //Serial.printf("[RSSI:%.2f dBm SNR:%.2f dBm]\n", rssi, snr);
             // The client side has a javascript to plot a graphic about the rssi and s/n ratio. So we send it also as JSON.
             doc["command"] = "rssi_snr";
             doc["rssi"] = rssi_text;
@@ -4571,12 +4580,12 @@ void wifi_auto_connect(void * param){
 void announce(){
     lora_packet hi;
 
-    Serial.println("==============announcement=============");
+    //Serial.println("==============announcement=============");
     strcpy(hi.id, generate_ID(6).c_str());
     strcpy(hi.sender, user_id);
     strcpy(hi.status, "show");
     hi.type = LORA_PKT_ANNOUNCE;
-    Serial.printf("creating announcement packet ID %s\n", hi.id);
+    //Serial.printf("creating announcement packet ID %s\n", hi.id);
     if(!transmit_pkt_list.hasType(LORA_PKT_ANNOUNCE)){
         transmit_pkt_list.add(hi);
         if(!pkt_history.exists(hi.id))
@@ -4585,7 +4594,7 @@ void announce(){
     else{
         Serial.printf("Announcement packet already on transmit queue\n");
     }
-    Serial.println("=======================================");
+    //Serial.println("=======================================");
 }
 
 void task_beacon(void * param){
@@ -4738,10 +4747,10 @@ void setup(){
     // Launch de beacon task.
     xTaskCreatePinnedToCore(task_beacon, "beacon", 4000, NULL, 1, NULL, 1);
     // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. 
-    xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 3000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 11000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processPackets2, "process_pkt", 5000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processTransmitingPackets, "proc_tx_pkt", 3000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processTransmitingPackets, "proc_tx_pkt", 11000, NULL, 1, NULL, 1);
 
 }
 
