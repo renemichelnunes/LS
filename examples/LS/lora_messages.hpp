@@ -86,6 +86,7 @@ class lora_incomming_packets{
     private:
         // Vector that simulates a queue of received lora_packets.
         std::vector<lora_packet> lora_packets;
+        uint8_t max = 200;
     public:
         // Adds a lora_packet to the queue.
         void add(lora_packet pkt);
@@ -102,6 +103,7 @@ class lora_outgoing_packets{
         std::vector<lora_packet> lora_packets;
         // LoRa radio transmit callback function.
         int16_t (*transmit_func_callback)(uint8_t *, size_t);
+        uint8_t max = 200;
     public:
         // Instatiate a lora_outgoing_packets object passing a LoRa radio transmit function.
         lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t));

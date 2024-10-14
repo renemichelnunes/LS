@@ -85,6 +85,7 @@ volatile bool server_ready = false;
 volatile bool parsing = false;
 volatile bool new_stats = false;
 volatile bool using_transmit_pkt_list = false;
+volatile bool msg_confirmed = false;
 // Hardware inputs
 lv_indev_t *touch_indev = NULL;
 lv_indev_t *kb_indev = NULL;
@@ -1457,33 +1458,33 @@ void collectPackets(void * param){
                 lp.type = p->type;
                 strcpy(lp.id, p->id);
                 strcpy(lp.sender, p->sender);
-                lp.hops = p->hops;
                 // Especific packet type properties
                 switch(p->type){
                     case LORA_PKT_ANNOUNCE:
-                        
+                        lp.hops = ((lora_packet_announce*)packet)->hops;
                         break;
                     case LORA_PKT_ACK:
-                        strcpy(lp.destiny, p->destiny);
-                        strcpy(lp.status, p->status);
-                        lp.app_id = p->app_id;
+                        strcpy(lp.destiny, ((lora_packet_ack*)packet)->destiny);
+                        strcpy(lp.status, ((lora_packet_ack*)packet)->status);
+                        lp.app_id = ((lora_packet_ack*)packet)->app_id;
                         break;
                     case LORA_PKT_DATA:
-                        strcpy(lp.destiny, p->destiny);
-                        lp.data_size = p->data_size;
-                        memcpy(lp.data, p->data, p->data_size);
-                        lp.app_id = p->app_id;
+                        strcpy(lp.destiny, ((lora_packet_data*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data*)packet)->data, ((lora_packet_data*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        Serial.printf("Data received in %s\n", lp.date_time);
                         break;
                 }
                 // Save the packet id on received_packets.
                 if(!invalid_pkt_size && strcmp(lp.sender, user_id) != 0){
                     if(lp.type == LORA_PKT_DATA || lp.type == LORA_PKT_ACK){
-                        Serial.printf("ID %s\nAPP ID %d\nTYPE %d\nSENDER %s\nSTATUS %s\nDATA SIZE %d\nDATA %s\n\n", lp.id, lp.app_id, lp.type, lp.sender, lp.status, lp.data_size, lp.data);
+                        //Serial.printf("ID %s\nAPP ID %d\nTYPE %d\nSENDER %s\nSTATUS %s\nDATA SIZE %d\nDATA %s\n\n", lp.id, lp.app_id, lp.type, lp.sender, lp.status, lp.data_size, lp.data);
                     }
                     new_stats = true;
-                    if(lp.hops >= 0){
+                    if(lp.hops > 0){
                         // Decrement the TTL
                         lp.hops--;
                         // If we receive the same packet we transmitted, drop it. This is a thing that happen
@@ -1494,6 +1495,12 @@ void collectPackets(void * param){
                             //Serial.println("\nUpdating rssi graph...");
                             update_rssi_snr_graph(rssi, snr);
                             //Serial.println("rssi graph updated.");
+                            // If the packet belongs to other, retransmit it
+                            if((strcmp(lp.destiny, user_id) != 0 || lp.type == LORA_PKT_ANNOUNCE) && lp.hops > 0){
+                                Serial.println("Redirecting the packet");
+                                lp.confirmed = true;
+                                transmit_pkt_list.add(lp);
+                            }
                         }
                         else{
                             if(lp.type == LORA_PKT_DATA){
@@ -1592,6 +1599,7 @@ void processPackets2(void * param){
                         Serial.printf("msg size => %d\n", p.data_size);
                         Serial.printf("Decrypted => %s\n", decrypted_text);
                         strcpy(cm.message, (const char *)decrypted_text);
+                        strcpy(cm.dateTime, p.date_time);
                         pthread_mutex_lock(&messages_mutex);
                         c->addMessage(cm);
                         pthread_mutex_unlock(&messages_mutex);
@@ -1638,6 +1646,7 @@ void processPackets2(void * param){
                         ContactMessage * cm = c->getMessageByID(p.status);
                         if(cm){
                             cm->ack = true;
+                            msg_confirmed = true;
                             if(!transmit_pkt_list.del(p.status))
                                 Serial.printf("Couldn't delete packet from transmit list\n");
                             Serial.printf("ACK confirmed to message ID %s\n", cm->messageID);
@@ -2313,10 +2322,8 @@ void copy_text(lv_event_t * e){
         lv_textarea_add_text(frm_chat_text_ans, lv_label_get_text(lbl));
     }
 }
-/// @brief Task that runs when a contact is selected through the contacts list. It updates the messages list
-/// object on the chat.
-/// @param param 
-void check_new_msg(void * param){
+
+void check_new_msg_old(void * param){
     // Vector that holds the contact's mesages.
     vector<ContactMessage> * cm;
     // Save the actual messages count.
@@ -2403,6 +2410,85 @@ void check_new_msg(void * param){
             }
             // Update the message count.
             msg_count = actual_count;
+        }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+}
+
+/// @brief Task that runs when a contact is selected through the contacts list. It updates the messages list
+/// object on the chat.
+/// @param param 
+void check_new_msg(void * param){
+    // Vector that holds the contact's mesages.
+    vector<ContactMessage> * cm;
+    // Save the actual messages count.
+    uint32_t actual_count = 0;
+    lv_obj_t * btn = NULL, * lbl = NULL;
+    char date[60] = {'\0'};
+    char name[100] = {'\0'};
+    
+    while(true){
+        // Get the contact's messages on a vector.
+        pthread_mutex_lock(&messages_mutex);
+        cm = contacts_list.getContactMessages(actual_contact->getID().c_str());
+        pthread_mutex_unlock(&messages_mutex);
+        // Save the count.
+        actual_count = (*cm).size();
+        // When actual_count is bigger than msg_count means that we have new messages.
+        if(msg_confirmed){
+            Serial.printf("msg_confirmed %d\n", msg_confirmed);
+        }
+        if(actual_count > msg_count || msg_confirmed == true){
+            Serial.println("new messages");
+            // Clear the chat messages. LVGL documentation says the functions are not thread safe, so we need a mutex.
+            pthread_mutex_lock(&lvgl_mutex);
+            lv_obj_clean(frm_chat_list);
+            pthread_mutex_unlock(&lvgl_mutex);
+            for(uint32_t i = 0; i < (*cm).size(); i++){
+                // We create a new entry on the messages list based on sender and destiny messages.
+                // If the message was sent by us we'll create a button with 'Me date time' on title.
+                if((*cm)[i].me){
+                    // The title 'Me date time'.
+                    strcpy(name, "Me");
+                    strcat(name, (*cm)[i].dateTime);
+                    // Add on the list a simple text, there's a visual difference between a button.
+                    pthread_mutex_lock(&lvgl_mutex);
+                    lv_list_add_text(frm_chat_list, name);
+                    pthread_mutex_unlock(&lvgl_mutex);
+                }else{
+                    // If it is a message from the destination, create a text item with the title 'Contact name date time'.
+                    strcpy(name, actual_contact->getName().c_str());
+                    strcat(name, (*cm)[i].dateTime);
+                    // LVGL's unsave thread access functions.
+                    pthread_mutex_lock(&lvgl_mutex);
+                    lv_list_add_text(frm_chat_list, name);
+                    pthread_mutex_unlock(&lvgl_mutex);
+                    
+                }
+                Serial.println(name);
+                Serial.println((*cm)[i].message);
+                // Force a scroll to the last message added on the list.
+                pthread_mutex_lock(&lvgl_mutex);
+                // Crete a new instance on a button with the message.
+                btn = lv_list_add_btn(frm_chat_list, NULL, (*cm)[i].message);
+                // Get the label of the button which holds the message.
+                lbl = lv_obj_get_child(btn, 0);
+                // Set the font type, this one includes accents and latin chars.
+                lv_obj_set_style_text_font(lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+                // Add the event 'copy message to answer text area'.
+                lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
+                // This configures the label to do a word wrap and hide the scroll bars in case the message is too long.
+                lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
+                if((*cm)[i].ack){
+                    Serial.printf("(*cm)[%d].ack %d\n");
+                    btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
+                }
+                lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
+                pthread_mutex_unlock(&lvgl_mutex);
+            }
+            // Update the message count.
+            msg_count = actual_count;
+            msg_confirmed = false;
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }

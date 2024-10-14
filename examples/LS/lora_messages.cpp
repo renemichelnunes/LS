@@ -4,7 +4,12 @@
 
 void lora_incomming_packets::add(lora_packet pkt){
     try{
+        if(this->lora_packets.size() == this->max){
+            Serial.println("Receiving queue full, erasing the oldest");
+            this->lora_packets.erase(this->lora_packets.begin());
+        }
         this->lora_packets.push_back(pkt);
+        Serial.printf("Receiving queue has %d elements\n", this->lora_packets.size());
     }
     catch(std::exception &e){
         Serial.printf("lora_incomming_packets::add error - %s\n", e.what());
@@ -41,7 +46,12 @@ bool lora_outgoing_packets::hasType(uint8_t lora_pkt_type)
 }
 
 void lora_outgoing_packets::add(lora_packet pkt){
+    if(this->lora_packets.size() == this->max){
+        Serial.println("Transmitting queue full, erasing the oldest");
+        this->lora_packets.erase(this->lora_packets.begin());
+    }
     this->lora_packets.push_back(pkt);
+    Serial.printf("Transmission queue has %d elements\n", this->lora_packets.size());
 }
 
 bool lora_outgoing_packets::has_packets(){
@@ -172,6 +182,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                         free(packet);
                         packet = NULL;
                     }
+                    
                     vTaskDelay(r / portTICK_PERIOD_MS);
                     if(!this->has_packets())
                         return lora_packet();
@@ -192,10 +203,13 @@ lora_packet lora_outgoing_packets::check_packets(){
 bool lora_pkt_history::add(char * pkt_id){
     char s[7] = {'\0'};
     strcpy(s, pkt_id);
-    if(this->history.size() > 20)
+    if(this->history.size() == this->max){
+        Serial.println("History queue full, erasing the oldest");
         this->history.erase(this->history.begin());
+    }
     try{
         this->history.push_back(s);
+        Serial.printf("History queue has %d elements\n", this->history.size());
         return true;
     }catch(std::exception &e){
         Serial.printf("lora_pkt_history::add error - %s\n", e.what());
