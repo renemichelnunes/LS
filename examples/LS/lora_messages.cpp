@@ -9,7 +9,7 @@ void lora_incomming_packets::add(lora_packet pkt){
             this->lora_packets.erase(this->lora_packets.begin());
         }
         this->lora_packets.push_back(pkt);
-        Serial.printf("Receiving queue has %d elements\n", this->lora_packets.size());
+        //Serial.printf("Receiving queue has %d elements\n", this->lora_packets.size());
     }
     catch(std::exception &e){
         Serial.printf("lora_incomming_packets::add error - %s\n", e.what());
@@ -51,7 +51,7 @@ void lora_outgoing_packets::add(lora_packet pkt){
         this->lora_packets.erase(this->lora_packets.begin());
     }
     this->lora_packets.push_back(pkt);
-    Serial.printf("Transmission queue has %d elements\n", this->lora_packets.size());
+    //Serial.printf("Transmission queue has %d elements\n", this->lora_packets.size());
 }
 
 bool lora_outgoing_packets::has_packets(){
@@ -209,7 +209,7 @@ bool lora_pkt_history::add(char * pkt_id){
     }
     try{
         this->history.push_back(s);
-        Serial.printf("History queue has %d elements\n", this->history.size());
+        //Serial.printf("History queue has %d elements\n", this->history.size());
         return true;
     }catch(std::exception &e){
         Serial.printf("lora_pkt_history::add error - %s\n", e.what());
