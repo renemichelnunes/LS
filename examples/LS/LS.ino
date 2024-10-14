@@ -1417,6 +1417,7 @@ void update_rssi_snr_graph(float rssi, float snr){
 void collectPackets(void * param){
     void * packet = NULL;
     lora_packet * p;
+    lora_packet lp;
     uint16_t packet_size;
     bool invalid_pkt_size = false;
 
@@ -1450,45 +1451,75 @@ void collectPackets(void * param){
                     invalid_pkt_size = true;
                     Serial.printf("Unknown packet size - %d bytes\n", packet_size);
                 }
-
+                // A pointer justo to get the packet type
+                p = (lora_packet*)packet;
+                // Common properties to all packet types
+                lp.type = p->type;
+                strcpy(lp.id, p->id);
+                strcpy(lp.sender, p->sender);
+                lp.hops = p->hops;
+                // Especific packet type properties
+                switch(p->type){
+                    case LORA_PKT_ANNOUNCE:
+                        
+                        break;
+                    case LORA_PKT_ACK:
+                        strcpy(lp.destiny, p->destiny);
+                        strcpy(lp.status, p->status);
+                        lp.app_id = p->app_id;
+                        break;
+                    case LORA_PKT_DATA:
+                        strcpy(lp.destiny, p->destiny);
+                        lp.data_size = p->data_size;
+                        memcpy(lp.data, p->data, p->data_size);
+                        lp.app_id = p->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        break;
+                }
                 // Save the packet id on received_packets.
-                if(!invalid_pkt_size && strcmp(p.sender, user_id) != 0){
-                    if(p.type == LORA_PKT_DATA || p.type == LORA_PKT_ACK){
-                        Serial.printf("ID %s\nAPP ID %d\nTYPE %d\nSENDER %s\nSTATUS %s\nDATA SIZE %d\nDATA %s\n\n", p.id, p.app_id, p.type, p.sender, p.status, p.data_size, p.data);
+                if(!invalid_pkt_size && strcmp(lp.sender, user_id) != 0){
+                    if(lp.type == LORA_PKT_DATA || lp.type == LORA_PKT_ACK){
+                        Serial.printf("ID %s\nAPP ID %d\nTYPE %d\nSENDER %s\nSTATUS %s\nDATA SIZE %d\nDATA %s\n\n", lp.id, lp.app_id, lp.type, lp.sender, lp.status, lp.data_size, lp.data);
                     }
                     new_stats = true;
-                    if(p.hops >= 0){
+                    if(lp.hops >= 0){
                         // Decrement the TTL
-                        p.hops--;
-                        // Lets add a date time of arrival.
-                        strftime(p.date_time, sizeof(p.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        lp.hops--;
                         // If we receive the same packet we transmitted, drop it. This is a thing that happen
                         // as soon as we send a packet. The radio uses the same buffer to transmit and receive.
-                        if(!pkt_history.exists(p.id)){
-                            pkt_history.add(p.id);
-                            pkt_list.add(p);
+                        if(!pkt_history.exists(lp.id)){
+                            pkt_history.add(lp.id);
+                            pkt_list.add(lp);
                             //Serial.println("\nUpdating rssi graph...");
                             update_rssi_snr_graph(rssi, snr);
                             //Serial.println("rssi graph updated.");
                         }
                         else{
-                            if(p.type == LORA_PKT_DATA){
+                            if(lp.type == LORA_PKT_DATA){
                                 lora_packet ack;
                                 ack.type = LORA_PKT_ACK;
                                 //Serial.printf("collectPackets - p.app_id %d\n");
-                                ack.app_id = p.app_id;
+                                ack.app_id = lp.app_id;
                                 strcpy(ack.id, generate_ID(6).c_str());
                                 strcpy(ack.sender, user_id);
-                                strcpy(ack.status, p.id);
+                                strcpy(ack.status, lp.id);
                                 transmit_pkt_list.add(ack);
-                                Serial.printf("Retransmitting ACK app_id %d to %s\n", ack.app_id, p.id);
+                                Serial.printf("Retransmitting ACK app_id %d to %s\n", ack.app_id, lp.id);
                             }
-                            Serial.printf("Packet %s already received\n", p.id);
+                            Serial.printf("Packet %s already received\n", lp.id);
                         }
                     }
                     else
-                        Serial.printf("Packet %s dropped\ntype %d\n", p.id, p.type);
+                        Serial.printf("Packet %s dropped\ntype %d\n", lp.id, lp.type);
+                    if(packet){
+                        free(packet);
+                        packet = NULL;
+                    }
                 }
+            }
+            else{
+                Serial.println("collectPackets - packet NULL");
             }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);

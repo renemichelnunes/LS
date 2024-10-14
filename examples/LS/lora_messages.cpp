@@ -100,7 +100,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                         lora_packet_announce * ann = (lora_packet_announce *)packet;
                         strcpy(ann->id, p.id);
                         strcpy(ann->sender, p.sender);
-                        strcpy(ann->destiny, p.destiny);
+                        //strcpy(ann->destiny, p.destiny);
                         ann->type = LORA_PKT_ANNOUNCE;
                         ann->hops = p.hops;
                         //Serial.println("Announcement packet ready");

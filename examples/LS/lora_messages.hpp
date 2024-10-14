@@ -17,7 +17,7 @@ struct lora_packet_announce{
     uint8_t type = LORA_PKT_ANNOUNCE;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
-    char destiny[7] = {'\0'};
+    //char destiny[7] = {'\0'};
     uint8_t hops = MAX_HOPS;
 };
 /// @brief Struct that is used to create a shorter LoRa packet with ack info.
