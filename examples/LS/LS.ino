@@ -2467,21 +2467,34 @@ void check_new_msg(void * param){
                 }
                 Serial.println(name);
                 Serial.println((*cm)[i].message);
+                
+                // Crete a new instance on a button with the message.
+                pthread_mutex_lock(&lvgl_mutex);
+                btn = lv_list_add_btn(frm_chat_list, NULL, (*cm)[i].message);
+                pthread_mutex_unlock(&lvgl_mutex);
+                // Get the label of the button which holds the message.
+                pthread_mutex_lock(&lvgl_mutex);
+                lbl = lv_obj_get_child(btn, 0);
+                pthread_mutex_unlock(&lvgl_mutex);
+                // Set the font type, this one includes accents and latin chars.
+                pthread_mutex_lock(&lvgl_mutex);
+                lv_obj_set_style_text_font(lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+                pthread_mutex_unlock(&lvgl_mutex);
+                // Add the event 'copy message to answer text area'.
+                pthread_mutex_lock(&lvgl_mutex);
+                lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
+                pthread_mutex_unlock(&lvgl_mutex);
+                // This configures the label to do a word wrap and hide the scroll bars in case the message is too long.
+                pthread_mutex_lock(&lvgl_mutex);
+                lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
+                pthread_mutex_unlock(&lvgl_mutex);
+                if((*cm)[i].ack){
+                    pthread_mutex_lock(&lvgl_mutex);
+                    btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
+                    pthread_mutex_unlock(&lvgl_mutex);
+                }
                 // Force a scroll to the last message added on the list.
                 pthread_mutex_lock(&lvgl_mutex);
-                // Crete a new instance on a button with the message.
-                btn = lv_list_add_btn(frm_chat_list, NULL, (*cm)[i].message);
-                // Get the label of the button which holds the message.
-                lbl = lv_obj_get_child(btn, 0);
-                // Set the font type, this one includes accents and latin chars.
-                lv_obj_set_style_text_font(lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
-                // Add the event 'copy message to answer text area'.
-                lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
-                // This configures the label to do a word wrap and hide the scroll bars in case the message is too long.
-                lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
-                if((*cm)[i].ack){
-                    btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
-                }
                 lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
                 pthread_mutex_unlock(&lvgl_mutex);
             }
