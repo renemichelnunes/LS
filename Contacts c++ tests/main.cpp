@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <ctime>
+#include <sys/time.h>
 #include <iostream>
 
 int16_t transmit(uint8_t * data, size_t len){
@@ -15,7 +15,25 @@ void teste(int16_t (*transmit_func_callback)(uint8_t *, size_t)){
     transmit_func_callback((uint8_t*)"teste", 6);
 }
 
+uint32_t genPktTimeout(uint16_t seconds){
+    uint32_t r = 100;
+    if(seconds > 0){
+        r = rand() % (seconds*10);
+        if(r < 10)
+            r += 10;
+        r *= 100;
+    }
+    return r;
+}
+
 int main(int argc, char** argv){
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    srand((time.tv_sec * 1000) + (time.tv_usec / 1000));
+
+    for(uint8_t i = 0; i < 255; i++)
+        cout << genPktTimeout(6) << endl;
+
     Contact_list cl = Contact_list();
     Contact c, *c1;
     c.setName("René");

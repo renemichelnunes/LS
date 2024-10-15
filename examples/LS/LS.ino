@@ -4735,10 +4735,8 @@ void announce(){
 void task_beacon(void * param){
     uint32_t r = 0;
     while(true){
-        r = rand() % 30;
-        if(r < 10)
-            r += 10;
-        vTaskDelay(6000 / portTICK_PERIOD_MS);
+        r = transmit_pkt_list.genPktTimeout(10);
+        vTaskDelay(r / portTICK_PERIOD_MS);
         announce();
     }
     vTaskDelete(NULL);

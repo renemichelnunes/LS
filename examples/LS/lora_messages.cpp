@@ -29,7 +29,7 @@ bool lora_incomming_packets::has_packets(){
 uint32_t lora_outgoing_packets::genPktTimeout(uint16_t seconds){
     uint32_t r = 100;
     if(seconds > 0){
-        r = rand() % seconds*10;
+        r = rand() % (seconds*10);
         if(r < 10)
             r += 10;
         r *= 100;
