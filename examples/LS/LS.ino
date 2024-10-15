@@ -3670,7 +3670,7 @@ void ui(){
 
     // Nodes button
     discoveryApp.initUI(lv_scr_act());
-    delay(2000);
+    //delay(2000);
     btn_nodes = lv_btn_create(frm_home);
     lv_obj_set_size(btn_nodes, 50, 20);
     lv_obj_align(btn_nodes, LV_ALIGN_BOTTOM_RIGHT, 0, -50);
