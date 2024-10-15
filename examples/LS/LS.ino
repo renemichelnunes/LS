@@ -2480,7 +2480,6 @@ void check_new_msg(void * param){
                 // This configures the label to do a word wrap and hide the scroll bars in case the message is too long.
                 lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
                 if((*cm)[i].ack){
-                    Serial.printf("(*cm)[%d].ack %d\n");
                     btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
                 }
                 lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
