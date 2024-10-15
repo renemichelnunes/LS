@@ -4762,6 +4762,11 @@ void setup_sound(){
 
 /// @brief T-Deck's initial setup function.
 void setup(){
+    // Seed to rand()
+    struct timeval timea;
+    gettimeofday(&timea, NULL);
+    srand((timea.tv_sec * 1000) + (timea.tv_sec / 1000));
+
     if(!SPIFFS.begin(true)){
         Serial.println("failed mounting SPIFFS");
     }

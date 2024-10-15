@@ -82,7 +82,6 @@ lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(u
 std::string generate_ID(uint8_t size){
     //char * s = (char*)calloc(size + 1, sizeof(char));
     char s[size + 1] = {'\0'};
-    srand(millis());
     static const char alphanum[] = "0123456789"
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
