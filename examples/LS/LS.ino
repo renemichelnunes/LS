@@ -3534,12 +3534,16 @@ void rssi_chart_zoom(lv_event_t * e){
             lv_obj_set_size(frm_home_rssi_chart, 295, 200);
             lv_obj_move_foreground(frm_home_rssi_chart);
             lv_chart_set_div_line_count(frm_home_rssi_chart, 5, 8);
+            lv_obj_set_style_bg_opa(frm_home_rssi_chart, 150, LV_PART_MAIN);
+            //lv_chart_set_series_color(frm_home_rssi_chart, frm_home_rssi_series, lv_palette_main(LV_PALETTE_LIGHT_GREEN));
             chart_zoomed = true;
         }
         else{
             lv_obj_set_size(frm_home_rssi_chart, rssi_chart_width, rssi_chart_height);
             lv_chart_set_div_line_count(frm_home_rssi_chart, 3, 5);
             lv_obj_move_background(frm_home_rssi_chart);
+            lv_obj_set_style_bg_opa(frm_home_rssi_chart, 80, LV_PART_MAIN);
+            //lv_chart_set_series_color(frm_home_rssi_chart, frm_home_rssi_series, lv_color_hex(0x00ff00));
             chart_zoomed = false;
         }
     }
@@ -3596,12 +3600,16 @@ void ui(){
     lv_obj_set_size(frm_home_rssi_chart, 90, 55);
     lv_obj_align(frm_home_rssi_chart, LV_ALIGN_OUT_TOP_LEFT, 0, 15);
     lv_chart_set_type(frm_home_rssi_chart, LV_CHART_TYPE_LINE);
-    frm_home_rssi_series = lv_chart_add_series(frm_home_rssi_chart, lv_palette_main(LV_PALETTE_LIGHT_GREEN), LV_CHART_AXIS_PRIMARY_Y);
-    frm_home_snr_series = lv_chart_add_series(frm_home_rssi_chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_SECONDARY_Y);
+    frm_home_rssi_series = lv_chart_add_series(frm_home_rssi_chart, lv_color_hex(0x00ff00), LV_CHART_AXIS_PRIMARY_Y);
+    frm_home_snr_series = lv_chart_add_series(frm_home_rssi_chart, lv_color_hex(0xff0000), LV_CHART_AXIS_SECONDARY_Y);
     lv_chart_set_range(frm_home_rssi_chart, LV_CHART_AXIS_PRIMARY_Y, -147, 0);
     lv_chart_set_range(frm_home_rssi_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 20);
     lv_chart_set_next_value(frm_home_rssi_chart, frm_home_rssi_series, -147);
     lv_chart_set_next_value(frm_home_rssi_chart, frm_home_snr_series, 0);
+    //lv_obj_set_style_bg_color(frm_home_rssi_chart, lv_color_hex(0x000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(frm_home_rssi_chart, 80, LV_PART_MAIN);
+    //lv_obj_set_style_border_color(frm_home_rssi_chart, lv_color_hex(0x000), LV_PART_MAIN);
+    lv_obj_set_style_border_opa(frm_home_rssi_chart, 80, LV_PART_MAIN);
     lv_chart_refresh(frm_home_rssi_chart);
     lv_obj_add_event_cb(frm_home_rssi_chart, rssi_chart_zoom, LV_EVENT_CLICKED, NULL);
 
