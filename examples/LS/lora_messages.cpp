@@ -167,13 +167,13 @@ lora_packet lora_outgoing_packets::check_packets(){
                 if(p.type != LORA_PKT_EMPTY){
                     lora_packet_data * pp = (lora_packet_data*)packet;
                     if(pp->type == LORA_PKT_DATA){
-                        Serial.println("TRANSMITTING");
-                        Serial.printf("ID %s\nType %d\nAPP ID %d\nSender %s\nDestiny %s\nData size %d\nData %s\n\n", pp->id, pp->type, pp->app_id, pp->sender, pp->destiny, pp->data_size, pp->data);
+                        //Serial.println("TRANSMITTING");
+                        //Serial.printf("ID %s\nType %d\nAPP ID %d\nSender %s\nDestiny %s\nData size %d\nData %s\n\n", pp->id, pp->type, pp->app_id, pp->sender, pp->destiny, pp->data_size, pp->data);
                     }
                     else if(pp->type == LORA_PKT_ACK){
                         lora_packet_ack * pack = (lora_packet_ack*)packet;
-                        Serial.println("TRANSMITTING");
-                        Serial.printf("ID %s\nType %d\nAPP ID %d\nSender %s\nDestiny %s\nStatus %s\n\n", pack->id, pack->type, pack->app_id, pack->sender, pack->destiny, pack->status);
+                        //Serial.println("TRANSMITTING");
+                        //Serial.printf("ID %s\nType %d\nAPP ID %d\nSender %s\nDestiny %s\nStatus %s\n\n", pack->id, pack->type, pack->app_id, pack->sender, pack->destiny, pack->status);
                     }
                     this->transmit_func_callback((uint8_t*)packet, pkt_size);
                     r = this->genPktTimeout(6);
