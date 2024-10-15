@@ -1426,9 +1426,6 @@ void collectPackets(void * param){
         if(gotPacket){
             packet = calloc(1, sizeof(lora_packet));
             if(packet){
-                pthread_mutex_lock(&lvgl_mutex);
-                activity(lv_color_hex(0x00ff00));
-                pthread_mutex_unlock(&lvgl_mutex);
                 // Get exclusive access to the radio module and read the payload.
                 if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
                     radio.standby();
@@ -1447,6 +1444,9 @@ void collectPackets(void * param){
                     packet_size == sizeof(lora_packet_comm) || packet_size == sizeof(lora_packet_data) || 
                     packet_size == sizeof(lora_packet_ping)){
                     invalid_pkt_size = false;
+                    pthread_mutex_lock(&lvgl_mutex);
+                    activity(lv_color_hex(0x00ff00));
+                    pthread_mutex_unlock(&lvgl_mutex);
                 }
                 else{
                     invalid_pkt_size = true;
@@ -1680,7 +1680,7 @@ static int16_t transmit(uint8_t * data, size_t len){
     pthread_mutex_unlock(&lvgl_mutex);
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         //Serial.println("Transmitting packet...");
-        r = radio.transmit((uint8_t*)data, len);
+        r = radio.startTransmit((uint8_t*)data, len);
         if(r == RADIOLIB_ERR_NONE){
             //Serial.println("Packet sent");
             //Serial.printf("On Air time => %1.3fs\n", (float)radio.getTimeOnAir(len) / 1000000);
@@ -1786,7 +1786,7 @@ bool normalMode(){
         }
 
         // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-        if (radio.setOutputPower(10) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+        if (radio.setOutputPower(22) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
             Serial.println(F("Selected output power is invalid for this module!"));
             return false;
         }
@@ -1865,7 +1865,7 @@ bool DXMode()
         }
 
         // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-        if (radio.setOutputPower(10) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+        if (radio.setOutputPower(22) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
             Serial.println(F("Selected output power is invalid for this module!"));
             return false;
         }
@@ -1946,7 +1946,7 @@ void setupRadio(lv_event_t * e)
     }
 
     // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-    if (radio.setOutputPower(10) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+    if (radio.setOutputPower(22) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
         Serial.println(F("Selected output power is invalid for this module!"));
         //return false;
     }

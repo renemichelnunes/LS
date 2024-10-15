@@ -34,6 +34,7 @@ uint32_t lora_outgoing_packets::genPktTimeout(uint16_t seconds){
             r += 10;
         r *= 100;
     }
+    //Serial.printf("genPktTimeout %lu\n", r);
     return r;
 }
 
