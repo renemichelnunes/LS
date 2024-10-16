@@ -6,14 +6,18 @@
 
 class tictactoe{
     private:
+        // UI objects
         lv_obj_t * mainFrm;
         lv_obj_t * frame;
         lv_obj_t * btns[3][3];
+        // UI functions
+
+        
         char board[3][3];
         char player = 'X';
         bool active = true;
 
-        
+
     public:
 
 };
