@@ -1,4 +1,4 @@
-#include <app_discovery.hpp>
+#include <apps/discovery/app_discovery.hpp>
 
 TaskHandle_t task_update_nodes_list = NULL;
 
