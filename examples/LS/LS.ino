@@ -1740,9 +1740,6 @@ void processReceivedStats(void * param){
     }
 }
 
-#if defined(ESP8266) || defined(ESP32)
-    ICACHE_RAM_ATTR
-#endif
 /// @brief This is called every time the radio gets a packet, see radio.setPacketReceivedAction(onListen).
 void onListen(){
     gotPacket = true;
