@@ -2339,7 +2339,7 @@ void check_new_msg_old(void * param){
         // Get the contact's messages on a vector.
         pthread_mutex_lock(&messages_mutex);
         cm = contacts_list.getContactMessages(actual_contact->getID().c_str());
-        pthread_mutex_unlock(&messages_mutex);
+        //pthread_mutex_unlock(&messages_mutex);
         // Save the count.
         actual_count = (*cm).size();
         // When actual_count is bigger than msg_count means that we have new messages.
@@ -2411,6 +2411,7 @@ void check_new_msg_old(void * param){
             // Update the message count.
             msg_count = actual_count;
         }
+        pthread_mutex_unlock(&messages_mutex);
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
@@ -2431,7 +2432,7 @@ void check_new_msg(void * param){
         // Get the contact's messages on a vector.
         pthread_mutex_lock(&messages_mutex);
         cm = contacts_list.getContactMessages(actual_contact->getID().c_str());
-        pthread_mutex_unlock(&messages_mutex);
+        //pthread_mutex_unlock(&messages_mutex);
         // Save the count.
         actual_count = (*cm).size();
         // When actual_count is bigger than msg_count means that we have new messages.
@@ -2500,6 +2501,7 @@ void check_new_msg(void * param){
             msg_count = actual_count;
             msg_confirmed = false;
         }
+        pthread_mutex_unlock(&messages_mutex);
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
