@@ -6,18 +6,24 @@
 
 class tictactoe{
     private:
-        // UI objects
-        lv_obj_t * mainFrm;
-        lv_obj_t * frame;
-        lv_obj_t * btns[3][3];
-        // UI functions
-
         
-        char board[3][3];
-        char player = 'X';
-        bool active = true;
-
-
     public:
-
+    // UI objects
+    lv_obj_t * parent;
+    lv_obj_t * frm_tictactoe;
+    lv_obj_t * frm_tictactoe_btn_title;
+    lv_obj_t * frm_tictactoe_btn_title_lbl;
+    lv_obj_t * frm_tictactoe_btn_back;
+    lv_obj_t * frm_tictactoe_btn_back_lbl;
+    lv_obj_t * frm_tictactoe_board;
+    lv_obj_t * btns[3][3];
+    
+    bool checkVictory();
+    bool checkDraw();
+    char board[3][3];
+    char player = 'X';
+    bool active = true;
+    void initUI(lv_obj_t * parent);
+    tictactoe(lv_obj_t * parent);
+    ~tictactoe();
 };
