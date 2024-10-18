@@ -24,6 +24,6 @@ class tictactoe{
     char player = 'X';
     bool active = true;
     void initUI(lv_obj_t * parent);
-    tictactoe(lv_obj_t * parent);
+    tictactoe();
     ~tictactoe();
 };
