@@ -4816,7 +4816,7 @@ void setup(){
     
     // Initialize the i2c bus.
     Wire.begin(BOARD_I2C_SDA, BOARD_I2C_SCL);
-    //scanDevices(&Wire);
+    scanDevices(&Wire);
     // Initialize the touch screen.
     touch = new TouchLib(Wire, BOARD_I2C_SDA, BOARD_I2C_SCL, touchAddress);
     touch->init();
