@@ -1456,9 +1456,6 @@ void collectPackets(void * param){
                     packet_size == sizeof(lora_packet_comm) || packet_size == sizeof(lora_packet_data) || 
                     packet_size == sizeof(lora_packet_ping)){
                     invalid_pkt_size = false;
-                    pthread_mutex_lock(&lvgl_mutex);
-                    activity(lv_color_hex(0x00ff00));
-                    pthread_mutex_unlock(&lvgl_mutex);
                 }
                 else{
                     invalid_pkt_size = true;
@@ -1523,6 +1520,9 @@ void collectPackets(void * param){
                 }
                 // Save the packet id on received_packets.
                 if(!invalid_pkt_size && strcmp(lp.sender, user_id) != 0){
+                    pthread_mutex_lock(&lvgl_mutex);
+                    activity(lv_color_hex(0x00ff00));
+                    pthread_mutex_unlock(&lvgl_mutex);
                     if(lp.type == LORA_PKT_DATA || lp.type == LORA_PKT_ACK){
                         //Serial.printf("ID %s\nAPP ID %d\nTYPE %d\nSENDER %s\nSTATUS %s\nDATA SIZE %d\nDATA %s\n\n", lp.id, lp.app_id, lp.type, lp.sender, lp.status, lp.data_size, lp.data);
                     }
@@ -1570,6 +1570,10 @@ void collectPackets(void * param){
                         free(packet);
                         packet = NULL;
                     }
+                }else{
+                    pthread_mutex_lock(&lvgl_mutex);
+                    activity(lv_color_hex(0x000000));
+                    pthread_mutex_unlock(&lvgl_mutex);
                 }
             }
             else{
