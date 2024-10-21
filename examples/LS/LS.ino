@@ -1571,9 +1571,11 @@ void collectPackets(void * param){
                         packet = NULL;
                     }
                 }else{
-                    pthread_mutex_lock(&lvgl_mutex);
-                    activity(lv_color_hex(0x000000));
-                    pthread_mutex_unlock(&lvgl_mutex);
+                    if(strcpy(lp.sender, user_id) != 0){
+                        pthread_mutex_lock(&lvgl_mutex);
+                        activity(lv_color_hex(0x000000));
+                        pthread_mutex_unlock(&lvgl_mutex);
+                    }
                 }
             }
             else{
