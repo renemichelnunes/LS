@@ -1667,7 +1667,7 @@ void processPackets2(void * param){
                 }
             }
         }
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
@@ -1703,7 +1703,7 @@ void processTransmitingPackets(void * param){
             //if(p.type != LORA_PKT_EMPTY)
             //    Serial.printf("%s -> %s\n%d\n%d\n", p.sender, p.destiny, p.type, p.hops);
         }
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
@@ -2323,99 +2323,6 @@ void copy_text(lv_event_t * e){
     }
 }
 
-void check_new_msg_old(void * param){
-    // Vector that holds the contact's mesages.
-    vector<ContactMessage> * cm;
-    // Save the actual messages count.
-    uint32_t actual_count = 0;
-    lv_obj_t * btn = NULL, * lbl = NULL;
-    char date[60] = {'\0'};
-    char name[100] = {'\0'};
-    // Clear the chat messages. LVGL documentation says the functions are not thread safe, so we need a mutex.
-    pthread_mutex_lock(&lvgl_mutex);
-    lv_obj_clean(frm_chat_list);
-    pthread_mutex_unlock(&lvgl_mutex);
-    while(true){
-        // Get the contact's messages on a vector.
-        pthread_mutex_lock(&messages_mutex);
-        cm = contacts_list.getContactMessages(actual_contact->getID().c_str());
-        //pthread_mutex_unlock(&messages_mutex);
-        // Save the count.
-        actual_count = (*cm).size();
-        // When actual_count is bigger than msg_count means that we have new messages.
-        if(actual_count > msg_count){
-            Serial.println("new messages");
-            // We only need the newest messages.
-            for(uint32_t i = msg_count; i < actual_count; i++){
-                // We create a new entry on the messages list based on sender and destiny messages.
-                // If the message was sent by us we'll create a button with 'Me date time' on title.
-                if((*cm)[i].me){
-                    // The title 'Me date time'.
-                    strcpy(name, "Me");
-                    strcat(name, (*cm)[i].dateTime);
-                    Serial.println(name);
-                    // Add on the list a simple text, there's a visual difference between a button.
-                    pthread_mutex_lock(&lvgl_mutex);
-                    lv_list_add_text(frm_chat_list, name);
-                    pthread_mutex_unlock(&lvgl_mutex);
-                }else{
-                    // If it is a confirmation message, show a 'V' like symbol(ok the contact received the last message).
-                    // The messages will be buttons, the title will be text type.
-                    if((*cm)[i].ack){
-                        // LVGL's unsave thread access functions.
-                        pthread_mutex_lock(&lvgl_mutex);
-                        btn = lv_list_add_btn(frm_chat_list, LV_SYMBOL_OK, "");
-                        pthread_mutex_unlock(&lvgl_mutex);
-                    }else{
-                        // If it is a message from the destination, create a text item with the title 'Contact name date time'.
-                        strcpy(name, actual_contact->getName().c_str());
-                        strcat(name, (*cm)[i].dateTime);
-                        // LVGL's unsave thread access functions.
-                        pthread_mutex_lock(&lvgl_mutex);
-                        lv_list_add_text(frm_chat_list, name);
-                        pthread_mutex_unlock(&lvgl_mutex);
-                        Serial.println(name);
-                    }
-                }
-                Serial.println((*cm)[i].message);
-                // The 'recv' status packets doesn't have messages, so if the packet is not an ack type we extract the message
-                // and create a button with it. lv_list_add_btn returns an instance of the button created with the message.
-                // We'll need to remove the scroll bars and add word wrap.
-                if(!(*cm)[i].ack){
-                    // LVGL's unsave thread access functions.
-                    pthread_mutex_lock(&lvgl_mutex);
-                    // Crete a new instance on a button with the message.
-                    btn = lv_list_add_btn(frm_chat_list, NULL, (*cm)[i].message);
-                    // Add the event 'copy message to answer text area'.
-                    lv_obj_add_event_cb(btn, copy_text, LV_EVENT_LONG_PRESSED, lv_obj_get_child(btn, 0));
-                    pthread_mutex_unlock(&lvgl_mutex);
-                }
-                // Get the label of the button which holds the message.
-                //pthread_mutex_lock(&lvgl_mutex);
-                lbl = lv_obj_get_child(btn, 0);
-                //pthread_mutex_unlock(&lvgl_mutex);
-                // Test again if its not a ack packet type. If so, we pass through.
-                if(!(*cm)[i].ack){
-                    pthread_mutex_lock(&lvgl_mutex);
-                    // Set the font type, this one includes accents and latin chars.
-                    lv_obj_set_style_text_font(lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
-                    // This configures the label to do a word wrap and hide the scroll bars in case the message is too long.
-                    lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
-                    pthread_mutex_unlock(&lvgl_mutex);
-                }
-                // Force a scroll to the last message added on the list.
-                pthread_mutex_lock(&lvgl_mutex);
-                lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
-                pthread_mutex_unlock(&lvgl_mutex);
-            }
-            // Update the message count.
-            msg_count = actual_count;
-        }
-        pthread_mutex_unlock(&messages_mutex);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
-}
-
 /// @brief Task that runs when a contact is selected through the contacts list. It updates the messages list
 /// object on the chat.
 /// @param param 
@@ -2502,7 +2409,7 @@ void check_new_msg(void * param){
             msg_confirmed = false;
         }
         pthread_mutex_unlock(&messages_mutex);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 /// @brief This event adds a contact to the contacts list.
