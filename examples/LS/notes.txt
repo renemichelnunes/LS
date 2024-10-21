@@ -25,3 +25,8 @@ Supondo que um nó consegue emitir um sinal usando uma antena omnidirecional e q
 
 A performance da rede cai linearmente à medida que cresce o número de nós.
 
+Erros de pacotes:
+-----------------
+1 - Checar além do tamanho do pacote, se o tipo é conhecido.
+2 - Se o tamanho do ID é 6, alguns pacotes estão chegando com ID maior.
+3 - nas configurações do rádio habilitar CRC.

@@ -30,6 +30,7 @@
 //#include "favicon.h"
 #include "ArduinoJson.hpp"
 #include "apps/discovery/app_discovery.hpp"
+#include "apps/tictactoe/tictactoe.hpp"
 
 using namespace httpsserver;
 using namespace ArduinoJson;
@@ -253,28 +254,30 @@ static void loadContacts(){
 }
 /// @brief Saves the contacts.
 static void saveContacts(){
-  if(!SPIFFS.begin(true)){
-    Serial.println("failed mounting SPIFFS");
-    return;
-  }
+    if(!SPIFFS.begin(true)){
+        Serial.println("failed mounting SPIFFS");
+        return;
+    }
 
-  fs::File file = SPIFFS.open("/contacts", FILE_WRITE);
-  if(!file){
-    Serial.println("contacts file problem");
-    return;
-  }
+    SPIFFS.remove("/contacts");
 
-  Contact c;
+    fs::File file = SPIFFS.open("/contacts", FILE_WRITE);
+    if(!file){
+        Serial.println("contacts file problem");
+        return;
+    }
 
-  for(uint32_t index = 0; index < contacts_list.size(); index++){
-    c = contacts_list.getContact(index);
-    file.println(c.getName());
-    file.println(c.getID());
-    file.println(c.getKey());
-  }
-  Serial.print(contacts_list.size());
-  Serial.println(" contacts saved");
-  file.close();
+    Contact c;
+
+    for(uint32_t index = 0; index < contacts_list.size(); index++){
+        c = contacts_list.getContact(index);
+        file.println(c.getName());
+        file.println(c.getID());
+        file.println(c.getKey());
+    }
+    Serial.print(contacts_list.size());
+    Serial.println(" contacts saved");
+    file.close();
 }
 /// @brief Refreshes the contacts list object.
 static void refresh_contact_list(){
@@ -1475,8 +1478,27 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        Serial.printf("Data received in %s\n", lp.date_time);
                         break;
+                    default:
+                        Serial.printf("Packet type %d unknown\n", lp.type);
+                        invalid_pkt_size = true;
+                        break;
+                }
+
+                // If the size of ID is abnormal
+                if(sizeof(lp.id) != 7){
+                    Serial.printf("Packet ID abnormal\n");
+                    invalid_pkt_size = true;
+                }
+                
+                if(lp.app_id != APP_DISCOVERY)
+                    if( lp.app_id != APP_LORA_CHAT)
+                        if(lp.app_id != APP_SYSTEM) 
+                            if(lp.app_id != APP_TICTACTOE){
+                                if(lp.type != LORA_PKT_ANNOUNCE){
+                                    Serial.printf("APP_ID %d unknown\n", lp.app_id);
+                                    invalid_pkt_size = true;
+                                }
                 }
                 // Save the packet id on received_packets.
                 if(!invalid_pkt_size && strcmp(lp.sender, user_id) != 0){
@@ -1805,7 +1827,7 @@ bool normalMode(){
         }
 
         // disable CRC
-        if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
+        if (radio.setCRC(true) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
             Serial.println(F("Selected CRC is invalid for this module!"));
             return false;
         }
@@ -1884,7 +1906,7 @@ bool DXMode()
         }
 
         // disable CRC
-        if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
+        if (radio.setCRC(true) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
             Serial.println(F("Selected CRC is invalid for this module!"));
             return false;
         }
@@ -1965,7 +1987,7 @@ void setupRadio(lv_event_t * e)
     }
 
     // disable CRC
-    if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
+    if (radio.setCRC(true) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
         Serial.println(F("Selected CRC is invalid for this module!"));
         //return false;
     }
@@ -2657,7 +2679,6 @@ void sendContactsStatusJson(const char * id, bool status){
 }
 /// @brief Loops through the contacts to analyse the statuses and sends them to the client side.
 void check_contacts_in_range(){
-    Serial.println("========check_contacts_in_range========");
     // Change the activity indicator to light blue.
     activity(lv_color_hex(0x0095ff));
     // Verify if someone got timeout.
@@ -2669,12 +2690,11 @@ void check_contacts_in_range(){
         // Update the status indicator.
         update_frm_contacts_status(i, (*cl)[i].inrange);
         // For debug purposes.
-        Serial.print((*cl)[i].getName());
+        Serial.printf("check_contacts_in_range() - %s", (*cl)[i].getName());
         Serial.println((*cl)[i].inrange ? " is in range" : " is out of range");
         // Sends the current status to the client side.
         sendContactsStatusJson((*cl)[i].getID().c_str(), (*cl)[i].inrange);
     }
-    Serial.println("=======================================");
 }
 /// @brief Initialize the battery monitoring routine.
 void initBat(){
@@ -2738,13 +2758,14 @@ char * get_battery_icon(uint32_t percentage) {
 /// @param param 
 void update_bat(void * param){
     char icon[12] = {'\0'};
-    uint32_t p = read_bat();
+    uint32_t p = 0;
     char pc[4] = {'\0'};
     char msg[30]= {'\0'};
     string json;
     JsonDocument doc;
 
     while(true){
+        p = read_bat();
         itoa(p, pc, 10);
         strcpy(msg, pc);
         strcat(msg, "% ");
@@ -2765,7 +2786,7 @@ void update_bat(void * param){
         sendJSON(json);
         pthread_mutex_unlock(&send_json_mutex);
         check_contacts_in_range();
-        vTaskDelay(30000 / portTICK_PERIOD_MS);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
 }
 /// @brief This event hides the wifi configuration dialog.
@@ -4685,6 +4706,7 @@ void setup(){
     contacts_list.setCheckPeriod(5);
     //Load contacts
     loadContacts();
+    //SPIFFS.remove("/contacts");
 
     //load connected wifi networks.
     if(wifi_connected_nets.load())
