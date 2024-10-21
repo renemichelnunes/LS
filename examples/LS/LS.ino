@@ -1407,6 +1407,15 @@ void shutdownServer(void *param){
     //vTaskDelete(NULL);
 }
 
+bool non_printable_chars(const char *str) {
+    for(uint8_t i = 0; i < 6; i++){ 
+        if (!isalnum((unsigned char)str[i])) { 
+            return true; 
+        }
+    }
+    return false; 
+}
+
 /// @brief Updates de rssi and snr graph widget on home screen
 /// @param rssi 
 /// @param snr 
@@ -1478,6 +1487,13 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data*)packet)->data, 208) == ((lora_packet_data*)packet)->crc){
+                            lp.crc = ((lora_packet_data*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf("Data crc mismatch\n");
+                            invalid_pkt_size = true;
+                        }
                         break;
                     default:
                         Serial.printf("Packet type %d unknown\n", lp.type);
@@ -1488,6 +1504,11 @@ void collectPackets(void * param){
                 // If the size of ID is abnormal
                 if(sizeof(lp.id) != 7){
                     Serial.printf("Packet ID abnormal\n");
+                    invalid_pkt_size = true;
+                }
+
+                if(non_printable_chars(lp.id) || non_printable_chars(lp.sender)){
+                    Serial.printf("Packet ID %s or sender %s corrupted\n", lp.id, lp.sender);
                     invalid_pkt_size = true;
                 }
                 
@@ -1519,9 +1540,13 @@ void collectPackets(void * param){
                             //Serial.println("rssi graph updated.");
                             // If the packet belongs to other, retransmit it
                             if((strcmp(lp.destiny, user_id) != 0 || lp.type == LORA_PKT_ANNOUNCE) && lp.hops > 0){
-                                Serial.printf("Redirecting packet %s\n", lp.id);
-                                lp.confirmed = true;
-                                transmit_pkt_list.add(lp);
+                                if(!non_printable_chars(lp.id)){
+                                    Serial.printf("Redirecting packet %s\n", lp.id);
+                                    lp.confirmed = true;
+                                    transmit_pkt_list.add(lp);
+                                }
+                                else
+                                    Serial.printf("Packet ID %s corrupted\n");
                             }
                         }
                         else{
@@ -1808,7 +1833,7 @@ bool normalMode(){
         }
 
         // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-        if (radio.setOutputPower(22) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+        if (radio.setOutputPower(-9) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
             Serial.println(F("Selected output power is invalid for this module!"));
             return false;
         }
@@ -1968,7 +1993,7 @@ void setupRadio(lv_event_t * e)
     }
 
     // set output power to 10 dBm (accepted range is -17 - 22 dBm)
-    if (radio.setOutputPower(22) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
+    if (radio.setOutputPower(-9) == RADIOLIB_ERR_INVALID_OUTPUT_POWER) {
         Serial.println(F("Selected output power is invalid for this module!"));
         //return false;
     }

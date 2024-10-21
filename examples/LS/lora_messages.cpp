@@ -92,6 +92,24 @@ std::string generate_ID(uint8_t size){
     return s;
 }
 
+uint32_t calculate_data_crc(const void * data, size_t length){
+    uint32_t crc = 0xFFFFFFFF;
+    const uint8_t *byte_data = (const uint8_t *)data;
+
+    for (size_t i = 0; i < length; i++) {
+        crc ^= byte_data[i];
+        for (int j = 0; j < 8; j++) {
+            if (crc & 1) {
+                crc = (crc >> 1) ^ 0xEDB88320; // Polinômio reverso
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+
+    return ~crc;
+}
+
 lora_packet lora_outgoing_packets::check_packets(){
     uint32_t r = 100;
     uint32_t pkt_size = 0;
@@ -147,6 +165,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                         strcpy(data->status, p.status);
                         memcpy(data->data, p.data, p.data_size);
                         data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 208);
                         data->type = LORA_PKT_DATA;
                         data->app_id = p.app_id;
                         data->hops = p.hops;
