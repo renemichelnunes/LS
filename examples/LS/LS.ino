@@ -106,7 +106,8 @@ uint32_t msg_count = 0;
 Contact_list contacts_list = Contact_list();
 lora_incomming_packets pkt_list = lora_incomming_packets();
 static int16_t transmit(uint8_t * data, size_t len);
-lora_outgoing_packets transmit_pkt_list = lora_outgoing_packets(transmit);
+static uint32_t time_on_air(size_t len);
+lora_outgoing_packets transmit_pkt_list = lora_outgoing_packets(transmit, time_on_air);
 lora_pkt_history pkt_history = lora_pkt_history();
 notification notification_list = notification();
 vector<lora_packet> received_packets;
@@ -1724,9 +1725,13 @@ void processPackets2(void * param){
     }
 }
 
+static uint32_t time_on_air(size_t len){
+    radio.getTimeOnAir(len);
+}
 
 static int16_t transmit(uint8_t * data, size_t len){
     int16_t r;
+
     transmiting = true;
     pthread_mutex_lock(&lvgl_mutex);
     activity(lv_color_hex(0xff0000));

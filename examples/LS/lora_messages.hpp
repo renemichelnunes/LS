@@ -106,10 +106,11 @@ class lora_outgoing_packets{
         std::vector<lora_packet> lora_packets;
         // LoRa radio transmit callback function.
         int16_t (*transmit_func_callback)(uint8_t *, size_t);
+        uint32_t (*time_on_air_func_callback)(size_t);
         uint8_t max = 200;
     public:
         // Instatiate a lora_outgoing_packets object passing a LoRa radio transmit function.
-        lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t));
+        lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t), uint32_t (*time_on_air_func_callback)(size_t));
         // Add generic packets to the transmit queue.
         void add(lora_packet pkt);
         // Loops through the queue for packets to being transmited, returns a copy of a lora_packet transmitted or a empty one.
@@ -120,6 +121,7 @@ class lora_outgoing_packets{
         bool has_packets();
         // Returns in milliseconds a calculated time out between two numbers in seconds
         uint32_t genPktTimeout(uint16_t seconds);
+        void setOnAirTime(uint32_t time);
         bool hasType(uint8_t lora_pkt_type);
 };
 /// @brief Class to instantiate a queue of lora_packet IDs used as history of packets that already have passed through the node.
