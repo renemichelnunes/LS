@@ -158,7 +158,7 @@ vector<Contact> * Contact_list::getContactsList(){
     return &this->list;
 }
 
-vector<ContactMessage> * Contact_list::getContactMessages(const char * id){
+vector<ContactMessage> Contact_list::getContactMessages(const char * id){
     return this->getContactByID(id)->getMessagesList();
 }
 
@@ -208,6 +208,6 @@ void Contact::setSNR(float snr){
     this->snr = snr;
 }
 
-vector<ContactMessage> * Contact::getMessagesList(){
-    return &this->messages;
+vector<ContactMessage> Contact::getMessagesList(){
+    return this->messages;
 }

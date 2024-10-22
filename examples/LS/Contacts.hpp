@@ -36,7 +36,7 @@ class Contact{
         // Routines to handle the messages
         bool addMessage(ContactMessage cm);
         ContactMessage * getMessageByID(const char * id);
-        vector<ContactMessage> * getMessagesList();
+        vector<ContactMessage> getMessagesList();
         bool existsMessage(const char * id);
     private:
         String name;
@@ -60,7 +60,7 @@ class Contact_list{
         Contact * getContactByName(String name);
         Contact * getContactByID(const char *  id);
         vector<Contact> * getContactsList();
-        vector<ContactMessage> * getContactMessages(const char * id);
+        vector<ContactMessage> getContactMessages(const char * id);
         uint32_t size();
         void check_inrange();
         void setCheckPeriod(uint8_t min);
