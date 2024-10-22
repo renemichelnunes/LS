@@ -166,7 +166,7 @@ void discovery_app::updateNodeList()
         Serial.println("No new node found so far");
 }
 
-lv_obj_t *discovery_app::createNodeListObj(lv_obj_t * btn, const char *node_id, uint32_t hops)
+lv_obj_t *discovery_app::createNodeListObj(lv_obj_t * btn, const char *node_id, uint16_t hops)
 {
     if(this->frm_discovery_nodeList){
 

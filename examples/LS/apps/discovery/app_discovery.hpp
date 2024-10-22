@@ -29,7 +29,7 @@ class discovery_app{
         lv_obj_t * frm_discovery_btn_title_lbl;
         lv_obj_t * frm_discovery_btn_back;
         lv_obj_t * frm_discovery_btn_back_lbl;
-        lv_obj_t * createNodeListObj(lv_obj_t * btn, const char * node_id, uint32_t hops);
+        lv_obj_t * createNodeListObj(lv_obj_t * btn, const char * node_id, uint16_t hops);
         std::vector<discovery_node> list;
         bool new_node;
     public:
