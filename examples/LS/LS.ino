@@ -1726,7 +1726,7 @@ void processPackets2(void * param){
 }
 
 static uint32_t time_on_air(size_t len){
-    radio.getTimeOnAir(len);
+    return radio.getTimeOnAir(len);
 }
 
 static int16_t transmit(uint8_t * data, size_t len){
