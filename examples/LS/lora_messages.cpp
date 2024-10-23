@@ -38,6 +38,11 @@ uint32_t lora_outgoing_packets::genPktTimeout(uint16_t seconds){
     return r;
 }
 
+void lora_outgoing_packets::setOnAirTime(uint32_t time)
+{
+    this->time_on_air = time;
+}
+
 bool lora_outgoing_packets::hasType(uint8_t lora_pkt_type)
 {
     for(lora_packet pkt : this->lora_packets)
@@ -72,10 +77,9 @@ bool lora_outgoing_packets::del(const char * id){
         return false;
 }
 
-lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t), uint32_t (*time_on_air_func_callback)(size_t)){
+lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t)){
     this->lora_packets.clear();
     this->transmit_func_callback = transmit_func_callback;
-    this->time_on_air_func_callback = time_on_air_func_callback;
 }
 
 /// @brief Creates a string with a sequence of 6 chars between letters and numbers randomly, the contact's id.
@@ -196,8 +200,9 @@ lora_packet lora_outgoing_packets::check_packets(){
                         //Serial.printf("ID %s\nType %d\nAPP ID %d\nSender %s\nDestiny %s\nStatus %s\n\n", pack->id, pack->type, pack->app_id, pack->sender, pack->destiny, pack->status);
                     }
                     this->transmit_func_callback((uint8_t*)packet, pkt_size);
-                    r = this->time_on_air_func_callback(pkt_size) + this->genPktTimeout(6);
-                    //Serial.printf("Next transmission in %1.1fs\n--------------------------------\n", (float)r / 1000);
+                    r = this->time_on_air + this->genPktTimeout(6);
+                    Serial.printf("TX time %1.3fs\n--------------------------------\n", (float)this->time_on_air / 1000);
+                    Serial.printf("Next transmission in %1.1fs\n--------------------------------\n", (float)r / 1000);
                     if(packet){
                         free(packet);
                         packet = NULL;

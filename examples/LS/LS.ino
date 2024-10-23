@@ -107,7 +107,7 @@ Contact_list contacts_list = Contact_list();
 lora_incomming_packets pkt_list = lora_incomming_packets();
 static int16_t transmit(uint8_t * data, size_t len);
 static uint32_t time_on_air(size_t len);
-lora_outgoing_packets transmit_pkt_list = lora_outgoing_packets(transmit, time_on_air);
+lora_outgoing_packets transmit_pkt_list = lora_outgoing_packets(transmit);
 lora_pkt_history pkt_history = lora_pkt_history();
 notification notification_list = notification();
 vector<lora_packet> received_packets;
@@ -1725,10 +1725,6 @@ void processPackets2(void * param){
     }
 }
 
-static uint32_t time_on_air(size_t len){
-    return radio.getTimeOnAir(len);
-}
-
 static int16_t transmit(uint8_t * data, size_t len){
     int16_t r;
 
@@ -1739,6 +1735,7 @@ static int16_t transmit(uint8_t * data, size_t len){
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         //Serial.println("Transmitting packet...");
         if(!gotPacket){
+            transmit_pkt_list.setOnAirTime(radio.getTimeOnAir(len) / 1000);
             r = radio.startTransmit((uint8_t*)data, len);
         }
         else
@@ -4861,7 +4858,12 @@ void setup(){
     xTaskCreatePinnedToCore(processPackets2, "process_pkt", 5000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processTransmitingPackets, "proc_tx_pkt", 11000, NULL, 1, NULL, 1);
-
+    // Turn off the display
+    //delay(1000);
+    //tft.writecommand(0x10);
+    //delay(1000);
+    // Turn on the display
+    //tft.writecommand(0x11);
 }
 
 void loop(){
