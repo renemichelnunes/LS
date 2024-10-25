@@ -167,7 +167,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                         strcpy(data->id, p.id);
                         strcpy(data->sender, p.sender);
                         strcpy(data->destiny, p.destiny);
-                        strcpy(data->status, p.status);
+                        //strcpy(data->status, p.status);
                         memcpy(data->data, p.data, p.data_size);
                         data->data_size = p.data_size;
                         data->crc = calculate_data_crc(p.data, 208);

@@ -57,7 +57,7 @@ struct lora_packet_data{
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
     uint8_t hops = MAX_HOPS;
-    char status[7] = {'\0'};
+    //char status[7] = {'\0'};
     char data[208] = {'\0'};
     uint8_t data_size = 0;
     uint8_t app_id = 0;

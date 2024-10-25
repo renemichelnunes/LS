@@ -18,13 +18,15 @@
 #define LORA_PKT_COMM 4
 #define LORA_PKT_PING 5
 
+#define MAX_HOPS 200
+
 /// @brief Struct that is used to create a shorter LoRa packet with announcement info.
 struct lora_packet_announce{
     uint8_t type = LORA_PKT_ANNOUNCE;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
-    char destiny[7] = {'\0'};
-    uint8_t hops = 10;
+    //char destiny[7] = {'\0'};
+    uint8_t hops = MAX_HOPS;
 };
 /// @brief Struct that is used to create a shorter LoRa packet with ack info.
 struct lora_packet_ack{
@@ -32,8 +34,9 @@ struct lora_packet_ack{
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    uint8_t hops = 10;
+    uint8_t hops = MAX_HOPS;
     char status[7] = "recv"; // can be used to ack (sender's message id)
+    uint8_t app_id = 0;
 };
 /// @brief Struct that is used to create a shorter LoRa packet with command and parameters info.
 struct lora_packet_comm{
@@ -41,7 +44,7 @@ struct lora_packet_comm{
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    uint8_t hops = 10;
+    uint8_t hops = MAX_HOPS;
     uint8_t command;
     char param[160] = {'\0'};
 };
@@ -51,7 +54,7 @@ struct lora_packet_ping{
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    uint8_t hops = 10;
+    uint8_t hops = MAX_HOPS;
     char status[7] = "recv"; // can be used to ack (sender's message id)
 };
 
@@ -61,10 +64,12 @@ struct lora_packet_data{
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    uint8_t hops = 10;
-    char status[7] = {'\0'};
-    char data[208] = {'\0'};
+    uint8_t hops = MAX_HOPS;
+    //char status[7] = {'\0'};
+    char data[80] = {'\0'};
     uint8_t data_size = 0;
+    uint8_t app_id = 0;
+    uint32_t crc = 0;
 };
 
 /// @brief Struct to create a complete LoRa packet info.
@@ -73,14 +78,17 @@ struct lora_packet{
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
-    uint8_t hops = 10;
+    uint8_t hops = MAX_HOPS;
     char status[7] = {'\0'};
     char data[208] = {'\0'};
     uint8_t data_size = 0;
+    uint8_t app_id = 0;
     char date_time[30] = {'\0'};
     bool confirmed = false;
     uint32_t timeout = 0;
+    uint32_t crc = 0;
 };
+
 /// @brief Class to instatiate a queue of inscomming lora_packet gathered from the LoRa radio and managing functions.
 class lora_incomming_packets{
     private:

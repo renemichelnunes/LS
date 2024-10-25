@@ -1866,7 +1866,7 @@ bool normalMode(){
         }
 
         // disable CRC
-        if (radio.setCRC(true) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
+        if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
             Serial.println(F("Selected CRC is invalid for this module!"));
             return false;
         }
@@ -1945,7 +1945,7 @@ bool DXMode()
         }
 
         // disable CRC
-        if (radio.setCRC(true) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
+        if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
             Serial.println(F("Selected CRC is invalid for this module!"));
             return false;
         }
@@ -2026,7 +2026,7 @@ void setupRadio(lv_event_t * e)
     }
 
     // disable CRC
-    if (radio.setCRC(true) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
+    if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
         Serial.println(F("Selected CRC is invalid for this module!"));
         //return false;
     }
@@ -2324,8 +2324,6 @@ void send_message(lv_event_t * e){
         strcpy(pkt.sender, user_id);
         // The destiny is the selected contact.
         strcpy(pkt.destiny, actual_contact->getID().c_str());
-        // 'send' to a normal packet, we'll expect to receive a 'recv' packet from the contact(not guaranteed).
-        strcpy(pkt.status, "send");
         // Put the actual date and time.
         strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
         
