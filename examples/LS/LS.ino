@@ -1462,7 +1462,7 @@ void collectPackets(void * param){
                     invalid_pkt_size = true;
                     Serial.printf("Unknown packet size - %d bytes\n", packet_size);
                 }
-                // A pointer justo to get the packet type
+                // A pointer just to get the packet type
                 p = (lora_packet*)packet;
                 // Common properties to all packet types
                 lp.type = p->type;
