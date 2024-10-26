@@ -1630,6 +1630,7 @@ void processPackets2(void * param){
                 strcpy(ack.sender, user_id);
                 strcpy(ack.destiny, p.destiny);
                 strcpy(ack.status, p.id);
+                Serial.printf("ACK to packet ID %s app_id %d ready\n", ack.status, ack.app_id);
                 // Put on the transmit queue
                 transmit_pkt_list.add(ack);
                 // Redirect the data to its application
@@ -1652,6 +1653,7 @@ void processPackets2(void * param){
                         decrypt_text((unsigned char *)p.data, (unsigned char*)c->getKey().c_str(), p.data_size, decrypted_text);
                         Serial.printf("msg size => %d\n", p.data_size);
                         Serial.printf("Decrypted => %s\n", decrypted_text);
+                        Serial.printf("On %s\n", p.date_time);
                         strcpy(cm.message, (const char *)decrypted_text);
                         strcpy(cm.dateTime, p.date_time);
                         pthread_mutex_lock(&messages_mutex);
@@ -1747,7 +1749,7 @@ static int16_t transmit(uint8_t * data, size_t len){
         //Serial.printf("On Air time => %1.3fs\n", (float)radio.getTimeOnAir(len) / 1000000);
     }
     else
-        Serial.println("Packet not sent");
+        Serial.printf("Packet not sent - error %d", r);
         
     transmiting = false;
     return r;
@@ -1860,7 +1862,7 @@ bool normalMode(){
         }
 
         // set LoRa preamble length to 15 symbols (accepted range is 0 - 65535)
-        if (radio.setPreambleLength(15) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+        if (radio.setPreambleLength(8) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
             Serial.println(F("Selected preamble length is invalid for this module!"));
             return false;
         }
@@ -1939,9 +1941,13 @@ bool DXMode()
         }
 
         // set LoRa preamble length to 15 symbols (accepted range is 0 - 65535)
-        if (radio.setPreambleLength(15) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+        if (radio.setPreambleLength(8) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
             Serial.println(F("Selected preamble length is invalid for this module!"));
             return false;
+        }
+        
+        if(radio.explicitHeader() != RADIOLIB_ERR_NONE){
+            Serial.println("Cannot set explicit header feature");
         }
 
         // disable CRC
@@ -2020,13 +2026,17 @@ void setupRadio(lv_event_t * e)
     }
 
     // set LoRa preamble length to 15 symbols (accepted range is 0 - 65535)
-    if (radio.setPreambleLength(15) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+    if (radio.setPreambleLength(8) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
         //return false;
     }
 
+    if(radio.explicitHeader() != RADIOLIB_ERR_NONE){
+        Serial.println("Cannot set explicit header feature");
+    }
+
     // disable CRC
-    if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
+    if (radio.setCRC(true) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
         Serial.println(F("Selected CRC is invalid for this module!"));
         //return false;
     }
@@ -4701,9 +4711,9 @@ void announce(){
 void task_beacon(void * param){
     uint32_t r = 0;
     while(true){
-        r = transmit_pkt_list.genPktTimeout(10);
-        vTaskDelay(r / portTICK_PERIOD_MS);
+        r = transmit_pkt_list.genPktTimeout(30);
         announce();
+        vTaskDelay(r / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
