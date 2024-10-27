@@ -200,9 +200,9 @@ lora_packet lora_outgoing_packets::check_packets(){
                         //Serial.printf("ID %s\nType %d\nAPP ID %d\nSender %s\nDestiny %s\nStatus %s\n\n", pack->id, pack->type, pack->app_id, pack->sender, pack->destiny, pack->status);
                     }
                     this->transmit_func_callback((uint8_t*)packet, pkt_size);
-                    r = this->time_on_air + this->genPktTimeout(6);
+                    r = this->time_on_air*2 + this->genPktTimeout(6);
                     Serial.printf("TX time %1.3fs\n--------------------------------\n", (float)this->time_on_air / 1000);
-                    Serial.printf("Next transmission in %1.1fs\n--------------------------------\n", (float)r / 1000);
+                    Serial.printf("Next transmission in %1.1fs\n--------------------------------\n", (float)(r/2) / 1000);
                     if(packet){
                         free(packet);
                         packet = NULL;

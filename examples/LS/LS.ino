@@ -1527,14 +1527,16 @@ void collectPackets(void * param){
                     if(lp.type == LORA_PKT_DATA || lp.type == LORA_PKT_ACK){
                         //Serial.printf("ID %s\nAPP ID %d\nTYPE %d\nSENDER %s\nSTATUS %s\nDATA SIZE %d\nDATA %s\n\n", lp.id, lp.app_id, lp.type, lp.sender, lp.status, lp.data_size, lp.data);
                     }
-                    new_stats = true;
-                    update_rssi_snr_graph(rssi, snr);
+                    
                     if(lp.hops > 0){
                         // Decrement the TTL
                         lp.hops--;
                         // If we receive the same packet we transmitted, drop it. This is a thing that happen
                         // as soon as we send a packet. The radio uses the same buffer to transmit and receive.
                         if(!pkt_history.exists(lp.id)){
+                            new_stats = true;
+                            update_rssi_snr_graph(rssi, snr);
+                            play_packet_received();
                             pkt_history.add(lp.id);
                             pkt_list.add(lp);
                             //Serial.println("\nUpdating rssi graph...");
@@ -1644,6 +1646,7 @@ void processPackets2(void * param){
                     Serial.println("APP_ID UNKNOWN");
 
                 if(p.app_id == APP_LORA_CHAT){
+                    play_message_received();
                     Serial.println("LoRa Chat packet");
                     c = contacts_list.getContactByID(p.sender);
                     if(c){
@@ -1735,7 +1738,7 @@ static int16_t transmit(uint8_t * data, size_t len){
     activity(lv_color_hex(0xff0000));
     pthread_mutex_unlock(&lvgl_mutex);
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        //Serial.println("Transmitting packet...");
+        Serial.println("Transmitting packet...");
         if(!gotPacket){
             transmit_pkt_list.setOnAirTime(radio.getTimeOnAir(len) / 1000);
             r = radio.startTransmit((uint8_t*)data, len);
@@ -4722,16 +4725,33 @@ void setup_sound(){
     bool findMp3 = false;
 
     audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
-    audio.setVolume(21);
+    audio.setVolume(2);
     
+    
+    
+    //SPIFFS.end();
+}
+
+void play_packet_received(){
+    if(SPIFFS.exists("/packet_received.mp3")){
+        audio.connecttoFS(SPIFFS, "/packet_received.mp3");
+        while(audio.isRunning()){
+            audio.loop();
+            delay(5);
+        }
+    }else
+        Serial.println("packet_received.mp3 not found");
+}
+
+void play_message_received(){
     if(SPIFFS.exists("/comp_up.mp3")){
-        findMp3 = audio.connecttoFS(SPIFFS, "/comp_up.mp3");
-        if(findMp3){
-            
+        audio.connecttoFS(SPIFFS, "comp_up.mp3");
+        while(audio.isRunning()){
+            audio.loop();
+            delay(5);
         }
     }else
         Serial.println("comp_up.mp3 not found");
-    //SPIFFS.end();
 }
 
 /// @brief T-Deck's initial setup function.
@@ -4872,12 +4892,14 @@ void setup(){
     //delay(1000);
     // Turn on the display
     //tft.writecommand(0x11);
+    setup_sound();
 }
 
 void loop(){
     pthread_mutex_lock(&lvgl_mutex);
     lv_task_handler();
     pthread_mutex_unlock(&lvgl_mutex);
+    
     /*
     if(secureServer != NULL)
         if(secureServer->isRunning()){
