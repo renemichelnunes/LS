@@ -2,9 +2,8 @@
 
 TaskHandle_t task_update_nodes_list = NULL;
 
-discovery_node::discovery_node(char * node_id, uint8_t hops, disc_node dn)
+discovery_node::discovery_node(uint8_t hops, disc_node dn)
 {
-    strcpy(this->node.id, node_id);
     this->node = dn;
     this->hops = hops;
 }
@@ -132,6 +131,7 @@ void discovery_app::initUI(lv_obj_t * parent)
         lv_obj_set_style_border_width(this->frm_discovery_nodeList, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
         Serial.println("discovery_app::initUI() - READY");
 
+        // Demo
         disc_node n1, n2, n3, n4, n5, n6, n7, n8, n9, n10;
         strcpy(n1.id, "1");
         strcpy(n2.id, "2");
@@ -179,21 +179,21 @@ void discovery_app::initUI(lv_obj_t * parent)
 
         strcpy(n10.neighbors[0], n3.id);
 
-        this->list_demo.push_back(discovery_node(n1));
-        this->list_demo.push_back(n2);
-        this->list_demo.push_back(n3);
-        this->list_demo.push_back(n4);
-        this->list_demo.push_back(n5);
-        this->list_demo.push_back(n6);
-        this->list_demo.push_back(n7);
-        this->list_demo.push_back(n8);
-        this->list_demo.push_back(n9);
-        this->list_demo.push_back(n10);
+        this->list_demo.push_back(discovery_node(0, n1));
+        this->list_demo.push_back(discovery_node(0, n2));
+        this->list_demo.push_back(discovery_node(0, n3));
+        this->list_demo.push_back(discovery_node(0, n4));
+        this->list_demo.push_back(discovery_node(0, n5));
+        this->list_demo.push_back(discovery_node(0, n6));
+        this->list_demo.push_back(discovery_node(0, n7));
+        this->list_demo.push_back(discovery_node(0, n8));
+        this->list_demo.push_back(discovery_node(0, n9));
+        this->list_demo.push_back(discovery_node(0, n10));
 
         for(uint8_t r = 0; r < this->list_demo.size(); r++){
-            printf("%s => ", this->list_demo[r].id);
+            printf("%s => ", this->list_demo[r].node.id);
             for(uint8_t c = 0; c < MAX_NEIGHBORS_COUNT; c++){
-                printf("%s ", this->list_demo[r].neighbors[c]);
+                printf("%s ", this->list_demo[r].node.neighbors[c]);
             }
             printf("\n");
         }
@@ -385,6 +385,26 @@ void discovery_app::update_positions() {
     }
 }
 
+void show_graph(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * frm = (lv_obj_t*)lv_event_get_target(e);
+
+    if(frm)
+        lv_obj_clear_flag(frm, LV_OBJ_FLAG_HIDDEN);
+}
+
+void hide_graph(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * frm = (lv_obj_t*)lv_event_get_user_data(e);
+    if(code == LV_EVENT_SHORT_CLICKED){
+        if(frm){
+            lv_obj_add_flag(frm, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
 void discovery_app::init_graph_ui(){
     // Main grapg form
     this->frm_graph_main = lv_obj_create(this->parent);
@@ -411,26 +431,6 @@ void discovery_app::init_graph_ui(){
     lv_obj_align(this->frm_graph_frame, LV_ALIGN_TOP_MID, 0, 5);
 
     lv_obj_add_flag(this->frm_graph_main, LV_OBJ_FLAG_HIDDEN);
-}
-
-void show_graph(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t * frm = (lv_obj_t*)lv_event_get_target(e);
-
-    if(frm)
-        lv_obj_clear_flag(frm, LV_OBJ_FLAG_HIDDEN);
-}
-
-void hide_graph(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t * frm = (lv_obj_t*)lv_event_get_user_data(e);
-    if(code == LV_EVENT_SHORT_CLICKED){
-        if(frm){
-            lv_obj_add_flag(frm, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
 }
 
 void discovery_app::show_graph_ui(){
