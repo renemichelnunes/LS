@@ -150,7 +150,7 @@ volatile bool wifi_got_ip = false;
 volatile float rssi, snr;
 #define APP_SYSTEM 1
 #define APP_LORA_CHAT 2
-discovery_app discoveryApp = discovery_app();
+discovery_app discoveryApp = discovery_app(&lvgl_mutex);
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -3661,7 +3661,7 @@ void ui(){
 
     // Nodes button
     discoveryApp.initUI(lv_scr_act());
-    //delay(2000);
+    delay(2000);
     btn_nodes = lv_btn_create(frm_home);
     lv_obj_set_size(btn_nodes, 50, 20);
     lv_obj_align(btn_nodes, LV_ALIGN_BOTTOM_RIGHT, 0, -50);

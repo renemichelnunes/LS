@@ -201,8 +201,11 @@ lora_packet lora_outgoing_packets::check_packets(){
                     }
                     this->transmit_func_callback((uint8_t*)packet, pkt_size);
                     r = this->time_on_air*2 + this->genPktTimeout(6);
+                    //Serial.printf("Tempo de espera %lu\n", r);
+                    if(r < 5000)
+                        r += 5000;
                     Serial.printf("TX time %1.3fs\n--------------------------------\n", (float)this->time_on_air / 1000);
-                    Serial.printf("Next transmission in %1.1fs\n--------------------------------\n", (float)(r/2) / 1000);
+                    Serial.printf("Next transmission in %1.1fs\n--------------------------------\n", (float)(r) / 1000);
                     if(packet){
                         free(packet);
                         packet = NULL;

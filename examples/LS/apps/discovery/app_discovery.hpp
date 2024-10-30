@@ -34,7 +34,6 @@ class discovery_app{
         bool init_positions();
         void calculate_repulsion(double * dx, double * dy, uint16_t i, uint16_t j);
         void calculate_attraction(double * dx, double * dy, int i, int j);
-        void update_positions();
 
         // LVGL objects
         // Main app
@@ -45,6 +44,8 @@ class discovery_app{
         lv_obj_t * frm_discovery_btn_title_lbl;
         lv_obj_t * frm_discovery_btn_back;
         lv_obj_t * frm_discovery_btn_back_lbl;
+        lv_obj_t * frm_discovery_btn_graph;
+        lv_obj_t * frm_discovery_btn_graph_lbl;
 
         // Graph form
         lv_obj_t * frm_graph_main;
@@ -53,6 +54,8 @@ class discovery_app{
         lv_obj_t * frm_graph_frame;
 
         lv_obj_t * createNodeListObj(lv_obj_t * btn, const char * node_id, uint16_t hops);
+
+        pthread_mutex_t * lvgl_mutex;
 
         bool new_node;
         std::vector<discovery_node> list;
@@ -63,7 +66,7 @@ class discovery_app{
         bool clear_adj_matrix();
         void calculate_adj_matrix();
     public:
-        discovery_app();
+        discovery_app(pthread_mutex_t * lvgl_mutex);
         bool exists(const char * node_id);
         bool add(discovery_node node);
         discovery_node * getNode(const char * node_id);
@@ -78,6 +81,7 @@ class discovery_app{
         void init_graph_ui();
         void show_graph_ui();
         void hide_graph_ui();
+        void update_positions();
         void draw_graph();
 };
 
