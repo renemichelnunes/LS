@@ -1603,7 +1603,9 @@ void processPackets2(void * param){
             p = pkt_list.get();
             if(p.type == LORA_PKT_ANNOUNCE){
                 // Save the node ID in the discovery list
-                discovery_node dn = discovery_node(p.sender, MAX_HOPS - p.hops, 0, 0);
+                disc_node dis;
+                strcpy(dis.id, p.sender);
+                discovery_node dn = discovery_node(MAX_HOPS - p.hops, dis);
                 if(discoveryApp.add(dn)){
                     //Serial.printf("Node ID %s added to discovery list\n", dn.gridLocalization.node_id);
                 }
