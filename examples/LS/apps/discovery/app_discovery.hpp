@@ -19,7 +19,7 @@ class discovery_node{
     public:
         disc_node node;
         uint16_t hops = 0;
-        discovery_node(char * node_id, uint8_t hops, disc_node dn);
+        discovery_node(uint8_t hops, disc_node dn);
 };
 
 class discovery_app{
