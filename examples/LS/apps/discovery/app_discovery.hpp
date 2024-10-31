@@ -31,7 +31,7 @@ class discovery_app{
         }Node;
 
         std::vector<Node> nodes;
-        bool init_positions();
+
         void calculate_repulsion(double * dx, double * dy, uint16_t i, uint16_t j);
         void calculate_attraction(double * dx, double * dy, int i, int j);
 
@@ -59,12 +59,8 @@ class discovery_app{
 
         bool new_node;
         std::vector<discovery_node> list;
-        std::vector<discovery_node> list_demo;
 
         bool ** adjacency_matrix;
-        bool init_adj_matrix();
-        bool clear_adj_matrix();
-        void calculate_adj_matrix();
     public:
         discovery_app(pthread_mutex_t * lvgl_mutex);
         bool exists(const char * node_id);
@@ -83,5 +79,10 @@ class discovery_app{
         void hide_graph_ui();
         void update_positions();
         void draw_graph();
+        std::vector<discovery_node> list_demo;
+        bool init_adj_matrix();
+        bool clear_adj_matrix();
+        void calculate_adj_matrix();
+        bool init_positions();
 };
 
