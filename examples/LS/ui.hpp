@@ -34,6 +34,7 @@ lv_obj_t * frm_contacts_btn_add;
 lv_obj_t * frm_contacts_btn_add_lbl;
 lv_obj_t * frm_contatcs_btn_title;
 lv_obj_t * frm_contatcs_btn_title_lbl;
+
 /*add contact form*/
 lv_obj_t * frm_add_contact;
 lv_obj_t * frm_add_contacts_btn_title;

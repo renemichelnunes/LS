@@ -69,6 +69,8 @@ static pthread_mutex_t messages_mutex;
 static pthread_mutex_t send_json_mutex;
 static pthread_mutex_t websocket_send;
 static pthread_mutex_t sound_mutex;
+pthread_mutexattr_t Attr;
+
 // Used to represent the state of some resources
 bool touchDected = false;
 bool kbDected = false;
@@ -290,6 +292,7 @@ static void refresh_contact_list(){
     for(uint32_t i = 0; i < contacts_list.size(); i++){
         // Adds a new item on the list with the contact's name and return a pointer to the button
         btn = lv_list_add_btn(frm_contacts_list, LV_SYMBOL_CALL, contacts_list.getContact(i).getName().c_str());
+        //lv_obj_set_size(btn, 290, 60);
         // Create a label with the id of the contact, will be used later on
         lv_obj_t * lbl = lv_label_create(btn);
         lv_label_set_text(lbl, contacts_list.getContact(i).getID().c_str());
@@ -310,13 +313,17 @@ static void refresh_contact_list(){
             lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
         }
         // Align the status object in the right most position
-        lv_obj_align(obj_status, LV_ALIGN_RIGHT_MID, 0, 0);
+        lv_obj_align(obj_status, LV_ALIGN_TOP_RIGHT, 0, 0);
         // We need to hide the label with the id
         lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN);
         // Add some events when clicked or long press the contact on the list
         lv_obj_add_event_cb(btn, show_edit_contacts, LV_EVENT_LONG_PRESSED, btn);
         lv_obj_add_event_cb(btn, show_chat, LV_EVENT_SHORT_CLICKED, btn);
-        
+        // Status Message
+        lv_obj_t * status_msg_lbl = lv_label_create(btn);
+        lv_obj_align(status_msg_lbl, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 60);
+        lv_label_set_text(status_msg_lbl, "status message");
+        lv_obj_set_style_text_color(status_msg_lbl, lv_color_hex(0xaaaaaa), LV_PART_MAIN);
     }
     // After this, we save the list o contacts, there are other routines that modifies the contacts info
     // so for now this is the best place to save the contacts every time its info changes. Not perfect.
@@ -1446,10 +1453,10 @@ void collectPackets(void * param){
                     radio.readData((uint8_t*)packet, packet_size);
                     rssi = radio.getRSSI();
                     snr = radio.getSNR();
-                    gotPacket = false;
                     // Put the radio to listen.
                     radio.startReceive();
                     xSemaphoreGive(xSemaphore);
+                    gotPacket = false;
                 }
 
                 // Check if the packet is valid.
@@ -1597,9 +1604,9 @@ void processPackets2(void * param){
     while(true){
         if(pkt_list.has_packets()){
             // Change the squared status on home screen to green.
-            pthread_mutex_lock(&lvgl_mutex);
-            activity(lv_color_hex(0x00ff00));
-            pthread_mutex_unlock(&lvgl_mutex);
+            //pthread_mutex_lock(&lvgl_mutex);
+            //activity(lv_color_hex(0x00ff00));
+            //pthread_mutex_unlock(&lvgl_mutex);
             p = pkt_list.get();
             if(p.type == LORA_PKT_ANNOUNCE){
                 // Save the node ID in the discovery list
@@ -1734,14 +1741,23 @@ void processPackets2(void * param){
 
 static int16_t transmit(uint8_t * data, size_t len){
     int16_t r;
+    uint16_t count = 0;
 
     transmiting = true;
     pthread_mutex_lock(&lvgl_mutex);
     activity(lv_color_hex(0xff0000));
     pthread_mutex_unlock(&lvgl_mutex);
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        Serial.println("Transmitting packet...");
+        while(gotPacket){
+            Serial.printf("%s\n", gotPacket ? "Radio ready to transmit" : "Radio still receiving");
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+            count += 1;
+            // Avoid infinite loop when gotPacket is blocked somewhere else
+            if(count > 1000)
+                break;
+        }
         if(!gotPacket){
+            Serial.printf("Transmitting packet...\n");
             transmit_pkt_list.setOnAirTime(radio.getTimeOnAir(len) / 1000);
             r = radio.startTransmit((uint8_t*)data, len);
         }
@@ -1954,7 +1970,7 @@ bool DXMode()
         if(radio.explicitHeader() != RADIOLIB_ERR_NONE){
             Serial.println("Cannot set explicit header feature");
         }
-
+        
         // disable CRC
         if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
             Serial.println(F("Selected CRC is invalid for this module!"));
@@ -4761,7 +4777,7 @@ void setup(){
     // Seed to rand()
     struct timeval timea;
     gettimeofday(&timea, NULL);
-    srand((timea.tv_sec * 1000) + (timea.tv_sec / 1000));
+    //srand((timea.tv_sec * 1000) + (timea.tv_sec / 1000));
 
     if(!SPIFFS.begin(true)){
         Serial.println("failed mounting SPIFFS");
@@ -4834,7 +4850,6 @@ void setup(){
     assert(xSemaphore);
     xSemaphoreGive( xSemaphore );
     // Mutexes to restrict the access to some resources, avoiding memory corruption, catastrophic failures.
-    pthread_mutexattr_t Attr;
     pthread_mutexattr_init(&Attr);
     pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&lvgl_mutex, &Attr);

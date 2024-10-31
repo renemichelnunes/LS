@@ -447,7 +447,7 @@ void discovery_app::init_graph_ui(){
 
     // Graph form
     this->frm_graph_frame = lv_obj_create(this->frm_graph_main);
-    lv_obj_set_size(this->frm_graph_frame, 200, 200);
+    lv_obj_set_size(this->frm_graph_frame, 320, 200);
     lv_obj_set_style_bg_color(this->frm_graph_frame, lv_color_hex(0xffaa60), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(this->frm_graph_frame, 255, LV_PART_MAIN);
     lv_obj_align(this->frm_graph_frame, LV_ALIGN_TOP_MID, 0, 15);
