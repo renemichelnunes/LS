@@ -4740,8 +4740,6 @@ void task_beacon(void * param){
 }
 
 void setup_sound(){
-    bool findMp3 = false;
-
     audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
     audio.setVolume(2);
     
@@ -4910,6 +4908,8 @@ void setup(){
     // Turn on the display
     //tft.writecommand(0x11);
     setup_sound();
+    if(DXMode())
+        Serial.println("DX mode on");
 }
 
 void loop(){
