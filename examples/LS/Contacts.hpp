@@ -38,6 +38,7 @@ class Contact{
         ContactMessage * getMessageByID(const char * id);
         vector<ContactMessage> getMessagesList();
         bool existsMessage(const char * id);
+        bool new_message = false;
     private:
         String name;
         String id;

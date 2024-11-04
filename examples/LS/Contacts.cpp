@@ -10,6 +10,8 @@
 Contact::Contact(String name, String id){
     this->name = name;
     this->id = id;
+    this->rssi = 0;
+    this->snr = 0;
 }
 /// @brief Contructor.
 Contact::Contact(){

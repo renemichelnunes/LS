@@ -101,7 +101,8 @@ TaskHandle_t task_recv_pkt = NULL, // when we receive a LoRa packet
              task_wifi_auto = NULL, // as soon as the board boots, connects to a wifi
              task_wifi_scan = NULL, // to scan without blocking the interface
              task_play = NULL, // test purpose
-             task_play_radio = NULL; // test purpose
+             task_play_radio = NULL, // test purpose
+             task_check_contact_list_new_msg = NULL;
 // Holds how many messages a selected contact have.
 uint32_t msg_count = 0;
 // List of contacts, LoRa packets and notification
@@ -282,52 +283,65 @@ static void saveContacts(){
     Serial.println(" contacts saved");
     file.close();
 }
-/// @brief Refreshes the contacts list object.
+
 static void refresh_contact_list(){
+    uint8_t spacing = 0;
+    char rssi_snr[30] = {'\0'};
     // Clean the list
-    lv_obj_clean(frm_contacts_list);
-    
-    lv_obj_t * btn;
+    lv_obj_clean(frm_contacts_frame);
+
     // Populate the list creating buttons based on the contact's info
     for(uint32_t i = 0; i < contacts_list.size(); i++){
-        // Adds a new item on the list with the contact's name and return a pointer to the button
-        btn = lv_list_add_btn(frm_contacts_list, LV_SYMBOL_CALL, contacts_list.getContact(i).getName().c_str());
-        //lv_obj_set_size(btn, 290, 60);
-        // Create a label with the id of the contact, will be used later on
-        lv_obj_t * lbl = lv_label_create(btn);
-        lv_label_set_text(lbl, contacts_list.getContact(i).getID().c_str());
-        // Create a small square 20 x 20 pixels that represents the online status by color
-        lv_obj_t * obj_status = lv_obj_create(btn);
-        lv_obj_set_size(obj_status, 20, 20);
-        // Normally the object has scrollbars so we need to hide them
-        lv_obj_clear_flag(obj_status, LV_OBJ_FLAG_SCROLLABLE);
-        // If the current contact is near by we set the background color of the status square to green
-        // otherwise to light gray, use the colors you want. Keep in mind, we are creating the label
-        // and the status object with the button as parent, so it will be part of the button as well,
-        // so every contact in the list will have its own id(hidden) and status object(visible). The
-        // list created will be orded the same as the contact_list.
-        if(contacts_list.getContact(i).inrange){
-            lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-        }
-        else{
-            lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
-        }
-        // Align the status object in the right most position
-        lv_obj_align(obj_status, LV_ALIGN_TOP_RIGHT, 0, 0);
-        // We need to hide the label with the id
-        lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN);
-        // Add some events when clicked or long press the contact on the list
-        lv_obj_add_event_cb(btn, show_edit_contacts, LV_EVENT_LONG_PRESSED, btn);
-        lv_obj_add_event_cb(btn, show_chat, LV_EVENT_SHORT_CLICKED, btn);
-        // Status Message
-        lv_obj_t * status_msg_lbl = lv_label_create(btn);
-        lv_obj_align(status_msg_lbl, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 60);
-        lv_label_set_text(status_msg_lbl, "status message");
-        lv_obj_set_style_text_color(status_msg_lbl, lv_color_hex(0xaaaaaa), LV_PART_MAIN);
+        lv_obj_t * item = lv_obj_create(frm_contacts_frame);
+        lv_obj_set_size(item, 300, 55);
+        lv_obj_set_style_bg_color(item, lv_color_hex(0xeeeeee), LV_PART_MAIN);
+        lv_obj_align(item, LV_ALIGN_TOP_MID, -10, + spacing);
+        //lv_obj_set_style_radius(item, 0, LV_PART_MAIN);
+        lv_obj_clear_flag(item, LV_OBJ_FLAG_SCROLLABLE);
+
+        lv_obj_t * icon = lv_label_create(item);
+        lv_label_set_text(icon, LV_SYMBOL_WIFI);
+        lv_obj_align(icon, LV_ALIGN_TOP_LEFT, -10, -10);
+
+        lv_obj_t * cname = lv_label_create(item);
+        lv_obj_set_style_text_font(cname, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_label_set_text(cname, contacts_list.getContact(i).getName().c_str());
+        lv_obj_align(cname, LV_ALIGN_TOP_LEFT, 10, -15);
+
+        lv_obj_t * new_msg = lv_label_create(item);
+        lv_label_set_text(new_msg, "");
+        lv_obj_align(new_msg, LV_ALIGN_TOP_RIGHT, 10, -10);
+
+        lv_obj_t * last_msg = lv_label_create(item);
+        lv_obj_set_style_text_font(last_msg, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+        if(contacts_list.getContact(i).getMessagesList().size() > 0)
+            lv_label_set_text(last_msg, contacts_list.getContact(i).getMessagesList()[contacts_list.getContact(i).getMessagesList().size() - 1].message);
+        else
+            lv_label_set_text(last_msg,"-");
+        lv_obj_align(last_msg, LV_ALIGN_TOP_LEFT, -10, 2);
+        lv_obj_set_style_text_color(last_msg, lv_color_hex(0x777777), LV_PART_MAIN);
+
+        lv_obj_t * rssi_snr_lbl = lv_label_create(item);
+        sprintf(rssi_snr, "RSSI %.2f SNR %.2f", contacts_list.getContact(i).getRSSI(), contacts_list.getContact(i).getSNR());
+        lv_label_set_text(rssi_snr_lbl, rssi_snr);
+        lv_obj_align(rssi_snr_lbl, LV_ALIGN_TOP_LEFT, -10, 22);
+        lv_obj_set_style_text_color(rssi_snr_lbl, lv_color_hex(0x777777), LV_PART_MAIN);
+
+        lv_obj_t * lbl_id = lv_label_create(item);
+        lv_label_set_text(lbl_id, contacts_list.getContact(i).getID().c_str());
+        lv_obj_add_flag(lbl_id, LV_OBJ_FLAG_HIDDEN);
+
+        lv_obj_t * btn = lv_btn_create(item);
+        lv_obj_set_size(btn, 300, 55);
+        lv_obj_align(btn, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_style_opa(btn, 0, LV_PART_MAIN);
+        Contact c = contacts_list.getContact(i);
+        lv_obj_add_event_cb(btn, show_chat, LV_EVENT_SHORT_CLICKED, (void*)item);
+        lv_obj_add_event_cb(btn, show_edit_contacts, LV_EVENT_LONG_PRESSED, (void*)item);
+        lv_obj_move_foreground(btn);
+
+        spacing += 55;
     }
-    // After this, we save the list o contacts, there are other routines that modifies the contacts info
-    // so for now this is the best place to save the contacts every time its info changes. Not perfect.
-    saveContacts();
 }
 
 /// @brief This task runs forever and every 100 ms. We watch for a new message and show in a small area on top of the screen
@@ -1542,6 +1556,8 @@ void collectPackets(void * param){
                         // as soon as we send a packet. The radio uses the same buffer to transmit and receive.
                         if(!pkt_history.exists(lp.id)){
                             new_stats = true;
+                            lp.rssi = rssi;
+                            lp.snr = snr;
                             update_rssi_snr_graph(rssi, snr);
                             play_packet_received();
                             pkt_history.add(lp.id);
@@ -1668,8 +1684,11 @@ void processPackets2(void * param){
                         Serial.printf("On %s\n", p.date_time);
                         strcpy(cm.message, (const char *)decrypted_text);
                         strcpy(cm.dateTime, p.date_time);
+                        cm.rssi = p.rssi;
+                        cm.snr = p.snr;
                         pthread_mutex_lock(&messages_mutex);
                         c->addMessage(cm);
+                        c->new_message = true;
                         pthread_mutex_unlock(&messages_mutex);
                         sendContactMessages(p.sender);
                         while(sendingJson){
@@ -2111,6 +2130,13 @@ void hide_contacts_frm(lv_event_t * e){
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_contacts != NULL){
             lv_obj_add_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
+            vTaskDelete(task_check_contact_list_new_msg);
+            if(task_check_contact_list_new_msg){
+                Serial.println("task_check_contact_list_new_msg deleted");
+            }
+            else{
+                Serial.println("Cannot delete task_check_contact_list_new_msg");
+            }
         }
     }
 }
@@ -2122,6 +2148,14 @@ void show_contacts_form(lv_event_t * e){
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm_contacts != NULL){
             lv_obj_clear_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
+            refresh_contact_list();
+            xTaskCreatePinnedToCore(check_contact_list_new_msg, "cont_list_new_msg", 8000, NULL, 1, &task_check_contact_list_new_msg, 1);
+            if(task_check_contact_list_new_msg){
+                Serial.println("task_check_contact_list_new_msg launched");
+            }
+            else{
+                Serial.println("Cannot launch task_check_contact_list_new_msg");
+            }
         }
     }
 }
@@ -2250,20 +2284,19 @@ void hide_edit_contacts(lv_event_t * e){
 /// @brief Shows the edit contact info dialog when press and hold a contact's name on the list.
 /// @param e 
 void show_edit_contacts(lv_event_t * e){
-    char id[7] = {'\u0000'};
+    char id[7] = {'\0'};
     // Get the code of the event.
     lv_event_code_t code = lv_event_get_code(e);
-    // Get the data object represented by the item of the list(button).
-    lv_obj_t * btn = (lv_obj_t * )lv_event_get_user_data(e);
-    // Extract the hidden id label.
-    lv_obj_t * lbl_id = lv_obj_get_child(btn, 2);
+    lv_obj_t * item = (lv_obj_t*)lv_event_get_user_data(e);
+    lv_obj_t * lbl_id = lv_obj_get_child(item, 5);
+    strcpy(id, lv_label_get_text(lbl_id));
+    // Get the contact
+    Contact * c = contacts_list.getContactByID(id);
 
     if(code == LV_EVENT_LONG_PRESSED){
         if(frm_edit_contacts != NULL){
-            // Get the id saved on the label.
-            strcpy(id, lv_label_get_text(lbl_id));
             // Search for the contact using his id. This pointer allow us to modify the info was soon as we close the dialog.
-            actual_contact = contacts_list.getContactByID(id);
+            actual_contact = contacts_list.getContactByID(c->getID().c_str());
             // Show the edit dialog.
             lv_obj_clear_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
             // Populate the text areas with ID and name of the actual_contact.
@@ -2273,6 +2306,7 @@ void show_edit_contacts(lv_event_t * e){
         }
     }
 }
+
 /// @brief Hides the chat dialog and delete the task_check_new_msg.
 /// @param e 
 void hide_chat(lv_event_t * e){
@@ -2299,26 +2333,22 @@ void hide_chat(lv_event_t * e){
 /// @brief Show a chat dialog when selecting a contact.
 /// @param e 
 void show_chat(lv_event_t * e){
+    char id[7] = {'\0'};
     lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * item = (lv_obj_t*)lv_event_get_user_data(e);
+    lv_obj_t * lbl_id = lv_obj_get_child(item, 5);
+    lv_obj_t * lbl_new_msg = lv_obj_get_child(item, 2);
+
     if(code == LV_EVENT_SHORT_CLICKED){
-        // Get the entire button from the list.
-        lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
-        // Get its label with the contact's name.
-        pthread_mutex_lock(&lvgl_mutex);
-        lv_obj_t * lbl = lv_obj_get_child(btn, 1);
-        pthread_mutex_unlock(&lvgl_mutex);
-        // Get the contact's ID label.
-        pthread_mutex_lock(&lvgl_mutex);
-        lv_obj_t * lbl_id = lv_obj_get_child(btn, 2);
-        pthread_mutex_unlock(&lvgl_mutex);
-        // Extract the name and ID.
-        const char * name = lv_label_get_text(lbl);
-        const char * id = lv_label_get_text(lbl_id);
+        strcpy(id, lv_label_get_text(lbl_id));
+        Contact * c  = contacts_list.getContactByID(id);
+        Serial.printf("ID %s\nName %s\n", c->getID(), c->getName());
         // Get a pointer to the contact by his ID.
-        actual_contact = contacts_list.getContactByID(id);
+        actual_contact = contacts_list.getContactByID(c->getID().c_str());
         // Biuld a string title.
         char title[60] = "Chat with ";
-        strcat(title, name);
+        strcat(title, c->getName().c_str());
+        lv_label_set_text(lbl_new_msg, "");
         if(frm_chat != NULL){
             // Show the chat dialog.
             lv_obj_clear_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
@@ -2410,6 +2440,49 @@ void copy_text(lv_event_t * e){
     lv_obj_t * lbl = (lv_obj_t *)lv_event_get_user_data(e);
     if(code == LV_EVENT_LONG_PRESSED){
         lv_textarea_add_text(frm_chat_text_ans, lv_label_get_text(lbl));
+    }
+}
+
+void check_contact_list_new_msg(void * param){
+    Contact * c;
+    lv_obj_t * item;
+    lv_obj_t * last_msg_lbl;
+    lv_obj_t * rssi_snr_lbl;
+    lv_obj_t * new_msg_icon_lbl;
+    lv_obj_t * id_lbl;
+    char rssi_snr[7] = {'\0'};
+
+    while(true){
+        if(contacts_list.size() > 0){
+            for(uint16_t i = 0; i < contacts_list.size(); i++){
+                if(contacts_list.getContact(i).new_message){
+                    // Item from the contacts list
+                    item = lv_obj_get_child(frm_contacts_frame, i);
+                    // New message icon
+                    new_msg_icon_lbl = lv_obj_get_child(item, 2);
+                    // Last message label
+                    last_msg_lbl = lv_obj_get_child(item, 3);
+                    // Rssi and snr label
+                    rssi_snr_lbl = lv_obj_get_child(item, 4);
+                    // Hidden contact ID label
+                    id_lbl = lv_obj_get_child(item, 5);
+
+                    c = contacts_list.getContactByID(lv_label_get_text(id_lbl));
+                    if(c){
+                        // This is true when processPackets2 adds a new message
+                        c->new_message = false;
+                        // Change the new message icon
+                        lv_label_set_text(new_msg_icon_lbl, LV_SYMBOL_DOWNLOAD);
+                        // Get the last message
+                        lv_label_set_text(last_msg_lbl, c->getMessagesList()[c->getMessagesList().size() - 1].message);
+                        // Get the rssi and snr
+                        sprintf(rssi_snr, "RSSI %.2f SNR %.2f", c->getRSSI(), c->getSNR());
+                        lv_label_set_text(rssi_snr_lbl, rssi_snr);
+                    }
+                }
+            }
+        }
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -2701,26 +2774,22 @@ void update_frm_contacts_status(uint16_t index, bool in_range){
     //No contacts, no update, return.
     if(index > contacts_list.size() - 1 || index < 0)
         return;
-    // This gets the entire onject on the list of contacts by its position(index).
+    // This gets the entire object on the list of contacts by its position(index).
     pthread_mutex_lock(&lvgl_mutex);
-    lv_obj_t * btn = lv_obj_get_child(frm_contacts_list, index);
+    lv_obj_t * item = lv_obj_get_child(frm_contacts_frame, index);
     pthread_mutex_unlock(&lvgl_mutex);
-    // Strangely this was causing loadProhibited, as the lvgl functions are not thread safe, we need to get exclusive access.
-    // In other places could make the interface freeze, we need more study on this.
-    pthread_mutex_lock(&lvgl_mutex);
-    lv_obj_t * obj_status = lv_obj_get_child(btn, 3);
-    pthread_mutex_unlock(&lvgl_mutex);
-    // Based on the contact status passed through, change the color of the status indicator, green for near, 
+
+    // Based on the contact status passed through, change the color of the item background, green for near, 
     // light gray for out of range. You can modify at your will.
     if(in_range){
         // As the lvgl functions are not thread safe, we need to get exclusive access.
         pthread_mutex_lock(&lvgl_mutex);
-        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(item, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
         pthread_mutex_unlock(&lvgl_mutex);
     }
     else{
         pthread_mutex_lock(&lvgl_mutex);
-        lv_obj_set_style_bg_color(obj_status, lv_color_hex(0xaaaaaa), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(item, lv_color_hex(0xeeeeee), LV_PART_MAIN | LV_STATE_DEFAULT);
         pthread_mutex_unlock(&lvgl_mutex);
     }
 }
@@ -2809,16 +2878,16 @@ uint32_t read_bat(){
 /// @param percentage 
 /// @return 
 char * get_battery_icon(uint32_t percentage) {
-  if (percentage >= 90) {
-    return LV_SYMBOL_BATTERY_FULL;
-  } else if (percentage >= 65 && percentage < 90) {
-    return LV_SYMBOL_BATTERY_3;
-  } else if (percentage >= 40 && percentage < 65) {
-    return LV_SYMBOL_BATTERY_2;
-  } else if (percentage >= 15 && percentage < 40) {
-    return LV_SYMBOL_BATTERY_1;
-  } else {
-    return LV_SYMBOL_BATTERY_EMPTY;
+    if (percentage >= 90) {
+        return LV_SYMBOL_BATTERY_FULL;
+    } else if (percentage >= 65 && percentage < 90) {
+        return LV_SYMBOL_BATTERY_3;
+    } else if (percentage >= 40 && percentage < 65) {
+        return LV_SYMBOL_BATTERY_2;
+    } else if (percentage >= 15 && percentage < 40) {
+        return LV_SYMBOL_BATTERY_1;
+    } else {
+        return LV_SYMBOL_BATTERY_EMPTY;
   }
 }
 /// @brief This task verify the battery level every 30 seconds.
@@ -3702,13 +3771,13 @@ void ui(){
     lv_obj_clear_flag(frm_contacts, LV_OBJ_FLAG_SCROLLABLE);
 
     // Title button
-    frm_contatcs_btn_title = lv_btn_create(frm_contacts);
-    lv_obj_set_size(frm_contatcs_btn_title, 200, 20);
-    lv_obj_align(frm_contatcs_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
+    frm_contacts_btn_title = lv_btn_create(frm_contacts);
+    lv_obj_set_size(frm_contacts_btn_title, 200, 20);
+    lv_obj_align(frm_contacts_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
     
-    frm_contatcs_btn_title_lbl = lv_label_create(frm_contatcs_btn_title);
-    lv_label_set_text(frm_contatcs_btn_title_lbl, "Contacts");
-    lv_obj_set_align(frm_contatcs_btn_title_lbl, LV_ALIGN_LEFT_MID);
+    frm_contacts_btn_title_lbl = lv_label_create(frm_contacts_btn_title);
+    lv_label_set_text(frm_contacts_btn_title_lbl, "Contacts");
+    lv_obj_set_align(frm_contacts_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
     // Close button
     frm_contacts_btn_back = lv_btn_create(frm_contacts);
@@ -3721,11 +3790,20 @@ void ui(){
     lv_obj_add_event_cb(frm_contacts_btn_back, hide_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
 
     // Contact list
+    /*
     frm_contacts_list = lv_list_create(frm_contacts);
     lv_obj_set_size(frm_contacts_list, LV_HOR_RES, 220);
     lv_obj_align(frm_contacts_list, LV_ALIGN_TOP_MID, 0, 5);
     lv_obj_set_style_border_opa(frm_contacts_list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(frm_contacts_list, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    */
+
+    frm_contacts_frame = lv_list_create(frm_contacts);
+    lv_obj_set_size(frm_contacts_frame, LV_HOR_RES, 220);
+    lv_obj_align(frm_contacts_frame, LV_ALIGN_TOP_MID, 0, 15);
+    lv_obj_set_style_border_opa(frm_contacts_frame, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(frm_contacts_frame, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_scroll_dir(frm_contacts_frame, LV_DIR_VER);
 
     refresh_contact_list();
 
@@ -4898,7 +4976,7 @@ void setup(){
     xTaskCreatePinnedToCore(task_beacon, "beacon", 4000, NULL, 1, NULL, 1);
     // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. 
     xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 11000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processPackets2, "process_pkt", 5000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processPackets2, "process_pkt", 8000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(processTransmitingPackets, "proc_tx_pkt", 11000, NULL, 1, NULL, 1);
     // Turn off the display
@@ -4908,8 +4986,6 @@ void setup(){
     // Turn on the display
     //tft.writecommand(0x11);
     setup_sound();
-    if(DXMode())
-        Serial.println("DX mode on");
 }
 
 void loop(){

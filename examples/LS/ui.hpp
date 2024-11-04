@@ -32,8 +32,9 @@ lv_obj_t * frm_contacts_btn_back_lbl;
 lv_obj_t * frm_contacts_list;
 lv_obj_t * frm_contacts_btn_add;
 lv_obj_t * frm_contacts_btn_add_lbl;
-lv_obj_t * frm_contatcs_btn_title;
-lv_obj_t * frm_contatcs_btn_title_lbl;
+lv_obj_t * frm_contacts_btn_title;
+lv_obj_t * frm_contacts_btn_title_lbl;
+lv_obj_t * frm_contacts_frame;
 
 /*add contact form*/
 lv_obj_t * frm_add_contact;

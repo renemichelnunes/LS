@@ -79,6 +79,8 @@ struct lora_packet{
     bool confirmed = false;
     uint32_t timeout = 0;
     uint32_t crc = 0;
+    float rssi;
+    float snr;
 };
 
 std::string generate_ID(uint8_t size);
