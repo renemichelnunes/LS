@@ -4672,6 +4672,7 @@ void WiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
 /// @brief This task searches for a wifi AP on the hitory list and connect to it if available.
 /// @param param 
 void wifi_auto_connect(void * param){
+    //WiFi.persistent(false);
     WiFi.onEvent(WiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
     WiFi.onEvent(WiFiDisconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
     // Number of wifi network discovered.
@@ -4686,7 +4687,7 @@ void wifi_auto_connect(void * param){
     char a[50] = {'\0'};
     // Only proceed if we have at least a network on history.
     if(wifi_connected_nets.list.size() != 0){
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         Serial.print("Searching for wifi connections...");
         // Shows on notify area on home screen.
         lv_label_set_text(frm_home_title_lbl, "Searching for wifi connections...");
@@ -4791,7 +4792,7 @@ void wifi_auto_connect(void * param){
                 strcat(connected_to, " ");
                 strcat(connected_to, WiFi.localIP().toString().c_str());
                 Serial.println(" connected");
-                vTaskDelay(2000 / portTICK_PERIOD_MS);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
                 // Clear the notification area on home screen.
                 lv_label_set_text(frm_home_title_lbl, "");
                 lv_label_set_text(frm_home_symbol_lbl, "");
@@ -4807,7 +4808,7 @@ void wifi_auto_connect(void * param){
                 Serial.println("disconnected");
                 lv_label_set_text(frm_home_title_lbl, "disconnected");
                 lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
-                vTaskDelay(2000 / portTICK_PERIOD_MS);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
                 lv_label_set_text(frm_home_title_lbl, "");
                 lv_label_set_text(frm_home_symbol_lbl, "");
                 WiFi.disconnect();

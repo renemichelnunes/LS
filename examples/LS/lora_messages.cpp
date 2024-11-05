@@ -87,13 +87,21 @@ lora_outgoing_packets::lora_outgoing_packets(int16_t (*transmit_func_callback)(u
 /// @return std::string
 std::string generate_ID(uint8_t size){
     //char * s = (char*)calloc(size + 1, sizeof(char));
+    bool wifi_was_off = false;
+    // We need the wifi on to get RNG on esp_random, otherwise we'll get false random numbers
+    if(WiFi.getMode() == WIFI_OFF){
+        WiFi.mode(WIFI_STA);
+        wifi_was_off = true;
+    }
     char s[size + 1] = {'\0'};
     static const char alphanum[] = "0123456789"
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
     for (int i = 0; i < size; ++i) {
-        s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+        s[i] = alphanum[esp_random() % (sizeof(alphanum) - 1)];
     }
+    if(wifi_was_off)
+        WiFi.mode(WIFI_OFF);
     return s;
 }
 

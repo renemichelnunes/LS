@@ -2,6 +2,7 @@
 #include <vector>
 #include <Arduino.h>
 #include <exception>
+#include <WiFi.h>
 
 #define LORA_PKT_EMPTY 0
 #define LORA_PKT_ANNOUNCE 1
