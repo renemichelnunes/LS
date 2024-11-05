@@ -292,6 +292,7 @@ static void refresh_contact_list(){
 
     // Populate the list creating buttons based on the contact's info
     for(uint32_t i = 0; i < contacts_list.size(); i++){
+        Serial.printf("refresh_contact_list() - contact %d %d messages\n", i, contacts_list.getContact(i).getMessagesList().size());
         lv_obj_t * item = lv_obj_create(frm_contacts_frame);
         lv_obj_set_size(item, 300, 55);
         lv_obj_set_style_bg_color(item, lv_color_hex(0xeeeeee), LV_PART_MAIN);
@@ -309,7 +310,10 @@ static void refresh_contact_list(){
         lv_obj_align(cname, LV_ALIGN_TOP_LEFT, 10, -15);
 
         lv_obj_t * new_msg = lv_label_create(item);
-        lv_label_set_text(new_msg, "");
+        if(contacts_list.getContact(i).new_message)
+            lv_label_set_text(new_msg, LV_SYMBOL_DOWNLOAD);
+        else
+            lv_label_set_text(new_msg, "");
         lv_obj_align(new_msg, LV_ALIGN_TOP_RIGHT, 10, -10);
 
         lv_obj_t * last_msg = lv_label_create(item);
@@ -342,6 +346,7 @@ static void refresh_contact_list(){
 
         spacing += 55;
     }
+    saveContacts();
 }
 
 /// @brief This task runs forever and every 100 ms. We watch for a new message and show in a small area on top of the screen
@@ -1527,7 +1532,7 @@ void collectPackets(void * param){
                 }
 
                 if(non_printable_chars(lp.id) || non_printable_chars(lp.sender)){
-                    Serial.printf("Packet ID %s or sender %s corrupted\n", lp.id, lp.sender);
+                    Serial.printf("Packet ID or sender corrupted\n");
                     invalid_pkt_size = true;
                 }
                 
@@ -1540,6 +1545,9 @@ void collectPackets(void * param){
                                     invalid_pkt_size = true;
                                 }
                 }
+                // If we received the ACK we made
+                if(lp.type == LORA_PKT_ACK && strcmp(lp.sender, user_id) == 0)
+                    invalid_pkt_size = true;
                 // Save the packet id on received_packets.
                 if(!invalid_pkt_size && strcmp(lp.sender, user_id) != 0){
                     pthread_mutex_lock(&lvgl_mutex);
@@ -1560,10 +1568,13 @@ void collectPackets(void * param){
                             lp.snr = snr;
                             update_rssi_snr_graph(rssi, snr);
                             play_packet_received();
-                            pkt_history.add(lp.id);
-                            pkt_list.add(lp);
-                            //Serial.println("\nUpdating rssi graph...");
-                            //Serial.println("rssi graph updated.");
+                            if(lp.type == LORA_PKT_ACK && strcmp(lp.sender, user_id) == 0){
+                                Serial.printf("Self ACK sender %s msg ID %s dropped\n", lp.sender, lp.status);
+                            }
+                            else{
+                                pkt_history.add(lp.id);
+                                pkt_list.add(lp);
+                            }
                             // If the packet belongs to other, retransmit it
                             if((strcmp(lp.destiny, user_id) != 0 || lp.type == LORA_PKT_ANNOUNCE) && lp.hops > 0){
                                 if(!non_printable_chars(lp.id)){
@@ -1584,6 +1595,7 @@ void collectPackets(void * param){
                                 strcpy(ack.id, generate_ID(6).c_str());
                                 strcpy(ack.sender, user_id);
                                 strcpy(ack.status, lp.id);
+                                ack.confirmed = true;
                                 transmit_pkt_list.add(ack);
                                 Serial.printf("Retransmitting ACK app_id %d to %s\n", ack.app_id, lp.id);
                             }
@@ -1636,6 +1648,7 @@ void processPackets2(void * param){
                     //Serial.printf("Node ID %s already exists in discovery list\n", dn.gridLocalization.node_id);
                 }
                 // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
+                pthread_mutex_lock(&messages_mutex);
                 Contact * c = contacts_list.getContactByID(p.sender);
                 if(c != NULL){
                     // Set this to true if the contact is in range.
@@ -1647,6 +1660,7 @@ void processPackets2(void * param){
                 }else{// If not in contact_list, go to the discovery service.
                     Serial.printf("Discovery service  - ID %s\n", p.id);
                 }
+                pthread_mutex_unlock(&messages_mutex);
             }
             else if(p.type == LORA_PKT_DATA){
                 // Create a ack packet
@@ -1657,6 +1671,8 @@ void processPackets2(void * param){
                 strcpy(ack.sender, user_id);
                 strcpy(ack.destiny, p.destiny);
                 strcpy(ack.status, p.id);
+                // Delete as soon as it finishes the transmission
+                ack.confirmed = true;
                 Serial.printf("ACK to packet ID %s app_id %d ready\n", ack.status, ack.app_id);
                 // Put on the transmit queue
                 transmit_pkt_list.add(ack);
@@ -1735,6 +1751,8 @@ void processPackets2(void * param){
                             cm->ack = true;
                             msg_confirmed = true;
                             if(!transmit_pkt_list.del(p.status))
+                                Serial.printf("Couldn't delete packet from transmit list\n");
+                            if(!transmit_pkt_list.del(p.id))
                                 Serial.printf("Couldn't delete packet from transmit list\n");
                             Serial.printf("ACK confirmed to message ID %s\n", cm->messageID);
                         }
@@ -2321,6 +2339,7 @@ void hide_chat(lv_event_t * e){
                 Serial.println("task_check_new_msg deleted");
             }
             // Set this counter to 0.
+            actual_contact->new_message = false;
             msg_count = 0;
             // Hide the chat dialog.
             lv_obj_add_flag(frm_chat, LV_OBJ_FLAG_HIDDEN);
@@ -2361,6 +2380,7 @@ void show_chat(lv_event_t * e){
                 // Load a task which watches for a new message related to the selected contact.
                 xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 11000, NULL, 1, &task_check_new_msg, 1);
                 Serial.println("task_check_new_msg created");
+                msg_confirmed = true;
             }
             Serial.print("actual contact is ");
             Serial.println(actual_contact->getName());
@@ -2423,6 +2443,7 @@ void send_message(lv_event_t * e){
                     pthread_mutex_unlock(&messages_mutex);
                     // Clear the asnwer text area, if fails for some reason you don't need to retype.
                     lv_textarea_set_text(frm_chat_text_ans, "");
+                    actual_contact->new_message = true;
                 }
             }
             else{
@@ -2451,6 +2472,7 @@ void check_contact_list_new_msg(void * param){
     lv_obj_t * new_msg_icon_lbl;
     lv_obj_t * id_lbl;
     char rssi_snr[7] = {'\0'};
+    char msg[208] = {'\0'};
 
     while(true){
         if(contacts_list.size() > 0){
@@ -2469,15 +2491,23 @@ void check_contact_list_new_msg(void * param){
 
                     c = contacts_list.getContactByID(lv_label_get_text(id_lbl));
                     if(c){
-                        // This is true when processPackets2 adds a new message
-                        c->new_message = false;
                         // Change the new message icon
                         lv_label_set_text(new_msg_icon_lbl, LV_SYMBOL_DOWNLOAD);
                         // Get the last message
-                        lv_label_set_text(last_msg_lbl, c->getMessagesList()[c->getMessagesList().size() - 1].message);
+                        strcpy(msg, c->getMessagesList()[c->getMessagesList().size() - 1].message);
+                        if(sizeof(msg) > 30){
+                            msg[30] = '.';
+                            msg[31] = '.';
+                            msg[32] = '.';
+                            msg[33] = '\0';
+                        }
+                        lv_label_set_text(last_msg_lbl, msg);
                         // Get the rssi and snr
                         sprintf(rssi_snr, "RSSI %.2f SNR %.2f", c->getRSSI(), c->getSNR());
                         lv_label_set_text(rssi_snr_lbl, rssi_snr);
+                    }
+                    else{
+                        Serial.printf("check_contact_list_new_msg() - cannot read c\n");
                     }
                 }
             }
@@ -2502,9 +2532,9 @@ void check_new_msg(void * param){
         // Get the contact's messages on a vector.
         pthread_mutex_lock(&messages_mutex);
         cm = contacts_list.getContactMessages(actual_contact->getID().c_str());
-        pthread_mutex_unlock(&messages_mutex);
         // Save the count.
         actual_count = (cm).size();
+        pthread_mutex_unlock(&messages_mutex);
         // When actual_count is bigger than msg_count means that we have new messages.
         
         if(actual_count > msg_count || msg_confirmed == true){
@@ -2826,8 +2856,8 @@ void check_contacts_in_range(){
         // Update the status indicator.
         update_frm_contacts_status(i, (*cl)[i].inrange);
         // For debug purposes.
-        Serial.printf("check_contacts_in_range() - %s", (*cl)[i].getName());
-        Serial.println((*cl)[i].inrange ? " is in range" : " is out of range");
+        //Serial.printf("check_contacts_in_range() - %s", (*cl)[i].getName());
+        //Serial.println((*cl)[i].inrange ? " is in range" : " is out of range");
         // Sends the current status to the client side.
         sendContactsStatusJson((*cl)[i].getID().c_str(), (*cl)[i].inrange);
     }
@@ -3800,7 +3830,7 @@ void ui(){
 
     frm_contacts_frame = lv_list_create(frm_contacts);
     lv_obj_set_size(frm_contacts_frame, LV_HOR_RES, 220);
-    lv_obj_align(frm_contacts_frame, LV_ALIGN_TOP_MID, 0, 15);
+    lv_obj_align(frm_contacts_frame, LV_ALIGN_TOP_MID, -5, 15);
     lv_obj_set_style_border_opa(frm_contacts_frame, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(frm_contacts_frame, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_scroll_dir(frm_contacts_frame, LV_DIR_VER);

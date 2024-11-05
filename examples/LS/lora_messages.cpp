@@ -153,7 +153,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                         ack->type = LORA_PKT_ACK;
                         ack->app_id = p.app_id;
                         ack->hops = p.hops;
-                        Serial.println("ACK packet ready");
+                        Serial.printf("ACK packet to %s sender %s ready\n", ack->status, ack->sender);
                     }
                     else{
                         Serial.println("ACK packet not ready");
@@ -174,7 +174,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                         data->type = LORA_PKT_DATA;
                         data->app_id = p.app_id;
                         data->hops = p.hops;
-                        Serial.println("Data packet ready");
+                        Serial.printf("Data packet ID %s ready\n", data->id);
                     }
                     else{
                         Serial.println("Data packet not ready");
