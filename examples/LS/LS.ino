@@ -2425,7 +2425,9 @@ void send_message(lv_event_t * e){
                 // add the message to the contact's list of messages.
                 // This is used when we are assembling the chat messages list, every time we found me = true we are 
                 // creating a new button with the messages created by us with the title 'Me - Date time'. 
+                pthread_mutex_lock(&messages_mutex);
                 Contact * c = contacts_list.getContactByID(pkt.destiny);
+                pthread_mutex_unlock(&messages_mutex);
                 if(c != NULL){
                     ContactMessage cm = ContactMessage();
                     strcpy(cm.dateTime, pkt.date_time);
@@ -2436,7 +2438,7 @@ void send_message(lv_event_t * e){
                     cm.me = true;
                     Serial.print("Adding answer to ");
                     Serial.println(pkt.destiny);
-                    Serial.println(pkt.data);
+                    Serial.println(msg);
                     // Get exclusive access to the addMessage.
                     pthread_mutex_lock(&messages_mutex);
                     c->addMessage(cm);
@@ -2444,6 +2446,9 @@ void send_message(lv_event_t * e){
                     // Clear the asnwer text area, if fails for some reason you don't need to retype.
                     lv_textarea_set_text(frm_chat_text_ans, "");
                     actual_contact->new_message = true;
+                }
+                else{
+                    Serial.printf("send_message() - contact %s access blocked\n", pkt.destiny);
                 }
             }
             else{
