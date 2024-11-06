@@ -119,7 +119,7 @@ uint32_t calculate_data_crc(const void * data, size_t length){
             }
         }
     }
-
+    
     return ~crc;
 }
 

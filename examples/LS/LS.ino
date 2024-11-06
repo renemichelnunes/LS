@@ -4825,7 +4825,7 @@ void wifi_auto_connect(void * param){
 /// @brief Sends a beacon as LoRa packet.
 void announce(){
     lora_packet hi;
-
+    
     //Serial.println("==============announcement=============");
     strcpy(hi.id, generate_ID(6).c_str());
     strcpy(hi.sender, user_id);
