@@ -8,6 +8,7 @@ static void hide(lv_event_t *e)
     if(code == LV_EVENT_SHORT_CLICKED){
         if(frm){
             lv_obj_add_flag(frm, LV_OBJ_FLAG_HIDDEN);
+            
         }
     }
 }
