@@ -24,6 +24,8 @@ lv_chart_series_t * frm_home_rssi_series;
 lv_chart_series_t  * frm_home_snr_series;
 lv_obj_t * btn_nodes;
 lv_obj_t * btn_nodes_lbl;
+lv_obj_t * btn_ttt;
+lv_obj_t * btn_ttt_lbl;
 
 /*contacts form*/
 lv_obj_t * frm_contacts;

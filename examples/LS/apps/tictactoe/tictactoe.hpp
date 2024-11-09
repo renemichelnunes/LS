@@ -36,12 +36,19 @@ class tictactoe{
     char player = 'X';
     bool active = true;
     bool cpu_turn = false;
+    bool send_move = false;
+    bool multiplayer = false;
+    ttt_mov mov;
+
+    lora_outgoing_packets * tpl;
 
     bool checkVictory();
     bool checkDraw();
     void initUI(lv_obj_t * parent);
+    void showUI();
     void init_board();
     void simulate_click(uint8_t row, uint8_t col);
-    tictactoe();
+    tictactoe(lora_outgoing_packets * tpl);
+    ttt_mov getMove();
     //~tictactoe();
 };

@@ -154,6 +154,7 @@ volatile float rssi, snr;
 #define APP_SYSTEM 1
 #define APP_LORA_CHAT 2
 discovery_app discoveryApp = discovery_app(&lvgl_mutex);
+tictactoe ttt = tictactoe(&transmit_pkt_list);
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -3664,6 +3665,10 @@ void show_discovery_app(lv_event_t * e){
     discoveryApp.showUI();
 }
 
+void show_ttt(lv_event_t * e){
+    ttt.showUI();
+}
+
 /// @brief Function to initilize all lvgl objects.
 void ui(){
     //style**************************************************************
@@ -3791,6 +3796,19 @@ void ui(){
     lv_label_set_text(btn_nodes_lbl, "Nodes");
     lv_obj_align(btn_nodes_lbl, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_nodes, show_discovery_app, LV_EVENT_SHORT_CLICKED, NULL);
+
+    // TICTACTOE button
+    ttt.initUI(lv_scr_act());
+    delay(2000);
+    btn_ttt = lv_btn_create(frm_home);
+    lv_obj_set_size(btn_ttt, 50, 20);
+    lv_obj_align(btn_ttt, LV_ALIGN_BOTTOM_RIGHT, 0, -50);
+
+    btn_ttt_lbl = lv_label_create(btn_ttt);
+    lv_obj_set_style_text_font(btn_ttt_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(btn_ttt_lbl, "TTT");
+    lv_obj_align(btn_ttt_lbl, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(btn_ttt, show_ttt, LV_EVENT_SHORT_CLICKED, NULL);
 
     // Activity led 
     frm_home_activity_led = lv_obj_create(frm_home);

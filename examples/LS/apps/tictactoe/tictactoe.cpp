@@ -1,4 +1,5 @@
 #include <apps/tictactoe/tictactoe.hpp>
+#include "tictactoe.hpp"
 
 #define user_id "aaaaaa"
 #define destiny_player "bbbbbb"
@@ -39,17 +40,13 @@ void btn_event_handler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_CLICKED){
-        int linha = lv_obj_get_y(btn) / 52;    // A posição do botão no eixo Y (linha)
-        int coluna = lv_obj_get_x(btn) / 52;   // A posição do botão no eixo X (coluna)
-
-        ttt_mov mov;
-        mov.row = linha;
-        mov.col = coluna;
+        int row = lv_obj_get_y(btn) / 52;    // A posição do botão no eixo Y (linha)
+        int col = lv_obj_get_x(btn) / 52;   // A posição do botão no eixo X (coluna)
 
         // Se o botão ainda estiver vazio e o jogo estiver ativoSem vencedores
-        if (ttt->board[linha][coluna] == ' ' && ttt->active) {
+        if (ttt->board[row][col] == ' ' && ttt->active) {
             // Atualiza o estado do botão
-            ttt->board[linha][coluna] = ttt->player;
+            ttt->board[row][col] = ttt->player;
             char p[2] = {'\0'};
             p[0] = ttt->player;
             // Definir o texto no botão (X ou O)
@@ -61,9 +58,9 @@ void btn_event_handler(lv_event_t* e) {
                 lp.app_id = APP_TICTACTOE;
                 strcpy(lp.sender, user_id);
                 strcpy(lp.destiny, destiny_player);
-                lp.data_size = sizeof(mov);
-                memcpy(lp.data, &mov, lp.data_size);
-                lp.crc = calculate_data_crc(&mov, lp.data_size);
+                lp.data_size = sizeof(ttt->mov);
+                memcpy(lp.data, &ttt->mov, lp.data_size);
+                lp.crc = calculate_data_crc(&ttt->mov, lp.data_size);
                 printf("ID %s\nAPP_ID %d\nSender %s\nDestiny %s\nData size %d\n", lp.id, lp.app_id, lp.sender, lp.destiny, lp.data_size);
                 uint8_t c = 0;
                 for(uint8_t i = 0; i < sizeof(lp.data); i++){
@@ -75,10 +72,16 @@ void btn_event_handler(lv_event_t* e) {
                     }
                 }
                 printf("\n");
+                //lv_label_set_text(frame_game_lbl, "waiting the player...");
+                //ttt->tpl->add(lp);
+                if(ttt->multiplayer){
+                    ttt->mov.row = row;
+                    ttt->mov.col = col;
+                    ttt->send_move = true;
+                }
             }
 
-            //lv_label_set_text(frame_game_lbl, "waiting the player...");
-            // transmit_pck_list.add(lp);
+            
 
             // Verificar se o jogador atual venceu
             if (ttt->checkVictory()) {
@@ -155,6 +158,31 @@ void tictactoe::initUI(lv_obj_t * parent)
         Serial.println("tictactoe_app::initUI() - READY");
     }else
         Serial.println("tictactoe_app::initUI() - parent NULL");
+}
+
+static void cpu_move(void * ttt)
+{
+    tictactoe * t = (tictactoe*)ttt;
+    while(true){
+        if(t->cpu_turn){
+            uint8_t row = rand() % 3;
+            uint8_t col = rand() % 3;
+            t->simulate_click(row, col);
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+void tictactoe::showUI()
+{
+    if(this->frm_main){
+        lv_obj_clear_flag(this->frm_main, LV_OBJ_FLAG_HIDDEN);
+        
+        if(cpu_task == NULL){
+            xTaskCreatePinnedToCore(cpu_move, "cpu_move", 6000, this, 1, &cpu_task, 1);
+            Serial.println("cpu_task launched");
+        }
+    }
 }
 
 bool tictactoe::checkVictory()
@@ -239,21 +267,9 @@ void tictactoe::init_board()
     lv_obj_add_flag(this->frame_game_new_btn, LV_OBJ_FLAG_HIDDEN);
 }
 
-static void cpu_move(void * ttt)
+tictactoe::tictactoe(lora_outgoing_packets * l)
 {
-    tictactoe * t = (tictactoe*)ttt;
-    while(true){
-        if(t->cpu_turn){
-            uint8_t row = rand() % 3;
-            uint8_t col = rand() % 3;
-            t->simulate_click(row, col);
-        }
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-}
-
-tictactoe::tictactoe()
-{
+    this->tpl = tpl;
     for(uint8_t i = 0; i < 3; i++)
         for(uint8_t j = 0; j < 3; j++)
             this->board[i][j] = ' ';
@@ -270,4 +286,10 @@ tictactoe::tictactoe()
     if(cpu_task){
         Serial.println("cpu_task launched");
     }
+}
+
+ttt_mov tictactoe::getMove()
+{
+    this->send_move = false;
+    return this->mov;
 }
