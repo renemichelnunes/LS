@@ -154,6 +154,8 @@ void tictactoe::initUI(lv_obj_t * parent)
         lv_obj_set_style_border_width(this->frame_game, 0, LV_PART_MAIN);
         lv_obj_set_scroll_dir(this->frame_game, LV_DIR_VER);
         
+        lv_obj_add_flag(this->frm_main, LV_OBJ_FLAG_HIDDEN);
+
         this->init_board();
         Serial.println("tictactoe_app::initUI() - READY");
     }else

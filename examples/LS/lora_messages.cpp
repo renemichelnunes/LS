@@ -219,10 +219,9 @@ lora_packet lora_outgoing_packets::check_packets(){
                         free(packet);
                         packet = NULL;
                     }
-                    vTaskDelay((this->time_on_air + 500) / portTICK_PERIOD_MS);
-                    this->finish_transmit_func_callback();
+                    
                     vTaskDelay(r / portTICK_PERIOD_MS);
-                    this->finish_transmit_func_callback();
+                    //this->finish_transmit_func_callback();
                     if(!this->has_packets())
                         return lora_packet();
                     if(p.confirmed || p.type == LORA_PKT_ANNOUNCE || p.type == LORA_PKT_ACK){

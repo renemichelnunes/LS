@@ -3807,7 +3807,7 @@ void ui(){
     delay(2000);
     btn_ttt = lv_btn_create(frm_home);
     lv_obj_set_size(btn_ttt, 50, 20);
-    lv_obj_align(btn_ttt, LV_ALIGN_BOTTOM_RIGHT, 0, -50);
+    lv_obj_align(btn_ttt, LV_ALIGN_BOTTOM_RIGHT, 0, -25);
 
     btn_ttt_lbl = lv_label_create(btn_ttt);
     lv_obj_set_style_text_font(btn_ttt_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
