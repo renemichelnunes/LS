@@ -110,7 +110,8 @@ Contact_list contacts_list = Contact_list();
 lora_incomming_packets pkt_list = lora_incomming_packets();
 static int16_t transmit(uint8_t * data, size_t len);
 static uint32_t time_on_air(size_t len);
-lora_outgoing_packets transmit_pkt_list = lora_outgoing_packets(transmit);
+static int16_t finish_transmit();
+lora_outgoing_packets transmit_pkt_list = lora_outgoing_packets(transmit, finish_transmit);
 lora_pkt_history pkt_history = lora_pkt_history();
 notification notification_list = notification();
 vector<lora_packet> received_packets;
@@ -1775,6 +1776,10 @@ void processPackets2(void * param){
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
+}
+
+static int16_t finish_transmit(){
+    return radio.finishTransmit();
 }
 
 static int16_t transmit(uint8_t * data, size_t len){

@@ -109,11 +109,12 @@ class lora_outgoing_packets{
         std::vector<lora_packet> lora_packets;
         // LoRa radio transmit callback function.
         int16_t (*transmit_func_callback)(uint8_t *, size_t);
+        int16_t (*finish_transmit_func_callback)();
         uint32_t time_on_air = 0;
         uint8_t max = 200;
     public:
         // Instatiate a lora_outgoing_packets object passing a LoRa radio transmit function.
-        lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t));
+        lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t), int16_t (*finish_transmit_func_callback)());
         // Add generic packets to the transmit queue.
        void add(lora_packet pkt);
         // Loops through the queue for packets to being transmited, returns a copy of a lora_packet transmitted or a empty one.
