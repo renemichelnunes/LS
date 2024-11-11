@@ -295,3 +295,30 @@ ttt_mov tictactoe::getMove()
     this->send_move = false;
     return this->mov;
 }
+
+static bool cmp_name( ttt_player &c1,  ttt_player &c2){
+    return c1.name < c2.name;
+}
+
+bool tictactoe::add_player(ttt_player p)
+{
+    for(ttt_player player : this->ttt_players){
+        if(strcmp(player.id, p.id) == 0){
+            return false;
+        }
+    }
+    this->ttt_players.push_back(p);
+    std::sort(this->ttt_players.begin(), this->ttt_players.end(), cmp_name);
+    return true;
+}
+
+bool tictactoe::del_player(ttt_player p)
+{
+    for(uint8_t i = 0; i < this->ttt_players.size(); i++){
+        if(strcmp(this->ttt_players[i].id, p.id) == 0){
+            this->ttt_players.erase(this->ttt_players.begin() + i);
+            return true;
+        }
+    }
+    return false;
+}

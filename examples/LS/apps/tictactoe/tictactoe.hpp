@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <lvgl.h>
 #include "lora_messages.hpp"
+#include <vector>
 
 #define APP_TICTACTOE 4
 
@@ -10,9 +11,15 @@ struct ttt_mov{
     uint8_t col = 0;
 };
 
+struct ttt_player{
+    char id[7] = {'\0'};
+    char name[50] ={'\0'};
+};
+
 class tictactoe{
     private:
-        
+        std::vector<ttt_player> ttt_players;
+        ttt_player * actual_player;
     public:
     // UI objects
     lv_obj_t * frm_main;
@@ -51,4 +58,6 @@ class tictactoe{
     tictactoe(lora_outgoing_packets * tpl);
     ttt_mov getMove();
     //~tictactoe();
+    bool add_player(ttt_player p);
+    bool del_player(ttt_player p);
 };
