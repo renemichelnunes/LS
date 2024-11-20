@@ -8,8 +8,9 @@
 #define LORA_PKT_ANNOUNCE 1
 #define LORA_PKT_ACK 2
 #define LORA_PKT_DATA 3
-#define LORA_PKT_COMM 4
-#define LORA_PKT_PING 5
+#define LORA_PKT_DATA_SMALL 4
+#define LORA_PKT_COMM 5
+#define LORA_PKT_PING 6
 
 #define MAX_HOPS 200
 
@@ -60,6 +61,20 @@ struct lora_packet_data{
     uint8_t hops = MAX_HOPS;
     //char status[7] = {'\0'};
     char data[208] = {'\0'};
+    uint8_t data_size = 0;
+    uint8_t app_id = 0;
+    uint32_t crc = 0;
+};
+
+/// @brief Struct that is used when we send messages.
+struct lora_packet_data_small{
+    uint8_t type = LORA_PKT_DATA_SMALL;
+    char id[7] = {'\0'};
+    char sender[7] = {'\0'};
+    char destiny[7] = {'\0'};
+    uint8_t hops = MAX_HOPS;
+    //char status[7] = {'\0'};
+    char data[64] = {'\0'};
     uint8_t data_size = 0;
     uint8_t app_id = 0;
     uint32_t crc = 0;
