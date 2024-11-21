@@ -182,14 +182,10 @@ void btn_event_handler(lv_event_t* e) {
                 else
                     lv_label_set_text(ttt->frame_game_lbl, "Better luck next time.");
                 ttt->active = false;
-                //lv_obj_clear_flag(ttt->frame_game_new_mpu_btn, LV_OBJ_FLAG_HIDDEN);
-                //lv_obj_clear_flag(ttt->frame_game_new_friend_btn, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_clear_flag(ttt->frame_game_new_game_btn, LV_OBJ_FLAG_HIDDEN);
             } else if (ttt->checkDraw()) {
                 lv_label_set_text(ttt->frame_game_lbl, "Draw!");
                 ttt->active = false;
-                //lv_obj_clear_flag(ttt->frame_game_new_mpu_btn, LV_OBJ_FLAG_HIDDEN);
-                //lv_obj_clear_flag(ttt->frame_game_new_friend_btn, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_clear_flag(ttt->frame_game_new_game_btn, LV_OBJ_FLAG_HIDDEN);
             } else {
                 // Change player

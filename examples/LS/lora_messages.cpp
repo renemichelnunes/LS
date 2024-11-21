@@ -189,6 +189,27 @@ lora_packet lora_outgoing_packets::check_packets(){
                         Serial.println("Data packet not ready");
                     }
                 }
+                else if(p.type == LORA_PKT_DATA_SMALL){
+                    pkt_size = sizeof(lora_packet_data_small);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_small * data = (lora_packet_data_small*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        //strcpy(data->status, p.status);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 64);
+                        data->type = LORA_PKT_DATA_SMALL;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("Small data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("Small data packet not ready");
+                    }
+                }
                 else if(p.type == LORA_PKT_PING){
 
                 }

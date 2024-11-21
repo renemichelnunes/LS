@@ -1531,6 +1531,22 @@ void collectPackets(void * param){
                             invalid_pkt_size = true;
                         }
                         break;
+
+                    case LORA_PKT_DATA_SMALL:
+                        strcpy(lp.destiny, ((lora_packet_data_small*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_small*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_small*)packet)->data, ((lora_packet_data_small*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_small*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_small*)packet)->data, 64) == ((lora_packet_data_small*)packet)->crc){
+                            lp.crc = ((lora_packet_data_small*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf("Data crc mismatch\n");
+                            invalid_pkt_size = true;
+                        }
+                        break;
                     default:
                         Serial.printf("Packet type %d unknown\n", lp.type);
                         invalid_pkt_size = true;
@@ -1599,7 +1615,7 @@ void collectPackets(void * param){
                             }
                         }
                         else{
-                            if(lp.type == LORA_PKT_DATA){
+                            if(lp.type == LORA_PKT_DATA || lp.type == LORA_PKT_DATA_SMALL){
                                 lora_packet ack;
                                 ack.type = LORA_PKT_ACK;
                                 //Serial.printf("collectPackets - p.app_id %d\n");
@@ -1674,7 +1690,7 @@ void processPackets2(void * param){
                 }
                 pthread_mutex_unlock(&messages_mutex);
             }
-            else if(p.type == LORA_PKT_DATA){
+            else if(p.type == LORA_PKT_DATA || p.type == LORA_PKT_DATA_SMALL){
                 // Create a ack packet
                 Serial.printf("DATA packet received p.app_id %d\n", p.app_id);
                 lora_packet ack;
