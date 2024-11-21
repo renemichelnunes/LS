@@ -155,7 +155,12 @@ volatile float rssi, snr;
 #define APP_SYSTEM 1
 #define APP_LORA_CHAT 2
 discovery_app discoveryApp = discovery_app(&lvgl_mutex);
-tictactoe ttt = tictactoe(&transmit_pkt_list);
+void transmit_pkt_list_add(lora_packet p);
+tictactoe ttt = tictactoe(transmit_pkt_list_add);
+
+void transmit_pkt_list_add(lora_packet p){
+    transmit_pkt_list.add(p);
+}
 
 /// @brief Loads the user name, id, key, color of the interface and brightness.
 static void loadSettings(){
@@ -254,6 +259,11 @@ static void loadContacts(){
         Serial.println(c.getID());
         Serial.println(c.getName());
         contacts_list.add(c); 
+        // Add to TICTACTOE
+        ttt_player p;
+        strcpy(p.id, v[index + 1].c_str());
+        strcpy(p.name, v[index].c_str());
+        ttt.add_player(p);
     }
     Serial.print(contacts_list.size());
     Serial.println(" contacts found");
@@ -1685,6 +1695,8 @@ void processPackets2(void * param){
                     Serial.println("APP_DISCOVERY");
                 else if(p.app_id == APP_SYSTEM)
                     Serial.println("APP_SYSTEM");
+                else if(p.app_id == APP_TICTACTOE)
+                    Serial.println("APP_TICTACTOE");
                 else
                     Serial.println("APP_ID UNKNOWN");
 
@@ -1739,6 +1751,13 @@ void processPackets2(void * param){
                     else{
                         Serial.printf("Contact ID %s not found\n", p.sender);
                     }
+                }
+                else if(p.app_id == APP_TICTACTOE){
+                    play_message_received();
+                    Serial.println("TTT packet");
+                    ttt_packet tttp;
+                    memcpy(&tttp, p.data, p.data_size);
+                    ttt.process_packet(tttp);
                 }
             }
             else if(p.type == LORA_PKT_ACK){
@@ -5010,7 +5029,7 @@ void setup(){
     */
     //Load settings
     loadSettings();
-    
+    strcpy(ttt.user_id, user_id);
     // set brightness.
     analogWrite(BOARD_BL_PIN, mapv(brightness, 0, 9, 100, 255));
     // Connect to a wifi network in history.

@@ -6,6 +6,19 @@
 
 #define APP_TICTACTOE 4
 
+#define TTT_TYPE_UNKNOWN 0
+#define TTT_TYPE_INVITATION 1
+#define TTT_TYPE_MOVE 2
+#define TTT_TYPE_DISCONNECT 3
+#define TTT_TYPE_ACK 4
+#define TTT_TYPE_REQUEST 4
+
+#define TTT_INVITATION_TYPE_UNKNOWN 0
+#define TTT_INVITATION_TYPE_DECLINED 1
+#define TTT_INVITATION_TYPE_ACCEPTED 2
+#define TTT_INVITATION_TYPE_BUSY 3
+#define TTT_INVITATION_TYPE_REQUEST 4
+
 struct ttt_mov{
     uint8_t row = 0;
     uint8_t col = 0;
@@ -16,10 +29,16 @@ struct ttt_player{
     char name[50] ={'\0'};
 };
 
+struct ttt_packet{
+    char player_id[7] = {'\0'};
+    uint8_t packet_type;
+    uint8_t invitation_type;
+    ttt_mov mov;
+};
+
 class tictactoe{
     private:
-        std::vector<ttt_player> ttt_players;
-        ttt_player * actual_player;
+        
     public:
     // UI objects
     lv_obj_t * frm_main;
@@ -27,15 +46,30 @@ class tictactoe{
     lv_obj_t * frm_main_title_btn_lbl;
     lv_obj_t * frm_main_back_btn;
     lv_obj_t * frm_main_back_btn_lbl;
+
     lv_obj_t * frame_game;
     lv_obj_t * frame_game_lbl;
-    lv_obj_t * frame_game_new_btn;
-    lv_obj_t * frame_game_new_btn_lbl;
-    lv_obj_t * frm_tictactoe_players;
-    lv_obj_t * frm_tictactoe_players_btn_title;
-    lv_obj_t * frm_tictactoe_players_btn_title_lbl;
-    lv_obj_t * frm_tictactoe_players_btn_back;
-    lv_obj_t * frm_tictactoe_players_btn_back_lbl;
+    lv_obj_t * frame_game_new_mpu_btn;
+    lv_obj_t * frame_game_new_mpu_btn_lbl;
+    lv_obj_t * frame_game_new_friend_btn;
+    lv_obj_t * frame_game_new_friend_btn_lbl;
+    lv_obj_t * frame_game_new_game_btn;
+    lv_obj_t * frame_game_new_game_btn_lbl;
+    lv_obj_t * frame_game_block;
+
+    // Online players
+    lv_obj_t * frame_game_online_btn_back;
+    lv_obj_t * frame_game_online_btn_back_lbl;
+    lv_obj_t * frame_game_online_list;
+
+    // Accept/Decline invitation_accepted
+    lv_obj_t * frame_game_invitation_frame;
+    lv_obj_t * frame_game_invitation_frame_lbl;
+    lv_obj_t * frame_game_invitation_frame_btn_accept;
+    lv_obj_t * frame_game_invitation_frame_btn_accept_lbl;
+    lv_obj_t * frame_game_invitation_frame_btn_decline;
+    lv_obj_t * frame_game_invitation_frame_btn_decline_lbl;
+
     lv_obj_t * btns[3][3];
     lv_obj_t * parent;
 
@@ -43,21 +77,32 @@ class tictactoe{
     char player = 'X';
     bool active = true;
     bool cpu_turn = false;
-    bool send_move = false;
-    bool multiplayer = false;
-    ttt_mov mov;
+    bool online = false;
+    bool waiting_player = false;
+    bool player_ack = false;
+    bool packet_move = false;
+    bool packet_ready = false;
+    bool invitation_accepted = false;
+    bool invitation_requested = false;
 
-    lora_outgoing_packets * tpl;
+    char user_id[7] = {'\0'};
+    std::vector<ttt_player> ttt_players;
+    ttt_packet tttp;
+    ttt_player * selected_player = NULL;
+    void (*transmit_list_add_callback)(lora_packet);
 
     bool checkVictory();
     bool checkDraw();
     void initUI(lv_obj_t * parent);
-    void showUI();
     void init_board();
     void simulate_click(uint8_t row, uint8_t col);
-    tictactoe(lora_outgoing_packets * tpl);
-    ttt_mov getMove();
+    tictactoe(void (*transmit_list_add_callback)(lora_packet));
     //~tictactoe();
     bool add_player(ttt_player p);
     bool del_player(ttt_player p);
+    void refresh_players_list();
+    ttt_packet process_packet(ttt_packet p);
+    ttt_player * get_player_by_id(const char * id);
+    void showUI();
+    void hideUI();
 };
