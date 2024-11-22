@@ -263,7 +263,7 @@ static void loadContacts(){
         ttt_player p;
         strcpy(p.id, v[index + 1].c_str());
         strcpy(p.name, v[index].c_str());
-        ttt.add_player(p);
+        //ttt.add_player(p);
     }
     Serial.print(contacts_list.size());
     Serial.println(" contacts found");
@@ -4942,6 +4942,49 @@ void play_message_received(){
         Serial.println("comp_up.mp3 not found");
 }
 
+/// @brief Load the contacts list.
+static void load_ttt_contacts(){
+    if(!SPIFFS.begin(true)){
+        Serial.println("failed mounting SPIFFS");
+        return;
+    }
+
+    fs::File file = SPIFFS.open("/contacts", FILE_READ);
+    if(!file){
+        Serial.println("contacts file problem");
+        return;
+    }
+    
+    vector<String> v;
+    while(file.available()){
+        v.push_back(file.readStringUntil('\n'));
+    }
+
+    file.close();
+
+    for(uint32_t index = 0; index < v.size(); index ++){
+        v[index].remove(v[index].length() - 1);
+    }
+
+    Serial.println("Loading TTT contacts...");
+    Contact c;
+    for(uint32_t index = 0; index < v.size(); index += 3){
+        c.setName(v[index]);
+        c.setID(v[index + 1]);
+        c.setKey(v[index + 2]);
+        Serial.println(c.getID());
+        Serial.println(c.getName());
+
+        // Add to TICTACTOE
+        ttt_player p;
+        strcpy(p.id, v[index + 1].c_str());
+        strcpy(p.name, v[index].c_str());
+        ttt.add_player(p);
+    }
+    Serial.print(contacts_list.size());
+    Serial.println(" contacts found");
+}
+
 /// @brief T-Deck's initial setup function.
 void setup(){
     // Seed to rand()
@@ -5022,7 +5065,7 @@ void setup(){
     // Mutexes to restrict the access to some resources, avoiding memory corruption, catastrophic failures.
     pthread_mutexattr_init(&Attr);
     pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&lvgl_mutex, &Attr);
+    pthread_mutex_init(&lvgl_mutex, NULL);
     pthread_mutex_init(&messages_mutex, NULL);
     pthread_mutex_init(&send_json_mutex, NULL);
     pthread_mutex_init(&websocket_send, NULL);
@@ -5080,6 +5123,9 @@ void setup(){
     // Turn on the display
     //tft.writecommand(0x11);
     setup_sound();
+    Serial.println("loading TTT contacts");
+    delay(2000);
+    //load_ttt_contacts();
 }
 
 void loop(){

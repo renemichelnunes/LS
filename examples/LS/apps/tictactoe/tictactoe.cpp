@@ -91,28 +91,28 @@ void ttt_event_handler(void * p){
 
             if(ttt->tttp.packet_type == TTT_TYPE_INVITATION){
                 if(ttt->selected_player)
-                    printf("Selected player\nID %s\nName %s\n\n", ttt->selected_player->id, ttt->selected_player->name);
+                    Serial.printf("Selected player\nID %s\nName %s\n\n", ttt->selected_player->id, ttt->selected_player->name);
                 switch(ttt->tttp.invitation_type){
                     case TTT_INVITATION_TYPE_ACCEPTED:
-                        printf("Invitation accepted\n");
+                        Serial.printf("Invitation accepted\n");
                         break;
                     case TTT_INVITATION_TYPE_DECLINED:
-                        printf("Invitation declined\n");
+                        Serial.printf("Invitation declined\n");
                         break;
                     case TTT_INVITATION_TYPE_BUSY:
-                        printf("Invitation declined, busy\n");
+                        Serial.printf("Invitation declined, busy\n");
                         break;
                     case TTT_INVITATION_TYPE_REQUEST:
                         if(ttt->selected_player){
-                            printf("Invitation sent to %s\n", ttt->selected_player->name);
+                            Serial.printf("Invitation sent to %s\n", ttt->selected_player->name);
                             lv_label_set_text(ttt->frame_game_lbl, "Waiting the player...");
                             lv_obj_clear_flag(ttt->frame_game_block, LV_OBJ_FLAG_HIDDEN);
                         }
                         else
-                            printf("Invitation sent without selecting a player\n");
+                            Serial.printf("Invitation sent without selecting a player\n");
                         break;
                     case TTT_INVITATION_TYPE_UNKNOWN:
-                        printf("Invitation type unknown\n");
+                        Serial.printf("Invitation type unknown\n");
                         break;
                 }
             }
@@ -129,15 +129,17 @@ void btn_event_handler(lv_event_t* e) {
     tictactoe * ttt = (tictactoe*)lv_event_get_user_data(e);
     char msg[30] = {'\0'};
     lv_event_code_t code = lv_event_get_code(e);
-
+    
     if(code == LV_EVENT_CLICKED){
         int linha = lv_obj_get_y(btn) / 52;    // A posição do botão no eixo Y (linha)
         int coluna = lv_obj_get_x(btn) / 52;   // A posição do botão no eixo X (coluna)
-
+        
+        Serial.printf("%d %d\n", lv_obj_get_y(btn), lv_obj_get_x(btn));
+        Serial.printf("%d %d\n", linha, coluna);
         ttt_mov mov;
         mov.row = linha;
         mov.col = coluna;
-
+        
         // Se o botão ainda estiver vazio e o jogo estiver ativoSem vencedores
         if (ttt->board[linha][coluna] == ' ' && ttt->active) {
             // Atualiza o estado do botão
@@ -148,31 +150,39 @@ void btn_event_handler(lv_event_t* e) {
             lv_label_set_text(lv_obj_get_child(btn, 0), p);
             // Send the move
             if(ttt->player == 'X'){
-                lora_packet lp;
-                strcpy(lp.id, generate_ID(6).c_str());
-                lp.app_id = APP_TICTACTOE;
-                strcpy(lp.sender, ttt->user_id);
-                strcpy(lp.destiny, ttt->selected_player->id);
-                lp.data_size = sizeof(mov);
-                memcpy(lp.data, &mov, lp.data_size);
-                lp.crc = calculate_data_crc(&mov, lp.data_size);
-                lp.confirmed = false;
-                printf("\nSending move\nID %s\nAPP_ID %d\nSender %s\nDestiny %s\nData size %d\n", lp.id, lp.app_id, lp.sender, lp.destiny, lp.data_size);
-                ttt->transmit_list_add_callback(lp);
+                if(ttt->online){
+                    if(ttt->selected_player){
+                        lora_packet lp;
+                        strcpy(lp.id, generate_ID(6).c_str());
+                        lp.app_id = APP_TICTACTOE;
+                        strcpy(lp.sender, ttt->user_id);
+                        strcpy(lp.destiny, ttt->selected_player->id);
+                        lp.data_size = sizeof(mov);
+                        memcpy(lp.data, &mov, lp.data_size);
+                        lp.crc = calculate_data_crc(&mov, lp.data_size);
+                        lp.confirmed = false;
+                        Serial.printf("\nSending move\nID %s\nAPP_ID %d\nSender %s\nDestiny %s\nData size %d\n", lp.id, lp.app_id, 
+                        lp.sender, lp.destiny, lp.data_size);
+                        ttt->transmit_list_add_callback(lp);
+                    }
+                    else
+                        Serial.println("It's online but no player selected");
+                }
+
                 /*
                 uint8_t c = 0;
                 for(uint8_t i = 0; i < sizeof(lp.data); i++){
-                    printf("%x ", lp.data[i]);
+                    Serial.printf("%x ", lp.data[i]);
                     c++;
                     if(c == 20){
-                        printf("\n");
+                        Serial.printf("\n");
                         c = 0;
                     }
                 }
-                printf("\n");
+                Serial.printf("\n");
                 */
             }
-
+            
             //lv_label_set_text(frame_game_lbl, "waiting the player...");
 
             // Verificar se o jogador atual venceu
@@ -217,7 +227,7 @@ void tictactoe::initUI(lv_obj_t * parent)
         lv_obj_set_size(this->frm_main, 320, 240);
         //lv_obj_set_style_bg_color(frm_main, lv_color_hex(0xffffff), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(this->frm_main, 255, LV_PART_MAIN);
-        lv_obj_align(this->frm_main, LV_ALIGN_TOP_MID, -10, -15);
+        lv_obj_align(this->frm_main, LV_ALIGN_TOP_MID, 0, 0);
         lv_obj_set_style_radius(this->frm_main, 0, LV_PART_MAIN);
         lv_obj_set_style_border_width(this->frm_main, 0, LV_PART_MAIN);
         lv_obj_clear_flag(this->frm_main, LV_OBJ_FLAG_SCROLLABLE);
@@ -233,6 +243,7 @@ void tictactoe::initUI(lv_obj_t * parent)
         this->frm_main_back_btn = lv_btn_create(this->frm_main);
         lv_obj_set_size(this->frm_main_back_btn, 50, 20);
         lv_obj_align(this->frm_main_back_btn, LV_ALIGN_TOP_RIGHT, 10, -10);
+        lv_obj_add_event_cb(this->frm_main_back_btn, hide, LV_EVENT_SHORT_CLICKED, this);
 
         this->frm_main_back_btn_lbl = lv_label_create(this->frm_main_back_btn);
         lv_label_set_text(this->frm_main_back_btn_lbl, "Back");
@@ -248,6 +259,8 @@ void tictactoe::initUI(lv_obj_t * parent)
         lv_obj_set_scroll_dir(this->frame_game, LV_DIR_VER);
 
         this->init_board();
+
+        lv_obj_add_flag(this->frm_main, LV_OBJ_FLAG_HIDDEN);
         Serial.println("tictactoe_app::initUI() - READY");
     }else
         Serial.println("tictactoe_app::initUI() - parent NULL");
@@ -514,11 +527,11 @@ tictactoe::tictactoe(void (*transmit_list_add_callback)(lora_packet))
 
     for(uint8_t i = 0; i < 3; i++){
         for(uint8_t j = 0; j < 3; j++){
-            printf("%c ", this->board[i][j]);
+            Serial.printf("%c ", this->board[i][j]);
         }
-        printf("\n");
+        Serial.printf("\n");
     }
-    printf("\n");
+    Serial.printf("\n");
 
     xTaskCreatePinnedToCore(cpu_move, "cpu_task", 6000, this, 1, &cpu_task, 1);
     if(cpu_task){
@@ -579,7 +592,7 @@ ttt_packet tictactoe::process_packet(ttt_packet p)
     }
     else if(p.packet_type == TTT_TYPE_MOVE){
         if(p.mov.row > 2 || p.mov.col > 2 || p.mov.row < 0 || p.mov.col < 0){
-            printf("Invalid row or column\n");
+            Serial.printf("Invalid row or column\n");
             return p;
         }
         this->simulate_click(p.mov.row, p.mov.col);
@@ -596,12 +609,12 @@ ttt_packet tictactoe::process_packet(ttt_packet p)
         if(!this->invitation_requested){
             this->invitation_requested = true;
             sprintf(msg, "%s wants to play with you\n", tp->name);
-            printf("%s", msg);
+            Serial.printf("%s", msg);
             lv_label_set_text(this->frame_game_invitation_frame_lbl, msg);
             lv_obj_clear_flag(this->frame_game_invitation_frame, LV_OBJ_FLAG_HIDDEN);
         }
         else{
-            printf("%s wait your turn\n", this->get_player_by_id(p.player_id)->name);
+            Serial.printf("%s wait your turn\n", this->get_player_by_id(p.player_id)->name);
         }
     }
     else if(p.packet_type == TTT_TYPE_ACK){
