@@ -156,7 +156,7 @@ volatile float rssi, snr;
 #define APP_LORA_CHAT 2
 discovery_app discoveryApp = discovery_app(&lvgl_mutex);
 void transmit_pkt_list_add(lora_packet p);
-tictactoe ttt = tictactoe(transmit_pkt_list_add);
+tictactoe * ttt = NULL;
 
 void transmit_pkt_list_add(lora_packet p){
     transmit_pkt_list.add(p);
@@ -166,13 +166,13 @@ void transmit_pkt_list_add(lora_packet p){
 static void loadSettings(){
     char color[7];
     if(!SPIFFS.begin(true)){
-        Serial.println("failed mounting SPIFFS");
+        Serial.println((const char*)F("failed mounting SPIFFS"));
         return;
     }
 
     fs::File file = SPIFFS.open("/settings", FILE_READ);
     if(!file){
-        Serial.println("couldn't open settings file");
+        Serial.println((const char*)F("couldn't open settings file"));
         return;
     }
     try{
@@ -199,7 +199,7 @@ static void loadSettings(){
             strcpy(user_key, v[4].c_str());
             strcpy(http_admin_pass, v[5].c_str());
         }
-        Serial.println("Settings loaded");
+        Serial.println((const char*)F("Settings loaded"));
     }catch (exception &ex){
         Serial.println(ex.what());
     }
@@ -207,13 +207,13 @@ static void loadSettings(){
 /// @brief Saves the user name, id, key, color of the interface and brightness.
 static void saveSettings(){
     if(!SPIFFS.begin(true)){
-        Serial.println("failed mounting SPIFFS");
+        Serial.println((const char*)F("failed mounting SPIFFS"));
         return;
     }
 
     fs::File file = SPIFFS.open("/settings", FILE_WRITE);
     if(!file){
-        Serial.println("couldn't open settings file");
+        Serial.println((const char*)F("couldn't open settings file"));
         return;
     }
 
@@ -223,19 +223,19 @@ static void saveSettings(){
     file.println(brightness);
     file.println(user_key);
     file.println(http_admin_pass);
-    Serial.println("settings saved");
+    Serial.println((const char*)F("settings saved"));
     file.close();
 }
 /// @brief Load the contacts list.
 static void loadContacts(){
     if(!SPIFFS.begin(true)){
-        Serial.println("failed mounting SPIFFS");
+        Serial.println((const char*)F("failed mounting SPIFFS"));
         return;
     }
 
     fs::File file = SPIFFS.open("/contacts", FILE_READ);
     if(!file){
-        Serial.println("contacts file problem");
+        Serial.println((const char*)F("contacts file problem"));
         return;
     }
     
@@ -250,7 +250,7 @@ static void loadContacts(){
         v[index].remove(v[index].length() - 1);
     }
 
-    Serial.println("Loading contacts...");
+    Serial.println((const char*)F("Loading contacts..."));
     Contact c;
     for(uint32_t index = 0; index < v.size(); index += 3){
         c.setName(v[index]);
@@ -266,12 +266,12 @@ static void loadContacts(){
         //ttt.add_player(p);
     }
     Serial.print(contacts_list.size());
-    Serial.println(" contacts found");
+    Serial.println((const char*)F(" contacts found"));
 }
 /// @brief Saves the contacts.
 static void saveContacts(){
     if(!SPIFFS.begin(true)){
-        Serial.println("failed mounting SPIFFS");
+        Serial.println((const char*)F("failed mounting SPIFFS"));
         return;
     }
 
@@ -279,7 +279,7 @@ static void saveContacts(){
 
     fs::File file = SPIFFS.open("/contacts", FILE_WRITE);
     if(!file){
-        Serial.println("contacts file problem");
+        Serial.println((const char*)F("contacts file problem"));
         return;
     }
 
@@ -292,7 +292,7 @@ static void saveContacts(){
         file.println(c.getKey());
     }
     Serial.print(contacts_list.size());
-    Serial.println(" contacts saved");
+    Serial.println((const char*)F(" contacts saved"));
     file.close();
 }
 
@@ -393,7 +393,7 @@ static void notify(void * param){
             lv_label_set_text(frm_not_symbol_lbl, "");
             lv_obj_add_flag(frm_not, LV_OBJ_FLAG_HIDDEN);
             // Just for debug
-            Serial.println("notified");
+            Serial.println((const char*)F("notified"));
         }
         // Give the cpu core a rest
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -498,7 +498,7 @@ void setupLvgl()
 #define LVGL_BUFFER_SIZE    (TFT_WIDTH * TFT_HEIGHT * sizeof(lv_color_t))
     static lv_color_t *buf = (lv_color_t *)ps_malloc(LVGL_BUFFER_SIZE);
     if (!buf) {
-        Serial.println("menory alloc failed!");
+        Serial.println((const char*)F("menory alloc failed!"));
         delay(5000);
         assert(buf);
     }
@@ -542,7 +542,7 @@ void setupLvgl()
     }
 
     if (kbDected) {
-        Serial.println("Keyboard registered!!");
+        Serial.println((const char*)F("Keyboard registered!!"));
         /*Register a keypad input device*/
         static lv_indev_drv_t indev_keypad;
         lv_indev_drv_init(&indev_keypad);
@@ -566,7 +566,7 @@ void scanDevices(TwoWire *w)
         err = w->endTransmission();
         if (err == 0) {
             nDevices++;
-            Serial.print("I2C device found at address 0x");
+            Serial.print((const char*)F("I2C device found at address 0x"));
             if (addr < 16) {
                 Serial.print("0");
             }
@@ -575,13 +575,13 @@ void scanDevices(TwoWire *w)
 
             if (addr == GT911_SLAVE_ADDRESS2) {
                 touchAddress = GT911_SLAVE_ADDRESS2;
-                Serial.println("Find GT911 Drv Slave address: 0x14");
+                Serial.println((const char*)F("Found GT911 Drv Slave address: 0x14"));
             } else if (addr == GT911_SLAVE_ADDRESS1) {
                 touchAddress = GT911_SLAVE_ADDRESS1;
-                Serial.println("Find GT911 Drv Slave address: 0x5D");
+                Serial.println((const char*)F("Found GT911 Drv Slave address: 0x5D"));
             }
         } else if (err == 4) {
-            Serial.print("Unknow error at address 0x");
+            Serial.print((const char*)F("Unknow error at address 0x"));
             if (addr < 16) {
                 Serial.print("0");
             }
@@ -589,7 +589,7 @@ void scanDevices(TwoWire *w)
         }
     }
     if (nDevices == 0)
-        Serial.println("No I2C devices found\n");
+        Serial.println((const char*)F("No I2C devices found\n"));
 }
 /// @brief Used to detect the presence of the physical keyboard.
 /// @return 
@@ -634,16 +634,16 @@ void setTZ(){
     if(sntp_enabled())
         sntp_stop();
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
+    sntp_setservername(0, (const char*)F("pool.ntp.org"));
     sntp_init();
     err = setenv("TZ", time_zone, 1);
     if(err == 0){
         tzset();
         Serial.print(time_zone);
-        Serial.println(" set");
+        Serial.println((const char*)F(" set"));
     }
     else
-        Serial.println("Failed to change the time zone");
+        Serial.println((const char*)F("Failed to change the time zone"));
 }
 
 /// @brief  Transforms the contact list in a JSON string 
@@ -697,10 +697,10 @@ void middlewareAuthentication(HTTPRequest * req, HTTPResponse * res, std::functi
             next();
         } else {
             res->setStatusCode(401);
-            res->setStatusText("Unauthorized");
-            res->setHeader("Content-Type", "text/plain");
-            res->setHeader("WWW-Authenticate", "Basic realm=\"T-Deck privileged area\"");
-            res->println("401. Unauthorized");
+            res->setStatusText((const char*)F("Unauthorized"));
+            res->setHeader((const char*)F("Content-Type"), (const char*)F("text/plain"));
+            res->setHeader((const char*)F("WWW-Authenticate"), (const char*)F("Basic realm=\"T-Deck privileged area\""));
+            res->println((const char*)F("401. Unauthorized"));
         }
     }else{
         next();
@@ -715,10 +715,10 @@ void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::functio
 
     if (username == "" && req->getRequestString().substr(0,9) == "/") {
         res->setStatusCode(401);
-        res->setStatusText("Unauthorized");
-        res->setHeader("Content-Type", "text/plain");
-        res->setHeader("WWW-Authenticate", "Basic realm=\"T-Deck privileged area\"");
-        res->println("401. Unauthorized");
+        res->setStatusText((const char*)F("Unauthorized"));
+        res->setHeader((const char*)F("Content-Type"), (const char*)F("text/plain"));
+        res->setHeader((const char*)F("WWW-Authenticate"), (const char*)F("Basic realm=\"T-Deck privileged area\""));
+        res->println((const char*)F("401. Unauthorized"));
 
     } else {
         next();
@@ -726,10 +726,10 @@ void middlewareAuthorization(HTTPRequest * req, HTTPResponse * res, std::functio
 }
 
 void handleFav(HTTPRequest * req, HTTPResponse * res) {
-    Serial.println("Sending favicon");
-    res->setHeader("Content-Type", "image/vnd.microsoft.icon");
+    Serial.println((const char*)F("Sending favicon"));
+    res->setHeader((const char*)F("Content-Type"), (const char*)F("image/vnd.microsoft.icon"));
     //res->printStd(FAVICON_DATA);
-    Serial.println("favicon sent.");
+    Serial.println((const char*)F("favicon sent."));
 }
 
 /// @brief This is used to send the index.html stored on the variable index_html, se index.h.
@@ -737,10 +737,10 @@ void handleFav(HTTPRequest * req, HTTPResponse * res) {
 /// @param res 
 void handleRoot(HTTPRequest * req, HTTPResponse * res) {
     server_ready = false;
-    Serial.println("Sending main page");
-    res->setHeader("Content-Type", "text/html");
+    Serial.println((const char*)F("Sending main page"));
+    res->setHeader((const char*)F("Content-Type"), (const char*)F("text/html"));
     res->setStatusCode(200);
-    res->setStatusText("OK");
+    res->setStatusText((const char*)F("OK"));
     res->printStd(index_html);
     server_ready = true;
 }
@@ -748,20 +748,20 @@ void handleRoot(HTTPRequest * req, HTTPResponse * res) {
 /// @param req 
 /// @param res 
 void handleStyle(HTTPRequest * req, HTTPResponse * res) {
-    Serial.println("Sending style.css");
-    res->setHeader("Content-Type", "text/css");
+    Serial.println((const char*)F("Sending style.css"));
+    res->setHeader((const char*)F("Content-Type"), (const char*)F("text/css"));
     res->setStatusCode(200);
-    res->setStatusText("OK");
+    res->setStatusText((const char*)F("OK"));
     res->println(style_css);
 }
 /// @brief This is used to send the script.js stored on the variable script_js, se script.h.
 /// @param req 
 /// @param res 
 void handleScript(HTTPRequest * req, HTTPResponse * res) {
-    Serial.println("Sending script.js");
-    res->setHeader("Content-Type", "application/javascript");
+    Serial.println((const char*)F("Sending script.js"));
+    res->setHeader((const char*)F("Content-Type"), (const char*)F("application/javascript"));
     res->setStatusCode(200);
-    res->setStatusText("OK");
+    res->setStatusText((const char*)F("OK"));
     res->println(script_js);
 }
 /// @brief This is sent in case when index.html has a resource that is not available in the server.
@@ -770,13 +770,13 @@ void handleScript(HTTPRequest * req, HTTPResponse * res) {
 void handle404(HTTPRequest * req, HTTPResponse * res) {
     req->discardRequestBody();
     res->setStatusCode(404);
-    res->setStatusText("Not Found");
-    res->setHeader("Content-Type", "text/html");
-    res->println("<!DOCTYPE html>");
-    res->println("<html>");
-    res->println("<head><title>Not Found</title></head>");
-    res->println("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>");
-    res->println("</html>");
+    res->setStatusText((const char*)F("Not Found"));
+    res->setHeader((const char*)F("Content-Type"), (const char*)F("text/html"));
+    res->println((const char*)F("<!DOCTYPE html>"));
+    res->println((const char*)F("<html>"));
+    res->println((const char*)F("<head><title>Not Found</title></head>"));
+    res->println((const char*)F("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>"));
+    res->println((const char*)F("</html>"));
 }
 /// @brief This class represents a chat object. It is a WebSocket handler wich is open when a client connects.
 class ChatHandler : public WebsocketHandler{
@@ -796,7 +796,7 @@ void ChatHandler::onError(std::string error){
 ChatHandler * activeClient;
 // Constructor for a new client WebSocket
 WebsocketHandler * ChatHandler::create() {
-    Serial.println("Creating new chat client!");
+    Serial.println((const char*)F("Creating new chat client!"));
     ChatHandler * handler = new ChatHandler();
     if (activeClient == nullptr) {
         activeClient = handler;
@@ -809,7 +809,7 @@ WebsocketHandler * ChatHandler::create() {
 /// @brief Search and close the client instance.
 void ChatHandler::onClose() {
     if (activeClient != NULL) {
-        Serial.println("closing websocket");
+        Serial.println((const char*)F("closing websocket"));
         activeClient = NULL;
     }
 }
@@ -832,7 +832,7 @@ void sendJSON(string json){
     if(json.length() > 0){
         if(activeClient != NULL){
             if(parsing){
-                Serial.println("(parsing)WebSocket busy, wait...");
+                Serial.println((const char*)F("(parsing)WebSocket busy, wait..."));
                 delay(100);
             }
             sendingJson = true;
@@ -842,7 +842,7 @@ void sendJSON(string json){
             sendingJson = false;
         }
     }else
-        Serial.println("JSON empty");
+        Serial.println((const char*)F("JSON empty"));
 }
 /// @brief This is for debug purposes, a received decrypted message sometimes could bring non-printable
 /// @brief chars and it was making the board reboot.
@@ -864,12 +864,12 @@ void printMessages(const char * id){
     pthread_mutex_lock(&messages_mutex);
         msgs = contacts_list.getContactMessages(id);
     pthread_mutex_unlock(&messages_mutex);
-    Serial.println("=================================");
+    Serial.println((const char*)F("================================="));
     if((msgs).size() > 0){
         for(uint32_t i = 0; i < (msgs).size(); i++)
             Serial.println((msgs)[i].message);
     }
-    Serial.println("=================================");
+    Serial.println((const char*)F("================================="));
 }
 /// @brief This creates and sends a JSON to the client with the list of messages from a selected contact.
 /// @param id 
@@ -897,7 +897,7 @@ void sendContactMessages(const char * id){
     serializeJson(doc, json);
     // This is a simple way to wait other tasks to finish using sendJSON.
     while(sendingJson){
-        Serial.println("waiting other json to finish...");
+        Serial.println((const char*)F("waiting other json to finish..."));
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     // Mutex to avoid concurrent access and memory corruption.
@@ -1004,7 +1004,7 @@ void decrypt_text(unsigned char *ciphertext, unsigned char *key, size_t cipher_l
 /// @param jsonString 
 void parseCommands(std::string jsonString){
     while(sendingJson){
-        Serial.println("(sendingJSON)WebSocket busy, wait...");
+        Serial.println((const char*)F("(sendingJSON)WebSocket busy, wait..."));
         delay(100);
     }
     parsing = true;
@@ -1026,7 +1026,7 @@ void parseCommands(std::string jsonString){
         uint8_t padded_len = ((text_length + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
         unsigned char ciphertext[padded_len];
         encrypt_text((unsigned char *)msg, (unsigned char *)user_key, text_length, ciphertext);
-        Serial.print("Encrypted => ");
+        Serial.print((const char*)F("Encrypted => "));
         for(uint8_t i = 0; i < padded_len; i++)
             Serial.printf("%02x ", ciphertext[i]);
         Serial.printf("\nPadded len %d\n", padded_len);
@@ -1046,14 +1046,14 @@ void parseCommands(std::string jsonString){
             strcpy(pkt.destiny, id);
             // There are two statuses, 'send' when sending to a destination, and 'recv' when we received a confirmation
             // from the destination. This is how we know the destination received the message. Not guaranteed.
-            strcpy(pkt.status, "send");
+            strcpy(pkt.status, (const char*)F("send"));
             //strftime(pkt.date_time, sizeof(pkt.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
             memcpy(pkt.data, ciphertext, padded_len);
             pkt.data_size = padded_len;
             transmiting_packets.push_back(pkt);
             // And add the unencrypted message.
             strcpy(pkt.data, msg);
-            Serial.print("Adding answer to ");
+            Serial.print((const char*)F("Adding answer to "));
             Serial.println(pkt.destiny);
             Serial.println(pkt.data);
 
@@ -1070,7 +1070,7 @@ void parseCommands(std::string jsonString){
             pthread_mutex_unlock(&messages_mutex);
             
         }else  
-            Serial.println("Radio not configured");
+            Serial.println((const char*)F("Radio not configured"));
     }else if(strcmp(command, "contacts") == 0){// When we are asked to send the contacts list.
         // Wait if sendJSON is being used.
         while(sendingJson){
@@ -1084,12 +1084,12 @@ void parseCommands(std::string jsonString){
         // actual_contact points to the selected contact on the client side list of contacts.
         actual_contact = contacts_list.getContactByID(doc["id"]);
         if(actual_contact != NULL){
-            Serial.println("Contact selected");
+            Serial.println((const char*)F("Contact selected"));
             // Send it's messages.
             sendContactMessages(actual_contact->getID().c_str());
         }
         else
-            Serial.println("Contact selection failed, id not found");
+            Serial.println((const char*)F("Contact selection failed, id not found"));
     }else if(strcmp(command, "edit_contact") == 0){// Edit contacts info.
         Contact * c = NULL;
         bool edited = false;
@@ -1175,9 +1175,9 @@ void parseCommands(std::string jsonString){
             // Add it to the list of contacts.
             if(contacts_list.add(*c)){
                 // Print some info on console.
-                Serial.print("New contact ID ");
+                Serial.print((const char*)F("New contact ID "));
                 Serial.print((const char *)doc["id"]);
-                Serial.println(" added.");
+                Serial.println((const char*)F(" added."));
                 // Save the contacts list.
                 saveContacts();
                 while(sendingJson){
@@ -1318,15 +1318,15 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
     Serial.println(msg.c_str());
     // By now this server only receives JSON strings over the websocket, so parse them. 
     while(parsing){
-        Serial.println("onMessage parsing");
+        Serial.println((const char*)F("onMessage parsing"));
         delay(100);
     }
     while(sendingJson){
-        Serial.println("onMessage JSON");
+        Serial.println((const char*)F("onMessage JSON"));
         delay(100);
     }
     while(this->sending){
-        Serial.println("onMessage http_send");
+        Serial.println((const char*)F("onMessage http_send"));
         delay(100);
     }
     parseCommands(msg);
@@ -1337,7 +1337,7 @@ void ChatHandler::onMessage(WebsocketInputStreambuf * inbuf) {
 void setupServer(void * param){
     server_ready = false;
     while(!wifi_got_ip){
-        Serial.println("No IP address");
+        Serial.println((const char*)F("No IP address"));
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     
@@ -1347,8 +1347,8 @@ void setupServer(void * param){
         activeClient = nullptr;
     }
     
-    Serial.println("Creating ssl certificate...");
-    lv_label_set_text(frm_home_title_lbl, "Creating ssl certificate...");
+    Serial.println((const char*)F("Creating ssl certificate..."));
+    lv_label_set_text(frm_home_title_lbl, (const char*)F("Creating ssl certificate..."));
     lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
     //vTaskDelay(1000 / portTICK_PERIOD_MS);
     SSLCert * cert;
@@ -1371,18 +1371,18 @@ void setupServer(void * param){
     );
 
     if (createCertResult != 0) {
-        Serial.printf("Error generating certificate");
+        Serial.printf((const char*)F("Error generating certificate"));
         return; 
     }
     Serial.printf("cert size => %d\n", cert->getCertLength());
-    Serial.println("Certificate done.");
-    lv_label_set_text(frm_home_title_lbl, "Certificate done.");
+    Serial.println((const char*)F("Certificate done."));
+    lv_label_set_text(frm_home_title_lbl, (const char*)F("Certificate done."));
     lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
-    lv_label_set_text(frm_home_title_lbl, "Starting https server...");
+    lv_label_set_text(frm_home_title_lbl, (const char*)F("Starting https server..."));
     lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
-    Serial.println("Starting server...");
+    Serial.println((const char*)F("Starting server..."));
     // Create the server object, port 443 and limit the clients;
     secureServer = new HTTPSServer(cert, 443, maxClients);
     
@@ -1414,10 +1414,10 @@ void setupServer(void * param){
     if (secureServer->isRunning()) {
         // If all good, show a button with 'https' on settings, see wifi section.
         lv_obj_clear_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text(frm_home_title_lbl, "Server ready.");
+        lv_label_set_text(frm_home_title_lbl, (const char*)F("Server ready."));
         lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_HOME);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        Serial.println("Server ready.");
+        Serial.println((const char*)F("Server ready."));
         lv_label_set_text(frm_home_title_lbl, "");
         lv_label_set_text(frm_home_symbol_lbl, "");
         server_ready = true;
@@ -1431,7 +1431,7 @@ void shutdownServer(void *param){
     if(server_ready)
         if(secureServer != NULL){
             if(activeClient != NULL){
-                activeClient->close(1000, "Server shutdown");
+                activeClient->close(1000, (const char*)F("Server shutdown"));
                 activeClient = nullptr;
             }
             
@@ -1440,7 +1440,7 @@ void shutdownServer(void *param){
             secureServer = NULL;
             // Hide the https button on settings.
             lv_obj_add_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
-            Serial.println("Server ended.");
+            Serial.println((const char*)F("Server ended."));
             server_ready = false;
         }
     //vTaskDelete(NULL);
@@ -1493,7 +1493,7 @@ void collectPackets(void * param){
                 // Check if the packet is valid.
                 if(packet_size == sizeof(lora_packet_ack) || packet_size == sizeof(lora_packet_announce) ||
                     packet_size == sizeof(lora_packet_comm) || packet_size == sizeof(lora_packet_data) || 
-                    packet_size == sizeof(lora_packet_ping)){
+                    packet_size == sizeof(lora_packet_data_small) || packet_size == sizeof(lora_packet_ping)){
                     invalid_pkt_size = false;
                 }
                 else{
@@ -1527,11 +1527,10 @@ void collectPackets(void * param){
                             lp.crc = ((lora_packet_data*)packet)->crc;
                         }
                         else{
-                            Serial.printf("Data crc mismatch\n");
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
                             invalid_pkt_size = true;
                         }
                         break;
-
                     case LORA_PKT_DATA_SMALL:
                         strcpy(lp.destiny, ((lora_packet_data_small*)packet)->destiny);
                         lp.data_size = ((lora_packet_data_small*)packet)->data_size;
@@ -1543,7 +1542,7 @@ void collectPackets(void * param){
                             lp.crc = ((lora_packet_data_small*)packet)->crc;
                         }
                         else{
-                            Serial.printf("Data crc mismatch\n");
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
                             invalid_pkt_size = true;
                         }
                         break;
@@ -1560,7 +1559,7 @@ void collectPackets(void * param){
                 }
 
                 if(non_printable_chars(lp.id) || non_printable_chars(lp.sender)){
-                    Serial.printf("Packet ID or sender corrupted\n");
+                    Serial.printf((const char*)F("Packet ID or sender corrupted\n"));
                     invalid_pkt_size = true;
                 }
                 
@@ -1645,7 +1644,7 @@ void collectPackets(void * param){
                 }
             }
             else{
-                Serial.println("collectPackets - packet NULL");
+                Serial.println((const char*)F("collectPackets - packet NULL"));
             }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1706,19 +1705,19 @@ void processPackets2(void * param){
                 transmit_pkt_list.add(ack);
                 // Redirect the data to its application
                 if(p.app_id == APP_LORA_CHAT)
-                    Serial.println("APP_LORA_CHAT");
+                    Serial.println((const char*)F("APP_LORA_CHAT"));
                 else if(p.app_id == APP_DISCOVERY)
-                    Serial.println("APP_DISCOVERY");
+                    Serial.println((const char*)F("APP_DISCOVERY"));
                 else if(p.app_id == APP_SYSTEM)
-                    Serial.println("APP_SYSTEM");
+                    Serial.println((const char*)F("APP_SYSTEM"));
                 else if(p.app_id == APP_TICTACTOE)
-                    Serial.println("APP_TICTACTOE");
+                    Serial.println((const char*)F("APP_TICTACTOE"));
                 else
-                    Serial.println("APP_ID UNKNOWN");
+                    Serial.println((const char*)F("APP_ID UNKNOWN"));
 
                 if(p.app_id == APP_LORA_CHAT){
                     play_message_received();
-                    Serial.println("LoRa Chat packet");
+                    Serial.println((const char*)F("LoRa Chat packet"));
                     c = contacts_list.getContactByID(p.sender);
                     if(c){
                         strcpy(cm.messageID, generate_ID(6).c_str());
@@ -1770,10 +1769,10 @@ void processPackets2(void * param){
                 }
                 else if(p.app_id == APP_TICTACTOE){
                     play_message_received();
-                    Serial.println("TTT packet");
+                    Serial.println((const char*)F("TTT packet"));
                     ttt_packet tttp;
                     memcpy(&tttp, p.data, p.data_size);
-                    ttt.process_packet(tttp);
+                    ttt->process_packet(tttp);
                 }
             }
             else if(p.type == LORA_PKT_ACK){
@@ -1788,9 +1787,9 @@ void processPackets2(void * param){
                             cm->ack = true;
                             msg_confirmed = true;
                             if(!transmit_pkt_list.del(p.status))
-                                Serial.printf("Couldn't delete packet from transmit list\n");
+                                Serial.printf((const char*)F("Couldn't delete packet from transmit list\n"));
                             if(!transmit_pkt_list.del(p.id))
-                                Serial.printf("Couldn't delete packet from transmit list\n");
+                                Serial.printf((const char*)F("Couldn't delete packet from transmit list\n"));
                             Serial.printf("ACK confirmed to message ID %s\n", cm->messageID);
                         }
                         else{
@@ -1804,8 +1803,15 @@ void processPackets2(void * param){
                 else if(p.app_id == APP_DISCOVERY){
 
                 }
+                else if(p.app_id == APP_TICTACTOE){
+                    Serial.printf("Received an ACK from %s to TTT packet ID %s\n", p.sender, p.status);
+                    if(!transmit_pkt_list.del(p.status))
+                        Serial.printf((const char*)F("Couldn't delete packet from transmit list\n"));
+                    if(!transmit_pkt_list.del(p.id))
+                        Serial.printf((const char*)F("Couldn't delete packet from transmit list\n"));
+                }
                 else{
-                    Serial.println("process_packets2 - APP_ID UNKNOWN");
+                    Serial.println((const char*)F("process_packets2 - APP_ID UNKNOWN"));
                 }
             }
         }
@@ -1827,7 +1833,7 @@ static int16_t transmit(uint8_t * data, size_t len){
     pthread_mutex_unlock(&lvgl_mutex);
     if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
         while(gotPacket){
-            Serial.printf("%s\n", gotPacket ? "Radio ready to transmit" : "Radio still receiving");
+            Serial.printf("%s\n", gotPacket ? (const char*)F("Radio ready to transmit") : (const char*)F("Radio still receiving"));
             vTaskDelay(10 / portTICK_PERIOD_MS);
             count += 1;
             // Avoid infinite loop when gotPacket is blocked somewhere else
@@ -1835,7 +1841,7 @@ static int16_t transmit(uint8_t * data, size_t len){
                 break;
         }
         if(!gotPacket){
-            Serial.printf("Transmitting packet...\n");
+            Serial.printf((const char*)F("Transmitting packet...\n"));
             transmit_pkt_list.setOnAirTime(radio.getTimeOnAir(len) / 1000);
             r = radio.startTransmit((uint8_t*)data, len);
         }
@@ -2072,9 +2078,9 @@ void setupRadio(lv_event_t * e)
 
     int state = radio.begin(RADIO_FREQ);
     if (state == RADIOLIB_ERR_NONE) {
-        Serial.println("Start Radio success!");
+        Serial.println((const char*)F("Start Radio success!"));
     } else {
-        Serial.print("Start Radio failed,code:");
+        Serial.print((const char*)F("Start Radio failed,code:"));
         Serial.println(state);
         //return false;
     }
@@ -2147,7 +2153,7 @@ void setupRadio(lv_event_t * e)
     //radio.setPacketSentAction(onTransmit);
     // Put the radio module to listen for LoRa packets.
     code = radio.startReceive();
-    Serial.print("setup radio start receive code ");
+    Serial.print((const char*)F("setup radio start receive code "));
     Serial.println(code);
     // Check if the radio is up.
     if(code == RADIOLIB_ERR_NONE){
@@ -2191,10 +2197,10 @@ void hide_contacts_frm(lv_event_t * e){
             lv_obj_add_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
             vTaskDelete(task_check_contact_list_new_msg);
             if(task_check_contact_list_new_msg){
-                Serial.println("task_check_contact_list_new_msg deleted");
+                Serial.println((const char*)F("task_check_contact_list_new_msg deleted"));
             }
             else{
-                Serial.println("Cannot delete task_check_contact_list_new_msg");
+                Serial.println((const char*)F("Cannot delete task_check_contact_list_new_msg"));
             }
         }
     }
@@ -2208,12 +2214,12 @@ void show_contacts_form(lv_event_t * e){
         if(frm_contacts != NULL){
             lv_obj_clear_flag(frm_contacts, LV_OBJ_FLAG_HIDDEN);
             refresh_contact_list();
-            xTaskCreatePinnedToCore(check_contact_list_new_msg, "cont_list_new_msg", 8000, NULL, 1, &task_check_contact_list_new_msg, 1);
+            xTaskCreatePinnedToCore(check_contact_list_new_msg, (const char*)F("cont_list_new_msg"), 8000, NULL, 1, &task_check_contact_list_new_msg, 1);
             if(task_check_contact_list_new_msg){
-                Serial.println("task_check_contact_list_new_msg launched");
+                Serial.println((const char*)F("task_check_contact_list_new_msg launched"));
             }
             else{
-                Serial.println("Cannot launch task_check_contact_list_new_msg");
+                Serial.println((const char*)F("Cannot launch task_check_contact_list_new_msg"));
             }
         }
     }
@@ -2325,18 +2331,18 @@ void hide_edit_contacts(lv_event_t * e){
                 actual_contact->setID(id);
                 actual_contact->setName(name);
                 actual_contact->setKey(key);
-                Serial.println("ID and name updated");
+                Serial.println((const char*)F("ID and name updated"));
                 // Lets point this out of the contacts list.
                 actual_contact = NULL;
                 // Hide the edit dialog.
                 lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
-                Serial.println("Contact updated");
+                Serial.println((const char*)F("Contact updated"));
                 // Rebuild the contacts list(contacts list dialog).
                 refresh_contact_list();
                 // Save the contacts list.
                 saveContacts();
             }else
-                Serial.println("Name or ID cannot be empty");
+                Serial.println((const char*)F("Name or ID cannot be empty"));
         }
     }
 }
@@ -2377,7 +2383,7 @@ void hide_chat(lv_event_t * e){
                 // Closes the task.
                 vTaskDelete(task_check_new_msg);
                 task_check_new_msg = NULL;
-                Serial.println("task_check_new_msg deleted");
+                Serial.println((const char*)F("task_check_new_msg deleted"));
             }
             // Set this counter to 0.
             actual_contact->new_message = false;
@@ -2419,11 +2425,11 @@ void show_chat(lv_event_t * e){
             
             if(task_check_new_msg == NULL){
                 // Load a task which watches for a new message related to the selected contact.
-                xTaskCreatePinnedToCore(check_new_msg, "check_new_msg", 11000, NULL, 1, &task_check_new_msg, 1);
-                Serial.println("task_check_new_msg created");
+                xTaskCreatePinnedToCore(check_new_msg, (const char*)F("check_new_msg"), 11000, NULL, 1, &task_check_new_msg, 1);
+                Serial.println((const char*)F("task_check_new_msg created"));
                 msg_confirmed = true;
             }
-            Serial.print("actual contact is ");
+            Serial.print((const char*)F("actual contact is "));
             Serial.println(actual_contact->getName());
         }
     }
@@ -2477,7 +2483,7 @@ void send_message(lv_event_t * e){
                     cm.rssi = 0;
                     cm.snr = 0;
                     cm.me = true;
-                    Serial.print("Adding answer to ");
+                    Serial.print((const char*)F("Adding answer to "));
                     Serial.println(pkt.destiny);
                     Serial.println(msg);
                     // Get exclusive access to the addMessage.
@@ -2493,7 +2499,7 @@ void send_message(lv_event_t * e){
                 }
             }
             else{
-                Serial.println("send_message() - radio not configured.");
+                Serial.println((const char*)F("send_message() - radio not configured."));
             }
         }
     }
@@ -2553,7 +2559,7 @@ void check_contact_list_new_msg(void * param){
                         lv_label_set_text(rssi_snr_lbl, rssi_snr);
                     }
                     else{
-                        Serial.printf("check_contact_list_new_msg() - cannot read c\n");
+                        Serial.printf((const char*)F("check_contact_list_new_msg() - cannot get contact\n"));
                     }
                 }
             }
@@ -2669,18 +2675,18 @@ void add_contact(lv_event_t * e){
             // Verify if exists someone with the same ID. If not, add it.
             if(!contacts_list.find(c)){
                 if(contacts_list.add(c)){
-                    Serial.println("Contact added");
+                    Serial.println((const char*)F("Contact added"));
                     // Rebuild the contacts list dialog.
                     refresh_contact_list();
                     // Hide the add dialog.
                     lv_obj_add_flag(frm_add_contact, LV_OBJ_FLAG_HIDDEN);
                 }
                 else      
-                    Serial.println("failed to add contact");
+                    Serial.println((const char*)F("failed to add contact"));
             }else
-                Serial.println("Contact already exists");
+                Serial.println((const char*)F("Contact already exists"));
         }else
-            Serial.println("Name, ID or KEY cannot be emty");
+            Serial.println((const char*)F("Name, ID or KEY cannot be emty"));
     }
 }
 /// @brief This event deletes a contact from the list.
@@ -2703,13 +2709,13 @@ void del_contact(lv_event_t * e){
                     refresh_contact_list();
                     // Hide the delete dialog.
                     lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
-                    Serial.println("Contact deleted");
+                    Serial.println((const char*)F("Contact deleted"));
                 }
             }else
-                Serial.println("Contact not found");
+                Serial.println((const char*)F("Contact not found"));
         }
     }else
-        Serial.println("ID is empty");
+        Serial.println((const char*)F("ID is empty"));
 }
 /// @brief This event calls for generate_ID and set the string returned into the text area.
 /// @param e 
@@ -2733,21 +2739,21 @@ void DX(lv_event_t * e){
         // Verify the state of the switch. If checked, DX mode, if not, normal mode.
         if(lv_obj_has_state(frm_settings_switch_dx, LV_STATE_CHECKED)){
             if(DXMode()){
-                Serial.println("DX mode on");
-                notification_list.add("DX mode", LV_SYMBOL_SETTINGS);
+                Serial.println((const char*)F("DX mode on"));
+                notification_list.add((const char*)F("DX mode"), LV_SYMBOL_SETTINGS);
                 isDX = true;
             }else{
-                notification_list.add("DX mode failed", LV_SYMBOL_SETTINGS);
-                Serial.println("DX mode failed");
+                notification_list.add((const char*)F("DX mode failed"), LV_SYMBOL_SETTINGS);
+                Serial.println((const char*)F("DX mode failed"));
             }
         }else{
             if(normalMode()){
-                notification_list.add( "Normal mode", LV_SYMBOL_SETTINGS);
-                Serial.println("DX mode off");
+                notification_list.add((const char*)F("Normal mode"), LV_SYMBOL_SETTINGS);
+                Serial.println((const char*)F("DX mode off"));
                 isDX = false;
             }else{
-                notification_list.add("Normal mode failed", LV_SYMBOL_SETTINGS);
-                Serial.println("Normal mode failed");
+                notification_list.add((const char*)F("Normal mode failed"), LV_SYMBOL_SETTINGS);
+                Serial.println((const char*)F("Normal mode failed"));
             }
         }
     }
@@ -2790,7 +2796,7 @@ void setDate(int yr, int month, int mday, int hr, int minute, int sec, int isDst
     Serial.printf("Setting time: %s\n", asctime(&timeinfo));
     struct timeval now = { .tv_sec = t };
     settimeofday(&now, NULL);
-    notification_list.add("date & time updated", LV_SYMBOL_SETTINGS);
+    notification_list.add((const char*)F("date & time updated"), LV_SYMBOL_SETTINGS);
 }
 /// @brief This function gets the date time segments on settings, convert into int and set the date time on the RTC.
 void setDateTime(){
@@ -3040,11 +3046,11 @@ void wifi_apply(lv_event_t * e){
             // Get the password.
             strcpy(wifi_list[i].pass, lv_textarea_get_text(frm_wifi_simple_ta_pass));
             if(strcmp(wifi_list[i].pass, "") == 0){
-                Serial.println("Provide a password");
+                Serial.println((const char*)F("Provide a password"));
                 return;
             }
             // Set the title.
-            lv_label_set_text(frm_wifi_simple_title_lbl, "Connecting...");
+            lv_label_set_text(frm_wifi_simple_title_lbl, (const char*)F("Connecting..."));
             // Disconnect from previous network.
             WiFi.disconnect(true);
             // Set wifi mode to wireless client. 
@@ -3067,10 +3073,10 @@ void wifi_apply(lv_event_t * e){
             strcpy(wifi_list[i].login, lv_textarea_get_text(frm_wifi_login_ta_login));
             // Continue only if the fields are not empty.
             if(strcmp(wifi_list[i].pass, "") == 0 || strcmp(wifi_list[i].login, "") == 0){
-                Serial.println("Provide a login and passwod");
+                Serial.println((const char*)F("Provide a login and passwod"));
                 return;
             }
-            lv_label_set_text(frm_wifi_login_title_lbl, "Connecting...");
+            lv_label_set_text(frm_wifi_login_title_lbl, (const char*)F("Connecting..."));
             // Disconnect from previous connection.
             WiFi.disconnect(true);
             // Set the mode to wifi client.
@@ -3108,7 +3114,7 @@ void wifi_apply(lv_event_t * e){
                 delay(1000);
             }
         }else
-            Serial.println("auth type not implemented");
+            Serial.println((const char*)F("auth type not implemented"));
         
         if(WiFi.isConnected()){
             // Store the last wifi network connected index of the wifi_list.
@@ -3117,7 +3123,7 @@ void wifi_apply(lv_event_t * e){
             wifi_connected_nets.add(wifi_list[i]);
             // Save the list.
             wifi_connected_nets.save();
-            Serial.println("wifi network saved");
+            Serial.println((const char*)F("wifi network saved"));
             // In settings, on wifi tab there is a button with a wifi symbol, change the color to green.
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
             Serial.println(WiFi.localIP().toString());
@@ -3131,8 +3137,8 @@ void wifi_apply(lv_event_t * e){
             // Update the date and time through the internet.
             datetime();
         }else{
-            Serial.println("Connection failed");
-            lv_label_set_text(frm_wifi_connected_to_lbl, "Auth failed");
+            Serial.println((const char*)F("Connection failed"));
+            lv_label_set_text(frm_wifi_connected_to_lbl, (const char*)F("Auth failed"));
         }
     }
 }
@@ -3146,18 +3152,18 @@ void forget_net(lv_event_t * e){
     if(code == LV_EVENT_LONG_PRESSED){
         if(wifi_connected_nets.del(wifi_list[i].SSID)){ // If erased from the list.
             // Update the status.
-            lv_label_set_text(frm_wifi_connected_to_lbl, "forgoten");
-            Serial.println("SSID deleted from connected nets");
+            lv_label_set_text(frm_wifi_connected_to_lbl, (const char*)F("forgoten"));
+            Serial.println((const char*)F("SSID deleted from connected nets"));
             // Disconnect from it if so.
             WiFi.disconnect(true);
             // Change the wifi icon color on settings to black.
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
             // Save the list.
             if(wifi_connected_nets.save()){
-                Serial.println("connected nets list save failed");
+                Serial.println((const char*)F("connected nets list save failed"));
             }
         }else{
-            Serial.println("SSID not found in connected nets");
+            Serial.println((const char*)F("SSID not found in connected nets"));
         }
     }
 }
@@ -3168,7 +3174,7 @@ void wifi_select(lv_event_t * e){
     uint i = (int)lv_event_get_user_data(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
-        Serial.print("Connecting to ");
+        Serial.print((const char*)F("Connecting to "));
         Serial.println(wifi_list[i].SSID);
         Serial.println(wifi_list[i].RSSI);
         Serial.println(wifi_list[i].auth_type);
@@ -3214,9 +3220,9 @@ void wifi_scan_task(void * param){
     char rssi[5] = {'\0'};
     char ch[3] = {'\0'};
     lv_obj_t * btn = NULL;
-    Serial.print("scanning...");
+    Serial.print((const char*)F("scanning..."));
     
-    lv_label_set_text(frm_wifi_connected_to_lbl, "Scanning...");
+    lv_label_set_text(frm_wifi_connected_to_lbl, (const char*)F("Scanning..."));
     
     // We can scan for other networks even if connected to one.
     // Get the number of networks discovered.
@@ -3257,9 +3263,9 @@ void wifi_scan_task(void * param){
             
         }
     }
-    Serial.println("done");
+    Serial.println((const char*)F("done"));
     // Update the status message on scan.
-    lv_label_set_text(frm_wifi_connected_to_lbl, "Scan complete");
+    lv_label_set_text(frm_wifi_connected_to_lbl, (const char*)F("Scan complete"));
     // Delete the task.
     vTaskDelete(task_wifi_scan);
 }
@@ -3269,7 +3275,7 @@ void wifi_scan(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
-        xTaskCreatePinnedToCore(wifi_scan_task, "wifi_scan_task", 10000, NULL, 1, &task_wifi_scan, 1);
+        xTaskCreatePinnedToCore(wifi_scan_task, (const char*)F("wifi_scan_task"), 10000, NULL, 1, &task_wifi_scan, 1);
     }
 }
 /// @brief Verifies if is conected to a wifi and sets or remove a icon on the home screen.
@@ -3383,7 +3389,7 @@ void wifi_toggle(lv_event_t * e){
             WiFi.mode(WIFI_OFF);
             // Sets the color of the wifi symbol to white.
             lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
-            Serial.println("wifi off");
+            Serial.println((const char*)F("wifi off"));
         }
     }
 }
@@ -3398,18 +3404,18 @@ bool setupSD()
     if (SD.begin(BOARD_SDCARD_CS, SPI, 800000U)) {
         uint8_t cardType = SD.cardType();
         if (cardType == CARD_NONE) {
-            Serial.println("No SD_MMC card attached");
+            Serial.println((const char*)F("No SD_MMC card attached"));
             return false;
         } else {
-            Serial.print("SD_MMC Card Type: ");
+            Serial.print((const char*)F("SD_MMC Card Type: "));
             if (cardType == CARD_MMC) {
-                Serial.println("MMC");
+                Serial.println((const char*)F("MMC"));
             } else if (cardType == CARD_SD) {
-                Serial.println("SDSC");
+                Serial.println((const char*)F("SDSC"));
             } else if (cardType == CARD_SDHC) {
-                Serial.println("SDHC");
+                Serial.println((const char*)F("SDHC"));
             } else {
-                Serial.println("UNKNOWN");
+                Serial.println((const char*)F("UNKNOWN"));
             }
             uint32_t cardSize = SD.cardSize() / (1024 * 1024);
             uint32_t cardTotal = SD.totalBytes() / (1024 * 1024);
@@ -3430,7 +3436,7 @@ bool setupCoder() {
     Wire.beginTransmission(ES7210_ADDR);
     uint8_t error = Wire.endTransmission();
     if (error != 0) {
-        Serial.println("ES7210 address not found");
+        Serial.println((const char*)F("ES7210 address not found"));
         return false;
     }
 
@@ -3465,7 +3471,7 @@ void song(void * param) {
             digitalWrite(BOARD_POWERON, HIGH);
             audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
             audio.setVolume(10);
-            audio.connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3");
+            audio.connecttohost((const char*)F("0n-80s.radionetz.de:8000/0n-70s.mp3"));
             //audio.connecttospeech("Notification sent.", "us");
             while (audio.isRunning()) {
                 audio.loop();
@@ -3603,56 +3609,56 @@ void wifi_con_info(){
     char num[10] = {'\0'};
 
     if(WiFi.isConnected() && last_wifi_con < wifi_connected_nets.list.size()){
-        strcpy(buf, "SSID: ");
+        strcpy(buf, (const char*)F("SSID: "));
         strcat(buf, wifi_connected_nets.list[last_wifi_con].SSID);
         
         lv_label_set_text(frm_settings_wifi_ssid, buf);
         
-        strcpy(buf, "Auth: ");
+        strcpy(buf, (const char*)F("Auth: "));
         strcat(buf, wifi_auth_mode_to_str(wifi_connected_nets.list[last_wifi_con].auth_type));
         
         lv_label_set_text(frm_settings_wifi_auth, buf);
         
         itoa(wifi_connected_nets.list[last_wifi_con].ch, num, 10);
-        strcpy(buf, "Channel: ");
+        strcpy(buf, (const char*)F("Channel: "));
         strcat(buf, num);
         
         lv_label_set_text(frm_settings_wifi_ch, buf);
         
         itoa(WiFi.RSSI(last_wifi_con), num, 10);
-        strcpy(buf, "RSSI: ");
+        strcpy(buf, (const char*)F("RSSI: "));
         strcat(buf, num);
         
         lv_label_set_text(frm_settings_wifi_rssi, buf);
         
-        strcpy(buf, "MAC: ");
+        strcpy(buf, (const char*)F("MAC: "));
         strcat(buf, WiFi.macAddress().c_str());
         
         lv_label_set_text(frm_settings_wifi_mac, buf);
         
-        strcpy(buf, "IP: ");
+        strcpy(buf, (const char*)F("IP: "));
         strcat(buf, WiFi.localIP().toString().c_str());
         
         lv_label_set_text(frm_settings_wifi_ip, buf);
         
-        strcpy(buf, "Subnet: ");
+        strcpy(buf, (const char*)F("Subnet: "));
         strcat(buf, WiFi.subnetMask().toString().c_str());
         
         lv_label_set_text(frm_settings_wifi_mask, buf);
         
-        strcpy(buf, "Gateway: ");
+        strcpy(buf, (const char*)F("Gateway: "));
         strcat(buf, WiFi.gatewayIP().toString().c_str());
         
         lv_label_set_text(frm_settings_wifi_gateway, buf);
         
-        strcpy(buf, "DNS: ");
+        strcpy(buf, (const char*)F("DNS: "));
         strcat(buf, WiFi.dnsIP().toString().c_str());
         
         lv_label_set_text(frm_settings_wifi_dns, buf);
         
     }else{
         
-        lv_label_set_text(frm_settings_wifi_ssid, "Disconnected");
+        lv_label_set_text(frm_settings_wifi_ssid, (const char*)F("Disconnected"));
         lv_label_set_text(frm_settings_wifi_auth, "");
         lv_label_set_text(frm_settings_wifi_ch, "");
         lv_label_set_text(frm_settings_wifi_rssi, "");
@@ -3706,7 +3712,7 @@ void show_discovery_app(lv_event_t * e){
 }
 
 void show_ttt(lv_event_t * e){
-    ttt.showUI();
+    ttt->show();
 }
 
 /// @brief Function to initilize all lvgl objects.
@@ -3789,7 +3795,7 @@ void ui(){
     frm_home_time_lbl = lv_label_create(frm_home_frm_date_time);
     lv_obj_set_style_text_font(frm_home_time_lbl, &clocknum, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(frm_home_time_lbl, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_label_set_text(frm_home_time_lbl, "00:00");
+    lv_label_set_text(frm_home_time_lbl, (const char*)F("00:00"));
     lv_obj_align(frm_home_time_lbl, LV_ALIGN_TOP_MID, 0, 10);
 
     // Contacts button
@@ -3820,7 +3826,7 @@ void ui(){
     
     lbl_btn_test = lv_label_create(btn_test);
     lv_obj_set_style_text_font(lbl_btn_test, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_label_set_text(lbl_btn_test, "Ping");
+    lv_label_set_text(lbl_btn_test, (const char*)F("Ping"));
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_test, ping, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -3833,20 +3839,18 @@ void ui(){
 
     btn_nodes_lbl = lv_label_create(btn_nodes);
     lv_obj_set_style_text_font(btn_nodes_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_label_set_text(btn_nodes_lbl, "Nodes");
+    lv_label_set_text(btn_nodes_lbl, (const char*)F("Nodes"));
     lv_obj_align(btn_nodes_lbl, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_nodes, show_discovery_app, LV_EVENT_SHORT_CLICKED, NULL);
 
     // TICTACTOE button
-    ttt.initUI(lv_scr_act());
-    delay(2000);
     btn_ttt = lv_btn_create(frm_home);
     lv_obj_set_size(btn_ttt, 50, 20);
     lv_obj_align(btn_ttt, LV_ALIGN_BOTTOM_RIGHT, 0, -25);
 
     btn_ttt_lbl = lv_label_create(btn_ttt);
     lv_obj_set_style_text_font(btn_ttt_lbl, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_label_set_text(btn_ttt_lbl, "TTT");
+    lv_label_set_text(btn_ttt_lbl, (const char*)F("TTT"));
     lv_obj_align(btn_ttt_lbl, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_ttt, show_ttt, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -3869,7 +3873,7 @@ void ui(){
     lv_obj_align(frm_contacts_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
     
     frm_contacts_btn_title_lbl = lv_label_create(frm_contacts_btn_title);
-    lv_label_set_text(frm_contacts_btn_title_lbl, "Contacts");
+    lv_label_set_text(frm_contacts_btn_title_lbl, (const char*)F("Contacts"));
     lv_obj_set_align(frm_contacts_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
     // Close button
@@ -3878,7 +3882,7 @@ void ui(){
     lv_obj_align(frm_contacts_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
     //lv_obj_set_pos(btn_contacts, 10, -10);
     frm_contacts_btn_back_lbl = lv_label_create(frm_contacts_btn_back);
-    lv_label_set_text(frm_contacts_btn_back_lbl, "Back");
+    lv_label_set_text(frm_contacts_btn_back_lbl, (const char*)F("Back"));
     lv_obj_set_align(frm_contacts_btn_back_lbl, LV_ALIGN_CENTER);
     lv_obj_add_event_cb(frm_contacts_btn_back, hide_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -3906,7 +3910,7 @@ void ui(){
     lv_obj_align(frm_contacts_btn_add, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
     
     frm_contacts_btn_add_lbl = lv_label_create(frm_contacts_btn_add);
-    lv_label_set_text(frm_contacts_btn_add_lbl, "Add");
+    lv_label_set_text(frm_contacts_btn_add_lbl, (const char*)F("Add"));
     lv_obj_set_align(frm_contacts_btn_add_lbl, LV_ALIGN_CENTER);
     lv_obj_add_event_cb(frm_contacts_btn_add, show_add_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
 
@@ -3924,26 +3928,26 @@ void ui(){
     lv_obj_align(frm_add_contacts_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
 
     frm_add_contacts_btn_title_lbl = lv_label_create(frm_add_contacts_btn_title);
-    lv_label_set_text(frm_add_contacts_btn_title_lbl, "Add contact");
+    lv_label_set_text(frm_add_contacts_btn_title_lbl, (const char*)F("Add contact"));
     lv_obj_set_align(frm_add_contacts_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
     // id text input
     frm_add_contact_textarea_id = lv_textarea_create(frm_add_contact);
     lv_obj_set_size(frm_add_contact_textarea_id, 150, 30);
     lv_obj_align(frm_add_contact_textarea_id, LV_ALIGN_TOP_LEFT, 0, 25);
-    lv_textarea_set_placeholder_text(frm_add_contact_textarea_id, "ID");
+    lv_textarea_set_placeholder_text(frm_add_contact_textarea_id, (const char*)F("ID"));
 
     // name text input
     frm_add_contact_textarea_name = lv_textarea_create(frm_add_contact);
     lv_obj_set_size(frm_add_contact_textarea_name, 240, 30);
     lv_obj_align(frm_add_contact_textarea_name, LV_ALIGN_TOP_LEFT, 0, 60);
-    lv_textarea_set_placeholder_text(frm_add_contact_textarea_name, "Name");
+    lv_textarea_set_placeholder_text(frm_add_contact_textarea_name, (const char*)F("Name"));
 
     // Key text input
     frm_add_contact_textarea_key = lv_textarea_create(frm_add_contact);
     lv_obj_set_size(frm_add_contact_textarea_key, 240, 30);
     lv_obj_align(frm_add_contact_textarea_key, LV_ALIGN_TOP_LEFT, 0, 95);
-    lv_textarea_set_placeholder_text(frm_add_contact_textarea_key, "KEY");
+    lv_textarea_set_placeholder_text(frm_add_contact_textarea_key, (const char*)F("KEY"));
 
     // add button
     frm_add_contacts_btn_add = lv_btn_create(frm_add_contact);
@@ -3951,7 +3955,7 @@ void ui(){
     lv_obj_align(frm_add_contacts_btn_add, LV_ALIGN_BOTTOM_RIGHT, 15, 15);
 
     frm_add_contacts_btn_add_lbl = lv_label_create(frm_add_contacts_btn_add);
-    lv_label_set_text(frm_add_contacts_btn_add_lbl, "Add");
+    lv_label_set_text(frm_add_contacts_btn_add_lbl, (const char*)F("Add"));
     lv_obj_set_align(frm_add_contacts_btn_add_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_event_cb(frm_add_contacts_btn_add, add_contact, LV_EVENT_SHORT_CLICKED, NULL);
@@ -3962,7 +3966,7 @@ void ui(){
     lv_obj_align(btn_frm_add_contatcs_close, LV_ALIGN_TOP_RIGHT, 15, -15);
     
     lbl_btn_frm_add_contacts_close = lv_label_create(btn_frm_add_contatcs_close);
-    lv_label_set_text(lbl_btn_frm_add_contacts_close, "Back");
+    lv_label_set_text(lbl_btn_frm_add_contacts_close, (const char*)F("Back"));
     lv_obj_align(lbl_btn_frm_add_contacts_close, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_frm_add_contatcs_close, hide_add_contacts_frm, LV_EVENT_SHORT_CLICKED, NULL);
     
@@ -3980,7 +3984,7 @@ void ui(){
     lv_obj_align(frm_edit_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
 
     frm_edit_btn_title_lbl = lv_label_create(frm_edit_btn_title);
-    lv_label_set_text(frm_edit_btn_title_lbl, "Edit contact");
+    lv_label_set_text(frm_edit_btn_title_lbl, (const char*)F("Edit contact"));
     lv_obj_set_align(frm_edit_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
     // back button
@@ -3989,7 +3993,7 @@ void ui(){
     lv_obj_align(frm_edit_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
 
     frm_edit_btn_back_lbl = lv_label_create(frm_edit_btn_back);
-    lv_label_set_text(frm_edit_btn_back_lbl, "Back");
+    lv_label_set_text(frm_edit_btn_back_lbl, (const char*)F("Back"));
     lv_obj_set_align(frm_edit_btn_back_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_event_cb(frm_edit_btn_back, hide_edit_contacts, LV_EVENT_SHORT_CLICKED, NULL);
@@ -4001,26 +4005,26 @@ void ui(){
     lv_obj_add_event_cb(frm_edit_btn_del, del_contact, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_edit_btn_del_lbl = lv_label_create(frm_edit_btn_del);
-    lv_label_set_text(frm_edit_btn_del_lbl, "Del");
+    lv_label_set_text(frm_edit_btn_del_lbl, (const char*)F("Del"));
     lv_obj_set_align(frm_edit_btn_del_lbl, LV_ALIGN_CENTER);
 
     // ID text input
     frm_edit_text_ID = lv_textarea_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_text_ID, 150, 30);
     lv_obj_align(frm_edit_text_ID, LV_ALIGN_TOP_LEFT, 0, 25);
-    lv_textarea_set_placeholder_text(frm_edit_text_ID, "ID");
+    lv_textarea_set_placeholder_text(frm_edit_text_ID, (const char*)F("ID"));
 
     // Name text input
     frm_edit_text_name = lv_textarea_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_text_name, 240, 30);
     lv_obj_align(frm_edit_text_name, LV_ALIGN_TOP_LEFT, 0, 60);
-    lv_textarea_set_placeholder_text(frm_edit_text_name, "Name");
+    lv_textarea_set_placeholder_text(frm_edit_text_name, (const char*)F("Name"));
 
     // KEY text input
     frm_edit_text_key = lv_textarea_create(frm_edit_contacts);
     lv_obj_set_size(frm_edit_text_key, 240, 30);
     lv_obj_align(frm_edit_text_key, LV_ALIGN_TOP_LEFT, 0, 95);
-    lv_textarea_set_placeholder_text(frm_edit_text_key, "KEY");
+    lv_textarea_set_placeholder_text(frm_edit_text_key, (const char*)F("KEY"));
 
     lv_obj_add_flag(frm_edit_contacts, LV_OBJ_FLAG_HIDDEN);
 
@@ -4035,7 +4039,7 @@ void ui(){
     lv_obj_align(frm_chat_btn_title, LV_ALIGN_OUT_TOP_LEFT, -15, -15);
 
     frm_chat_btn_title_lbl = lv_label_create(frm_chat_btn_title);
-    lv_label_set_text(frm_chat_btn_title_lbl, "chat with ");
+    lv_label_set_text(frm_chat_btn_title_lbl, (const char*)F("chat with "));
     lv_obj_set_align(frm_chat_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
     //back button
@@ -4044,7 +4048,7 @@ void ui(){
     lv_obj_align(frm_chat_btn_back, LV_ALIGN_TOP_RIGHT, 15, -15);
 
     frm_chat_btn_back_lbl = lv_label_create(frm_chat_btn_back);
-    lv_label_set_text(frm_chat_btn_back_lbl, "Back");
+    lv_label_set_text(frm_chat_btn_back_lbl, (const char*)F("Back"));
     lv_obj_set_align(frm_chat_btn_back_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_event_cb(frm_chat_btn_back, hide_chat, LV_EVENT_SHORT_CLICKED, NULL);
@@ -4059,7 +4063,7 @@ void ui(){
     lv_obj_set_size(frm_chat_text_ans, 260, 50);
     lv_obj_align(frm_chat_text_ans, LV_ALIGN_BOTTOM_LEFT, -15, 15);
     lv_textarea_set_max_length(frm_chat_text_ans, 207);
-    lv_textarea_set_placeholder_text(frm_chat_text_ans, "Answer");
+    lv_textarea_set_placeholder_text(frm_chat_text_ans, (const char*)F("Answer"));
     lv_obj_set_style_text_font(frm_chat_text_ans, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     //send button
@@ -4069,7 +4073,7 @@ void ui(){
     lv_obj_add_event_cb(frm_chat_btn_send, send_message, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_chat_btn_send_lbl = lv_label_create(frm_chat_btn_send);
-    lv_label_set_text(frm_chat_btn_send_lbl, "Send");
+    lv_label_set_text(frm_chat_btn_send_lbl, (const char*)F("Send"));
     lv_obj_set_align(frm_chat_btn_send_lbl, LV_ALIGN_CENTER);
 
     //group the objects, the answer area will be almost on focus every time we send a msg
@@ -4142,7 +4146,7 @@ void ui(){
     frm_settings_name = lv_textarea_create(frm_settings_obj_id);
     lv_textarea_set_one_line(frm_settings_name, true);
     lv_obj_set_size(frm_settings_name, 180, 30);
-    lv_textarea_set_placeholder_text(frm_settings_name, "Name");
+    lv_textarea_set_placeholder_text(frm_settings_name, (const char*)F("Name"));
     lv_obj_align(frm_settings_name, LV_ALIGN_OUT_TOP_LEFT, 0, -10);
 
     // ID
@@ -4150,7 +4154,7 @@ void ui(){
     lv_textarea_set_one_line(frm_settings_id, true);
     lv_obj_set_size(frm_settings_id, 90, 30);
     lv_textarea_set_max_length(frm_settings_id, 6);
-    lv_textarea_set_placeholder_text(frm_settings_id, "ID");
+    lv_textarea_set_placeholder_text(frm_settings_id, (const char*)F("ID"));
     lv_obj_align(frm_settings_id, LV_ALIGN_TOP_LEFT, 0, 20);
 
     //Generate button
@@ -4160,7 +4164,7 @@ void ui(){
     lv_obj_add_event_cb(frm_settings_btn_generate, generateID, LV_EVENT_SHORT_CLICKED, (void*)6);
 
     frm_settings_btn_generate_lbl = lv_label_create(frm_settings_btn_generate);
-    lv_label_set_text(frm_settings_btn_generate_lbl, "Generate");
+    lv_label_set_text(frm_settings_btn_generate_lbl, (const char*)F("Generate"));
     lv_obj_set_align(frm_settings_btn_generate_lbl, LV_ALIGN_CENTER);
 
     // Key text area
@@ -4168,7 +4172,7 @@ void ui(){
     lv_textarea_set_one_line(frm_settings_key, true);
     lv_obj_set_size(frm_settings_key, 180, 30);
     lv_textarea_set_max_length(frm_settings_key, 16);
-    lv_textarea_set_placeholder_text(frm_settings_key, "KEY");
+    lv_textarea_set_placeholder_text(frm_settings_key, (const char*)F("KEY"));
     lv_obj_align(frm_settings_key, LV_ALIGN_TOP_LEFT, 0, 50);
 
     // Generate key button
@@ -4178,12 +4182,12 @@ void ui(){
     lv_obj_add_event_cb(frm_settings_btn_generate_key, generateKEY, LV_EVENT_SHORT_CLICKED, (void*)16);
 
     frm_settings_btn_generate_key_lbl = lv_label_create(frm_settings_btn_generate_key);
-    lv_label_set_text(frm_settings_btn_generate_key_lbl, "Generate");
+    lv_label_set_text(frm_settings_btn_generate_key_lbl, (const char*)F("Generate"));
     lv_obj_set_align(frm_settings_btn_generate_key_lbl, LV_ALIGN_CENTER);
 
     // Admin password
     frm_settings_admin_password = lv_textarea_create(frm_settings_obj_id);
-    lv_textarea_set_placeholder_text(frm_settings_admin_password, "adm pass");
+    lv_textarea_set_placeholder_text(frm_settings_admin_password, (const char*)F("adm pass"));
     lv_textarea_set_text(frm_settings_admin_password, http_admin_pass);
     lv_textarea_set_max_length(frm_settings_admin_password, 40);
     lv_obj_set_size(frm_settings_admin_password, 180, 30);
@@ -4205,7 +4209,7 @@ void ui(){
     lv_obj_add_event_cb(frm_settings_switch_dx, DX, LV_EVENT_VALUE_CHANGED, NULL);
 
     frm_settings_switch_dx_lbl = lv_label_create(frm_settings_obj_dx);
-    lv_label_set_text(frm_settings_switch_dx_lbl, "DX");
+    lv_label_set_text(frm_settings_switch_dx_lbl, (const char*)F("DX"));
     lv_obj_align(frm_settings_switch_dx_lbl, LV_ALIGN_TOP_LEFT, 0, -5);
 
     //wifi section
@@ -4235,7 +4239,7 @@ void ui(){
     lv_obj_add_event_cb(frm_settings_btn_wifi_conf, show_wifi, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_settings_btn_wifi_conf_lbl = lv_label_create(frm_settings_btn_wifi_conf);
-    lv_label_set_text(frm_settings_btn_wifi_conf_lbl, "Configure");
+    lv_label_set_text(frm_settings_btn_wifi_conf_lbl, (const char*)F("Configure"));
     lv_obj_set_align(frm_settings_btn_wifi_conf_lbl, LV_ALIGN_CENTER);
 
     //Http server status button
@@ -4245,44 +4249,44 @@ void ui(){
     lv_obj_add_flag(frm_settings_wifi_http_btn, LV_OBJ_FLAG_HIDDEN);
 
     frm_settings_wifi_http_label = lv_label_create(frm_settings_wifi_http_btn);
-    lv_label_set_text(frm_settings_wifi_http_label, "https");
+    lv_label_set_text(frm_settings_wifi_http_label, (const char*)F("https"));
     lv_obj_set_align(frm_settings_wifi_http_label, LV_ALIGN_CENTER);
 
     //wifi info
     frm_settings_wifi_ssid = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_ssid, "SSID: ");
+    lv_label_set_text(frm_settings_wifi_ssid, (const char*)F("SSID: "));
     lv_obj_align(frm_settings_wifi_ssid, LV_ALIGN_TOP_LEFT, 0, 30);
 
     frm_settings_wifi_auth = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_auth, "auth: ");
+    lv_label_set_text(frm_settings_wifi_auth, (const char*)F("auth: "));
     lv_obj_align(frm_settings_wifi_auth, LV_ALIGN_TOP_LEFT, 0, 50);
 
     frm_settings_wifi_ch = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_ch, "Channel: ");
+    lv_label_set_text(frm_settings_wifi_ch, (const char*)F("Channel: "));
     lv_obj_align(frm_settings_wifi_ch, LV_ALIGN_TOP_LEFT, 0, 70);
 
     frm_settings_wifi_rssi = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_rssi, "RSSI: ");
+    lv_label_set_text(frm_settings_wifi_rssi, (const char*)F("RSSI: "));
     lv_obj_align(frm_settings_wifi_rssi, LV_ALIGN_TOP_LEFT, 0, 90);
 
     frm_settings_wifi_mac = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_mac, "Mac: ");
+    lv_label_set_text(frm_settings_wifi_mac, (const char*)F("Mac: "));
     lv_obj_align(frm_settings_wifi_mac, LV_ALIGN_TOP_LEFT, 0, 110);
 
     frm_settings_wifi_ip = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_ip, "IP: ");
+    lv_label_set_text(frm_settings_wifi_ip, (const char*)F("IP: "));
     lv_obj_align(frm_settings_wifi_ip, LV_ALIGN_TOP_LEFT, 0, 130);
 
     frm_settings_wifi_mask = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_mask, "Mask: ");
+    lv_label_set_text(frm_settings_wifi_mask, (const char*)F("Mask: "));
     lv_obj_align(frm_settings_wifi_mask, LV_ALIGN_TOP_LEFT, 0, 150);
 
     frm_settings_wifi_gateway = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_gateway, "gateway: ");
+    lv_label_set_text(frm_settings_wifi_gateway, (const char*)F("gateway: "));
     lv_obj_align(frm_settings_wifi_gateway, LV_ALIGN_TOP_LEFT, 0, 170);
 
     frm_settings_wifi_dns = lv_label_create(frm_settings_obj_wifi);
-    lv_label_set_text(frm_settings_wifi_dns, "DNS: ");
+    lv_label_set_text(frm_settings_wifi_dns, (const char*)F("DNS: "));
     lv_obj_align(frm_settings_wifi_dns, LV_ALIGN_TOP_LEFT, 0, 190);
 
     //date section
@@ -4298,53 +4302,53 @@ void ui(){
 
     //date label
     frm_settings_date_lbl = lv_label_create(frm_settings_obj_date);
-    lv_label_set_text(frm_settings_date_lbl, "Date");
+    lv_label_set_text(frm_settings_date_lbl, (const char*)F("Date"));
     lv_obj_align(frm_settings_date_lbl, LV_ALIGN_TOP_LEFT, 0, -5);
 
     //day
     frm_settings_day = lv_textarea_create(frm_settings_obj_date);
     lv_obj_set_size(frm_settings_day, 60, 30);
     lv_obj_align(frm_settings_day, LV_ALIGN_TOP_LEFT, 0, 20);
-    lv_textarea_set_accepted_chars(frm_settings_day, "1234567890");
+    lv_textarea_set_accepted_chars(frm_settings_day, (const char*)F("1234567890"));
     lv_textarea_set_max_length(frm_settings_day, 2);
-    lv_textarea_set_placeholder_text(frm_settings_day, "dd");
+    lv_textarea_set_placeholder_text(frm_settings_day, (const char*)F("dd"));
 
     //month
     frm_settings_month = lv_textarea_create(frm_settings_obj_date);
     lv_obj_set_size(frm_settings_month, 60, 30);
     lv_obj_align(frm_settings_month, LV_ALIGN_TOP_LEFT, 60, 20);
-    lv_textarea_set_accepted_chars(frm_settings_month, "1234567890");
+    lv_textarea_set_accepted_chars(frm_settings_month, (const char*)F("1234567890"));
     lv_textarea_set_max_length(frm_settings_month, 2);
-    lv_textarea_set_placeholder_text(frm_settings_month, "mm");
+    lv_textarea_set_placeholder_text(frm_settings_month, (const char*)F("mm"));
 
     //year
     frm_settings_year = lv_textarea_create(frm_settings_obj_date);
     lv_obj_set_size(frm_settings_year, 60, 30);
     lv_obj_align(frm_settings_year, LV_ALIGN_TOP_LEFT, 120, 20);
-    lv_textarea_set_accepted_chars(frm_settings_year, "1234567890");
+    lv_textarea_set_accepted_chars(frm_settings_year, (const char*)F("1234567890"));
     lv_textarea_set_max_length(frm_settings_year, 4);
-    lv_textarea_set_placeholder_text(frm_settings_year, "yyyy");
+    lv_textarea_set_placeholder_text(frm_settings_year, (const char*)F("yyyy"));
 
     //time label
     frm_settings_time_lbl = lv_label_create(frm_settings_obj_date);
-    lv_label_set_text(frm_settings_time_lbl, "Time");
+    lv_label_set_text(frm_settings_time_lbl, (const char*)F("Time"));
     lv_obj_align(frm_settings_time_lbl, LV_ALIGN_TOP_LEFT, 0, 60);
 
     //hour
     frm_settings_hour = lv_textarea_create(frm_settings_obj_date);
     lv_obj_set_size(frm_settings_hour, 60, 30);
     lv_obj_align(frm_settings_hour, LV_ALIGN_TOP_LEFT, 0, 80);
-    lv_textarea_set_accepted_chars(frm_settings_hour, "1234567890");
+    lv_textarea_set_accepted_chars(frm_settings_hour, (const char*)F("1234567890"));
     lv_textarea_set_max_length(frm_settings_hour, 2);
-    lv_textarea_set_placeholder_text(frm_settings_hour, "hh");
+    lv_textarea_set_placeholder_text(frm_settings_hour, (const char*)F("hh"));
 
     //minute
     frm_settings_minute = lv_textarea_create(frm_settings_obj_date);
     lv_obj_set_size(frm_settings_minute, 60, 30);
     lv_obj_align(frm_settings_minute, LV_ALIGN_TOP_LEFT, 60, 80);
-    lv_textarea_set_accepted_chars(frm_settings_minute, "1234567890");
+    lv_textarea_set_accepted_chars(frm_settings_minute, (const char*)F("1234567890"));
     lv_textarea_set_max_length(frm_settings_minute, 2);
-    lv_textarea_set_placeholder_text(frm_settings_minute, "mm");
+    lv_textarea_set_placeholder_text(frm_settings_minute, (const char*)F("mm"));
 
     // setDate button
     frm_settings_btn_setDate = lv_btn_create(frm_settings_obj_date);
@@ -4354,12 +4358,12 @@ void ui(){
 
     //setDate label
     frm_settings_btn_setDate_lbl = lv_label_create(frm_settings_btn_setDate);
-    lv_label_set_text(frm_settings_btn_setDate_lbl, "Set");
+    lv_label_set_text(frm_settings_btn_setDate_lbl, (const char*)F("Set"));
     lv_obj_set_align(frm_settings_btn_setDate_lbl, LV_ALIGN_CENTER);
 
     // Time zone list
     frm_settings_timezone = lv_dropdown_create(frm_settings_obj_date);
-    lv_dropdown_set_text(frm_settings_timezone, "Time zone");
+    lv_dropdown_set_text(frm_settings_timezone, (const char*)F("Time zone"));
     lv_dropdown_set_options(frm_settings_timezone, "(GMT-11:00)\n"
                                                     "(GMT-10:00)\n"
                                                     "(GMT-09:00)\n"
@@ -4395,7 +4399,7 @@ void ui(){
 
     // color label
     frm_settings_btn_color_lbl = lv_label_create(frm_settings_obj_ui);
-    lv_label_set_text(frm_settings_btn_color_lbl, "UI color");
+    lv_label_set_text(frm_settings_btn_color_lbl, (const char*)F("UI color"));
     lv_obj_align(frm_settings_btn_color_lbl, LV_ALIGN_TOP_LEFT, 0, 5);
     
     //color 
@@ -4403,7 +4407,7 @@ void ui(){
     lv_obj_set_size(frm_settings_color , 100, 30);
     lv_obj_align(frm_settings_color, LV_ALIGN_TOP_LEFT, 60, 0);
     lv_textarea_set_max_length(frm_settings_color, 6);
-    lv_textarea_set_accepted_chars(frm_settings_color, "abcdefABCDEF1234567890");
+    lv_textarea_set_accepted_chars(frm_settings_color, (const char*)F("abcdefABCDEF1234567890"));
 
     //apply color button
     frm_settings_btn_applycolor = lv_btn_create(frm_settings_obj_ui);
@@ -4413,7 +4417,7 @@ void ui(){
 
     // apply color label
     frm_settings_btn_applycolor_lbl = lv_label_create(frm_settings_btn_applycolor);
-    lv_label_set_text(frm_settings_btn_applycolor_lbl, "Apply");
+    lv_label_set_text(frm_settings_btn_applycolor_lbl, (const char*)F("Apply"));
     lv_obj_set_align(frm_settings_btn_applycolor_lbl, LV_ALIGN_CENTER);
 
     //brightness section
@@ -4447,27 +4451,27 @@ void ui(){
 
     //root page
     frm_settings_root_section;
-    frm_settings_root_page = lv_menu_page_create(frm_settings_menu, (char*)"Settings");
+    frm_settings_root_page = lv_menu_page_create(frm_settings_menu, ( char*)F("Settings"));
     lv_obj_set_style_pad_hor(frm_settings_root_page, lv_obj_get_style_pad_left(lv_menu_get_main_header(frm_settings_menu), 0), 0);
     frm_settings_root_section = lv_menu_section_create(frm_settings_root_page);
     lv_obj_add_event_cb(frm_settings_root_page, hide_settings, LV_EVENT_SHORT_CLICKED, NULL);
     
-    frm_settings_context = create_text(frm_settings_root_page, NULL, "ID", LV_MENU_ITEM_BUILDER_VARIANT_1);
+    frm_settings_context = create_text(frm_settings_root_page, NULL, (const char*)F("ID"), LV_MENU_ITEM_BUILDER_VARIANT_1);
     lv_menu_set_load_page_event(frm_settings_menu, frm_settings_context, frm_settings_id_page);
     
-    frm_settings_context = create_text(frm_settings_root_page, NULL, "Date", LV_MENU_ITEM_BUILDER_VARIANT_1);
+    frm_settings_context = create_text(frm_settings_root_page, NULL, (const char*)F("Date"), LV_MENU_ITEM_BUILDER_VARIANT_1);
     lv_menu_set_load_page_event(frm_settings_menu, frm_settings_context, frm_settings_date_page);
 
-    frm_settings_context = create_text(frm_settings_root_page, NULL, "DX", LV_MENU_ITEM_BUILDER_VARIANT_1);
+    frm_settings_context = create_text(frm_settings_root_page, NULL, (const char*)F("DX"), LV_MENU_ITEM_BUILDER_VARIANT_1);
     lv_menu_set_load_page_event(frm_settings_menu, frm_settings_context, frm_settings_dx_page);
 
-    frm_settings_context = create_text(frm_settings_root_page, NULL, "Wifi", LV_MENU_ITEM_BUILDER_VARIANT_1);
+    frm_settings_context = create_text(frm_settings_root_page, NULL, (const char*)F("Wifi"), LV_MENU_ITEM_BUILDER_VARIANT_1);
     lv_menu_set_load_page_event(frm_settings_menu, frm_settings_context, frm_settings_wifi_page);
 
-    frm_settings_context = create_text(frm_settings_root_page, NULL, "UI", LV_MENU_ITEM_BUILDER_VARIANT_1);
+    frm_settings_context = create_text(frm_settings_root_page, NULL, (const char*)F("UI"), LV_MENU_ITEM_BUILDER_VARIANT_1);
     lv_menu_set_load_page_event(frm_settings_menu, frm_settings_context, frm_settings_ui_page);
 
-    frm_settings_context = create_text(frm_settings_root_page, NULL, "Brightness", LV_MENU_ITEM_BUILDER_VARIANT_1);
+    frm_settings_context = create_text(frm_settings_root_page, NULL, (const char*)F("Brightness"), LV_MENU_ITEM_BUILDER_VARIANT_1);
     lv_menu_set_load_page_event(frm_settings_menu, frm_settings_context, frm_settings_brightness_page);
 
     lv_menu_set_sidebar_page(frm_settings_menu, frm_settings_root_page);
@@ -4509,7 +4513,7 @@ void ui(){
     lv_obj_align(frm_wifi_btn_title, LV_ALIGN_TOP_LEFT, -15, -15);
 
     frm_wifi_btn_title_lbl = lv_label_create(frm_wifi_btn_title);
-    lv_label_set_text(frm_wifi_btn_title_lbl, "WiFi Networks");
+    lv_label_set_text(frm_wifi_btn_title_lbl, (const char*)F("WiFi Networks"));
     lv_obj_set_align(frm_wifi_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
     /*back button*/
@@ -4519,7 +4523,7 @@ void ui(){
     lv_obj_add_event_cb(frm_wifi_btn_back, hide_wifi, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_wifi_btn_back_lbl = lv_label_create(frm_wifi_btn_back);
-    lv_label_set_text(frm_wifi_btn_back_lbl, "Back");
+    lv_label_set_text(frm_wifi_btn_back_lbl, (const char*)F("Back"));
     lv_obj_set_align(frm_wifi_btn_back_lbl, LV_ALIGN_CENTER);
 
     /*scan button*/
@@ -4529,7 +4533,7 @@ void ui(){
     lv_obj_add_event_cb(frm_wifi_btn_scan, wifi_scan, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_wifi_btn_scan_lbl = lv_label_create(frm_wifi_btn_scan);
-    lv_label_set_text(frm_wifi_btn_scan_lbl, "Scan");
+    lv_label_set_text(frm_wifi_btn_scan_lbl, (const char*)F("Scan"));
     lv_obj_set_align(frm_wifi_btn_scan_lbl, LV_ALIGN_CENTER);
 
     /*list*/
@@ -4555,13 +4559,13 @@ void ui(){
     frm_wifi_simple_title_lbl = lv_label_create(frm_wifi_simple);
     lv_obj_align(frm_wifi_simple_title_lbl, LV_ALIGN_TOP_MID, -10, -10);
     lv_label_set_long_mode(frm_wifi_simple_title_lbl, LV_LABEL_LONG_SCROLL);
-    lv_label_set_text(frm_wifi_simple_title_lbl, "Connect to network");
+    lv_label_set_text(frm_wifi_simple_title_lbl, (const char*)F("Connect to network"));
 
     // password
     frm_wifi_simple_ta_pass = lv_textarea_create(frm_wifi_simple);
     lv_obj_set_size(frm_wifi_simple_ta_pass, 180, 30);
     lv_obj_align(frm_wifi_simple_ta_pass, LV_ALIGN_OUT_TOP_MID, -10, 20);
-    lv_textarea_set_placeholder_text(frm_wifi_simple_ta_pass, "password");
+    lv_textarea_set_placeholder_text(frm_wifi_simple_ta_pass, (const char*)F("password"));
     lv_textarea_set_password_mode(frm_wifi_simple_ta_pass, true);
 
     // see button
@@ -4581,7 +4585,7 @@ void ui(){
     lv_obj_align(frm_wifi_simple_btn_connect, LV_ALIGN_OUT_TOP_LEFT, -10, 60);
 
     frm_wifi_simple_btn_connect_lbl = lv_label_create(frm_wifi_simple_btn_connect);
-    lv_label_set_text(frm_wifi_simple_btn_connect_lbl, "Connect");
+    lv_label_set_text(frm_wifi_simple_btn_connect_lbl, (const char*)F("Connect"));
     lv_obj_set_align(frm_wifi_simple_btn_connect_lbl, LV_ALIGN_CENTER);
 
     //back button
@@ -4591,7 +4595,7 @@ void ui(){
     lv_obj_add_event_cb(frm_wifi_simple_btn_back, hide_simple, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_wifi_simple_btn_back_lbl = lv_label_create(frm_wifi_simple_btn_back);
-    lv_label_set_text(frm_wifi_simple_btn_back_lbl, "Back");
+    lv_label_set_text(frm_wifi_simple_btn_back_lbl, (const char*)F("Back"));
     lv_obj_set_align(frm_wifi_simple_btn_back_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_flag(frm_wifi_simple, LV_OBJ_FLAG_HIDDEN);
@@ -4606,19 +4610,19 @@ void ui(){
     frm_wifi_login_title_lbl = lv_label_create(frm_wifi_login);
     lv_obj_align(frm_wifi_login_title_lbl, LV_ALIGN_TOP_MID, -10, -10);
     lv_label_set_long_mode(frm_wifi_login_title_lbl, LV_LABEL_LONG_SCROLL);
-    lv_label_set_text(frm_wifi_login_title_lbl, "Connect to network");
+    lv_label_set_text(frm_wifi_login_title_lbl, (const char*)F("Connect to network"));
 
     // login
     frm_wifi_login_ta_login = lv_textarea_create(frm_wifi_login);
     lv_obj_set_size(frm_wifi_login_ta_login, 180, 30);
     lv_obj_align(frm_wifi_login_ta_login, LV_ALIGN_OUT_TOP_MID, -10, 20);
-    lv_textarea_set_placeholder_text(frm_wifi_login_ta_login, "login");
+    lv_textarea_set_placeholder_text(frm_wifi_login_ta_login, (const char*)F("login"));
 
     // password
     frm_wifi_login_ta_pass = lv_textarea_create(frm_wifi_login);
     lv_obj_set_size(frm_wifi_login_ta_pass, 180, 30);
     lv_obj_align(frm_wifi_login_ta_pass, LV_ALIGN_OUT_TOP_MID, -10, 50);
-    lv_textarea_set_placeholder_text(frm_wifi_login_ta_pass, "password");
+    lv_textarea_set_placeholder_text(frm_wifi_login_ta_pass, (const char*)F("password"));
     lv_textarea_set_password_mode(frm_wifi_login_ta_pass, true);
 
     // see button
@@ -4638,7 +4642,7 @@ void ui(){
     lv_obj_align(frm_wifi_login_btn_connect, LV_ALIGN_OUT_TOP_LEFT, -10, 90);
 
     frm_wifi_login_btn_connect_lbl = lv_label_create(frm_wifi_login_btn_connect);
-    lv_label_set_text(frm_wifi_login_btn_connect_lbl, "Connect");
+    lv_label_set_text(frm_wifi_login_btn_connect_lbl, (const char*)F("Connect"));
     lv_obj_set_align(frm_wifi_login_btn_connect_lbl, LV_ALIGN_CENTER);
 
     //back button
@@ -4648,7 +4652,7 @@ void ui(){
     lv_obj_add_event_cb(frm_wifi_login_btn_back, hide_wifi_login, LV_EVENT_SHORT_CLICKED, NULL);
 
     frm_wifi_login_btn_back_lbl = lv_label_create(frm_wifi_login_btn_back);
-    lv_label_set_text(frm_wifi_login_btn_back_lbl, "Back");
+    lv_label_set_text(frm_wifi_login_btn_back_lbl, (const char*)F("Back"));
     lv_obj_set_align(frm_wifi_login_btn_back_lbl, LV_ALIGN_CENTER);
 
     lv_obj_add_flag(frm_wifi_login, LV_OBJ_FLAG_HIDDEN);
@@ -4669,15 +4673,15 @@ void datetime(){
         if(sntp_enabled())
             sntp_stop();
         sntp_setoperatingmode(SNTP_OPMODE_POLL);
-        sntp_setservername(0, "pool.ntp.org");
+        sntp_setservername(0, (const char*)F("pool.ntp.org"));
         sntp_init();
         setenv("TZ", time_zone, 1);
         tzset();
         if(!getLocalTime(&timeinfo)){
-            Serial.println("Failed to obtain time info");
+            Serial.println((const char*)F("Failed to obtain time info"));
             return;
         }
-        Serial.println("Got time from NTP");
+        Serial.println((const char*)F("Got time from NTP"));
         
         
         Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S zone %Z %z ");
@@ -4688,7 +4692,7 @@ void datetime(){
         lv_label_set_text(frm_home_date_lbl, date);
         
     }else
-        Serial.println("Connect to a WiFi network to update the time and date");
+        Serial.println((const char*)F("Connect to a WiFi network to update the time and date"));
 }
 /// @brief Function to return a string representation of the auth mode code used by wifi.
 /// @param auth_mode 
@@ -4696,27 +4700,27 @@ void datetime(){
 const char * wifi_auth_mode_to_str(wifi_auth_mode_t auth_mode){
     switch(auth_mode){
         case WIFI_AUTH_OPEN:
-            return "OPEN";
+            return (const char*)F("OPEN");
         case WIFI_AUTH_WEP:
-            return "WEP";
+            return (const char*)F("WEP");
         case WIFI_AUTH_WPA_PSK:
-            return "WPA PSK";
+            return (const char*)F("WPA PSK");
         case WIFI_AUTH_WPA2_PSK:
-            return "WPA2 PSK";
+            return (const char*)F("WPA2 PSK");
         case WIFI_AUTH_WPA_WPA2_PSK:
-            return "WPA WPA2 PSK";
+            return (const char*)F("WPA WPA2 PSK");
         case WIFI_AUTH_WPA2_ENTERPRISE:
-            return "WPA2 ENTERPRISE";
+            return (const char*)F("WPA2 ENTERPRISE");
         case WIFI_AUTH_WPA3_PSK:
-            return "WPA3 PSK";
+            return (const char*)F("WPA3 PSK");
         case WIFI_AUTH_WPA2_WPA3_PSK:
-            return "WPA2 WPA3 PSK";
+            return (const char*)F("WPA2 WPA3 PSK");
         case WIFI_AUTH_WAPI_PSK:
-            return "WAPI PSK";
+            return (const char*)F("WAPI PSK");
         case WIFI_AUTH_MAX:
-            return "MAX";
+            return (const char*)F("MAX");
     }
-    return "unknown";
+    return (const char*)F("unknown");
 }
 
 void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info){
@@ -4746,9 +4750,9 @@ void wifi_auto_connect(void * param){
     // Only proceed if we have at least a network on history.
     if(wifi_connected_nets.list.size() != 0){
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        Serial.print("Searching for wifi connections...");
+        Serial.print((const char*)F("Searching for wifi connections..."));
         // Shows on notify area on home screen.
-        lv_label_set_text(frm_home_title_lbl, "Searching for wifi connections...");
+        lv_label_set_text(frm_home_title_lbl, (const char*)F("Searching for wifi connections..."));
         lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
         // Disconnect from network if it is.
         WiFi.disconnect(true);
@@ -4763,13 +4767,13 @@ void wifi_auto_connect(void * param){
                 list.push_back(wi);
             }
         else{
-            Serial.println("No wifi networks found");
-            lv_label_set_text(frm_home_title_lbl, "No wifi networks found");
+            Serial.println((const char*)F("No wifi networks found"));
+            lv_label_set_text(frm_home_title_lbl, (const char*)F("No wifi networks found"));
             lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
         }
-        Serial.println("done");
+        Serial.println((const char*)F("done"));
         
-        lv_label_set_text(frm_home_title_lbl, "done");
+        lv_label_set_text(frm_home_title_lbl, (const char*)F("done"));
         lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         // Search in history for a wifi network connected previously.
@@ -4778,9 +4782,9 @@ void wifi_auto_connect(void * param){
                 for(uint32_t j = 0; j < list.size(); j++){
                     if(strcmp(wifi_connected_nets.list[i].SSID, list[j].SSID) == 0){ // We found one.
                         // Notify the user the attempt connection.
-                        Serial.print("Connecting to ");
+                        Serial.print((const char*)F("Connecting to "));
                         Serial.print(wifi_connected_nets.list[i].SSID);
-                        strcpy(a, "Connecting to ");
+                        strcpy(a, (const char*)F("Connecting to "));
                         strcat(a, wifi_connected_nets.list[i].SSID);
                         lv_label_set_text(frm_home_title_lbl, a);
                         // Choose the apropriate auth method.
@@ -4841,7 +4845,7 @@ void wifi_auto_connect(void * param){
 
             if(WiFi.isConnected()){
                 // Update the notification area on home screen.
-                lv_label_set_text(frm_home_title_lbl, "connected");
+                lv_label_set_text(frm_home_title_lbl, (const char*)F("connected"));
                 lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
                 // Change the color of the wifi icon on settings to green.
                 lv_obj_set_style_text_color(frm_settings_btn_wifi_lbl, lv_color_hex(0x00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -4863,8 +4867,8 @@ void wifi_auto_connect(void * param){
                 }
             }else{
                 // If fails, notify the user and turn off the wifi transceiver.
-                Serial.println("disconnected");
-                lv_label_set_text(frm_home_title_lbl, "disconnected");
+                Serial.println((const char*)F("disconnected"));
+                lv_label_set_text(frm_home_title_lbl, (const char*)F("disconnected"));
                 lv_label_set_text(frm_home_symbol_lbl, LV_SYMBOL_WIFI);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
                 lv_label_set_text(frm_home_title_lbl, "");
@@ -4887,7 +4891,7 @@ void announce(){
     //Serial.println("==============announcement=============");
     strcpy(hi.id, generate_ID(6).c_str());
     strcpy(hi.sender, user_id);
-    strcpy(hi.status, "show");
+    strcpy(hi.status, (const char*)F("show"));
     hi.type = LORA_PKT_ANNOUNCE;
     //Serial.printf("creating announcement packet ID %s\n", hi.id);
     if(!transmit_pkt_list.hasType(LORA_PKT_ANNOUNCE)){
@@ -4921,37 +4925,37 @@ void setup_sound(){
 }
 
 void play_packet_received(){
-    if(SPIFFS.exists("/packet_received.mp3")){
-        audio.connecttoFS(SPIFFS, "/packet_received.mp3");
+    if(SPIFFS.exists((const char*)F("/packet_received.mp3"))){
+        audio.connecttoFS(SPIFFS, (const char*)F("/packet_received.mp3"));
         while(audio.isRunning()){
             audio.loop();
             delay(5);
         }
     }else
-        Serial.println("packet_received.mp3 not found");
+        Serial.println((const char*)F("packet_received.mp3 not found"));
 }
 
 void play_message_received(){
-    if(SPIFFS.exists("/comp_up.mp3")){
-        audio.connecttoFS(SPIFFS, "comp_up.mp3");
+    if(SPIFFS.exists((const char*)F("/comp_up.mp3"))){
+        audio.connecttoFS(SPIFFS, (const char*)F("comp_up.mp3"));
         while(audio.isRunning()){
             audio.loop();
             delay(5);
         }
     }else
-        Serial.println("comp_up.mp3 not found");
+        Serial.println((const char*)F("comp_up.mp3 not found"));
 }
 
 /// @brief Load the contacts list.
 static void load_ttt_contacts(){
     if(!SPIFFS.begin(true)){
-        Serial.println("failed mounting SPIFFS");
+        Serial.println((const char*)F("failed mounting SPIFFS"));
         return;
     }
 
-    fs::File file = SPIFFS.open("/contacts", FILE_READ);
+    fs::File file = SPIFFS.open((const char*)F("/contacts"), FILE_READ);
     if(!file){
-        Serial.println("contacts file problem");
+        Serial.println((const char*)F("contacts file problem"));
         return;
     }
     
@@ -4966,7 +4970,7 @@ static void load_ttt_contacts(){
         v[index].remove(v[index].length() - 1);
     }
 
-    Serial.println("Loading TTT contacts...");
+    Serial.println((const char*)F("Loading TTT contacts..."));
     Contact c;
     for(uint32_t index = 0; index < v.size(); index += 3){
         c.setName(v[index]);
@@ -4979,10 +4983,10 @@ static void load_ttt_contacts(){
         ttt_player p;
         strcpy(p.id, v[index + 1].c_str());
         strcpy(p.name, v[index].c_str());
-        ttt.add_player(p);
+        ttt->add_player(p);
     }
     Serial.print(contacts_list.size());
-    Serial.println(" contacts found");
+    Serial.println((const char*)F(" contacts found"));
 }
 
 /// @brief T-Deck's initial setup function.
@@ -4993,7 +4997,7 @@ void setup(){
     //srand((timea.tv_sec * 1000) + (timea.tv_sec / 1000));
 
     if(!SPIFFS.begin(true)){
-        Serial.println("failed mounting SPIFFS");
+        Serial.println((const char*)F("failed mounting SPIFFS"));
     }
     bool ret = false;
     Serial.begin(115200);
@@ -5007,9 +5011,9 @@ void setup(){
 
     //load connected wifi networks.
     if(wifi_connected_nets.load())
-        Serial.println("wifi networks loaded");
+        Serial.println((const char*)F("wifi networks loaded"));
     else
-        Serial.println("no wifi networks loaded");
+        Serial.println((const char*)F("no wifi networks loaded"));
     // Configure pinouts.
     pinMode(BOARD_POWERON, OUTPUT);
     digitalWrite(BOARD_POWERON, HIGH);
@@ -5050,9 +5054,9 @@ void setup(){
     ret = Wire.endTransmission() == 0;
     touchDected = ret;
     if(touchDected)
-        Serial.println("touch detected");
+        Serial.println((const char*)F("touch detected"));
     else 
-        Serial.println("touch not detected");
+        Serial.println((const char*)F("touch not detected"));
     // initialize the display.
     tft.begin();
     // Set to landscape mode.
@@ -5065,7 +5069,7 @@ void setup(){
     // Mutexes to restrict the access to some resources, avoiding memory corruption, catastrophic failures.
     pthread_mutexattr_init(&Attr);
     pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&lvgl_mutex, NULL);
+    pthread_mutex_init(&lvgl_mutex, &Attr);
     pthread_mutex_init(&messages_mutex, NULL);
     pthread_mutex_init(&send_json_mutex, NULL);
     pthread_mutex_init(&websocket_send, NULL);
@@ -5088,34 +5092,36 @@ void setup(){
     */
     //Load settings
     loadSettings();
-    strcpy(ttt.user_id, user_id);
+    delay(2000);
+    ttt = new tictactoe(lv_scr_act(), transmit_pkt_list_add, &lvgl_mutex);
+    strcpy(ttt->user_id, user_id);
     // set brightness.
     analogWrite(BOARD_BL_PIN, mapv(brightness, 0, 9, 100, 255));
     // Connect to a wifi network in history.
     if(wifi_connected_nets.list.size() > 0)
-        xTaskCreatePinnedToCore(wifi_auto_connect, "wifi_auto", 10000, (void*)"ok", 1, &task_wifi_auto, 0);
+        xTaskCreatePinnedToCore(wifi_auto_connect, (const char*)F("wifi_auto"), 10000, (void*)"ok", 1, &task_wifi_auto, 0);
     // Get the date from internet.
     if(wifi_connected)
         datetime();
     //Launch a date time task.
-    xTaskCreatePinnedToCore(update_time, "update_time", 11000, (struct tm*)&timeinfo, 2, &task_date_time, 1);
+    xTaskCreatePinnedToCore(update_time, (const char*)F("update_time"), 11000, (struct tm*)&timeinfo, 2, &task_date_time, 1);
 
     // Initial date, in case of no internet connection.
     setDate(2024, 1, 1, 0, 0, 0, 0);
     
     // Initialize the battery monitoring routine and lauch his task.
     initBat();
-    xTaskCreatePinnedToCore(update_bat, "task_bat", 4000, NULL, 2, &task_bat, 1);
+    xTaskCreatePinnedToCore(update_bat, (const char*)F("task_bat"), 4000, NULL, 2, &task_bat, 1);
 
     // Launch the notification task.
-    xTaskCreatePinnedToCore(notify, "notify", 4000, NULL, 1, &task_not, 1);
+    xTaskCreatePinnedToCore(notify, (const char*)F("notify"), 4000, NULL, 1, &task_not, 1);
     // Launch de beacon task.
-    xTaskCreatePinnedToCore(task_beacon, "beacon", 4000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(task_beacon, (const char*)F("beacon"), 4000, NULL, 1, NULL, 1);
     // The ESP32S3 documentation says to avoid use the core 0 to run tasks or intensive routines. 
-    xTaskCreatePinnedToCore(collectPackets, "collect_pkt", 11000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processPackets2, "process_pkt", 8000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processReceivedStats, "proc_stats_pkt", 3000, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(processTransmitingPackets, "proc_tx_pkt", 11000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(collectPackets, (const char*)F("collect_pkt"), 10000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processPackets2, (const char*)F("process_pkt"), 8000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processReceivedStats, (const char*)F("proc_stats_pkt"), 3000, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(processTransmitingPackets, (const char*)F("proc_tx_pkt"), 10000, NULL, 1, NULL, 1);
     // Turn off the display
     //delay(1000);
     //tft.writecommand(0x10);
@@ -5123,9 +5129,9 @@ void setup(){
     // Turn on the display
     //tft.writecommand(0x11);
     setup_sound();
-    Serial.println("loading TTT contacts");
+    Serial.println((const char*)F("loading TTT contacts"));
     delay(2000);
-    //load_ttt_contacts();
+    load_ttt_contacts();
 }
 
 void loop(){

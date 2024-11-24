@@ -75,34 +75,36 @@ class tictactoe{
 
     char board[3][3];
     char player = 'X';
-    bool active = true;
-    bool cpu_turn = false;
-    bool online = false;
-    bool waiting_player = false;
-    bool player_ack = false;
-    bool packet_move = false;
-    bool packet_ready = false;
-    bool invitation_accepted = false;
-    bool invitation_requested = false;
+    volatile bool active = true;
+    volatile bool cpu_turn = false;
+    volatile bool online = false;
+    volatile bool waiting_player = false;
+    volatile bool player_ack = false;
+    volatile bool packet_move = false;
+    volatile bool packet_ready = false;
+    volatile bool invitation_accepted = false;
+    volatile bool invitation_requested = false;
 
     char user_id[7] = {'\0'};
     std::vector<ttt_player> ttt_players;
     ttt_packet tttp;
     ttt_player * selected_player = NULL;
     void (*transmit_list_add_callback)(lora_packet);
+    pthread_mutex_t * lvgl_mutex;
 
     bool checkVictory();
     bool checkDraw();
-    void initUI(lv_obj_t * parent);
+    void initUI();
     void init_board();
     void simulate_click(uint8_t row, uint8_t col);
-    tictactoe(void (*transmit_list_add_callback)(lora_packet));
+    tictactoe(lv_obj_t * parent, void (*transmit_list_add_callback)(lora_packet), pthread_mutex_t * lvgl_mutex);
     //~tictactoe();
     bool add_player(ttt_player p);
     bool del_player(ttt_player p);
     void refresh_players_list();
-    ttt_packet process_packet(ttt_packet p);
+    void process_packet(ttt_packet p);
     ttt_player * get_player_by_id(const char * id);
     void showUI();
+    void show();
     void hideUI();
 };

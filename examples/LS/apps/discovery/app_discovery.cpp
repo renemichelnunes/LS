@@ -27,7 +27,7 @@ void hide(lv_event_t *e)
             if(task_update_nodes_list != NULL){
                 vTaskDelete(task_update_nodes_list);
                 task_update_nodes_list = NULL;
-                Serial.println("task_update_nodes_list deleted");
+                Serial.println(F("task_update_nodes_list deleted"));
             }
             lv_obj_add_flag(frm, LV_OBJ_FLAG_HIDDEN);
         }
@@ -92,7 +92,7 @@ void update_list(lv_event_t * e){
             dis->updateNodeList();
         }
         else
-            Serial.println("dis is NULL");
+            Serial.println(F("dis is NULL"));
     }
 }
 
@@ -101,7 +101,7 @@ void node_info(lv_event_t * e){
     lv_obj_t * btn = (lv_obj_t *)lv_event_get_user_data(e);
 
     if(code == LV_EVENT_SHORT_CLICKED){
-        Serial.println("Node info");
+        Serial.println(F("Node info"));
     }
 }
 
@@ -122,7 +122,7 @@ void discovery_app::updateNodeList()
         }
     }
     else
-        Serial.println("No new node found so far");
+        Serial.println(F("No new node found so far"));
 }
 
 lv_obj_t *discovery_app::createNodeListObj(lv_obj_t * btn, const char *node_id, uint16_t hops)
@@ -147,8 +147,8 @@ void discovery_app::showUI()
         lv_obj_clear_flag(this->frm_discovery, LV_OBJ_FLAG_HIDDEN);
         //this->updateNodeList();
         if(task_update_nodes_list == NULL){
-            xTaskCreatePinnedToCore(up_nodes_list_task, "up_nodes_list", 11000, this, 1, &task_update_nodes_list, 1);
-            Serial.println("task_update_nodes_list launched");
+            xTaskCreatePinnedToCore(up_nodes_list_task, (const char*)F("up_nodes_list"), 11000, this, 1, &task_update_nodes_list, 1);
+            Serial.println(F("task_update_nodes_list launched"));
         }
     }
 }
@@ -159,7 +159,7 @@ void discovery_app::hideUI()
         if(task_update_nodes_list != NULL){
             vTaskDelete(task_update_nodes_list);
             task_update_nodes_list = NULL;
-            Serial.println("task_update_nodes_list deleted");
+            Serial.println(F("task_update_nodes_list deleted"));
         }
         lv_obj_add_flag(this->frm_discovery, LV_OBJ_FLAG_HIDDEN);
     }
@@ -169,7 +169,7 @@ bool discovery_app::init_adj_matrix(){
     uint16_t num_nodes = this->list_demo.size();
     this->adjacency_matrix = new bool*[num_nodes];
     if(!this->adjacency_matrix){
-        Serial.printf("Fail to alocate the matrix\n");
+        Serial.printf((const char*)F("Fail to alocate the matrix\n"));
     }
     for(uint16_t i = 0; i < num_nodes; i++){
         this->adjacency_matrix[i] = new bool[num_nodes]();
@@ -301,7 +301,7 @@ void hide_graph(lv_event_t *e)
             if(task_update_graph){
                 vTaskDelete(task_update_graph);
                 task_update_graph = NULL;
-                Serial.printf("task_update_graph deleted\n");
+                Serial.printf((const char*)F("task_update_graph deleted\n"));
             }
             lv_obj_add_flag(frm, LV_OBJ_FLAG_HIDDEN);
         }
@@ -321,8 +321,8 @@ void discovery_app::show_graph_ui(){
     if(this->frm_graph_main){
         lv_obj_clear_flag(this->frm_graph_main, LV_OBJ_FLAG_HIDDEN);
         if(!task_update_graph){
-            xTaskCreatePinnedToCore(update_graph_task, "update_graph", 11000, this, 1, &task_update_graph, 1);
-            Serial.printf("task_update_graph launched\n");
+            xTaskCreatePinnedToCore(update_graph_task, (const char*)F("update_graph"), 11000, this, 1, &task_update_graph, 1);
+            Serial.printf((const char*)F("task_update_graph launched\n"));
         }
     }
 }
@@ -390,7 +390,7 @@ void discovery_app::initUI(lv_obj_t * parent)
         lv_obj_add_event_cb(this->frm_discovery_btn_title, update_list, LV_EVENT_SHORT_CLICKED, this);
 
         this->frm_discovery_btn_title_lbl = lv_label_create(this->frm_discovery_btn_title);
-        lv_label_set_text(this->frm_discovery_btn_title_lbl, "Discovered nodes");
+        lv_label_set_text(this->frm_discovery_btn_title_lbl, (const char*)F("Discovered nodes"));
         lv_obj_set_align(this->frm_discovery_btn_title_lbl, LV_ALIGN_LEFT_MID);
 
         // Close button
@@ -400,7 +400,7 @@ void discovery_app::initUI(lv_obj_t * parent)
         lv_obj_add_event_cb(this->frm_discovery_btn_back, hide, LV_EVENT_SHORT_CLICKED, this->frm_discovery);
         
         this->frm_discovery_btn_back_lbl = lv_label_create(this->frm_discovery_btn_back);
-        lv_label_set_text(this->frm_discovery_btn_back_lbl, "Back");
+        lv_label_set_text(this->frm_discovery_btn_back_lbl, (const char*)F("Back"));
         lv_obj_set_align(this->frm_discovery_btn_back_lbl, LV_ALIGN_CENTER);
 
         this->init_graph_ui();
@@ -411,7 +411,7 @@ void discovery_app::initUI(lv_obj_t * parent)
         lv_obj_add_event_cb(this->frm_discovery_btn_graph, show_graph, LV_EVENT_SHORT_CLICKED, this);
 
         this->frm_discovery_btn_graph_lbl = lv_label_create(this->frm_discovery_btn_graph);
-        lv_label_set_text(this->frm_discovery_btn_graph_lbl, "Graph");
+        lv_label_set_text(this->frm_discovery_btn_graph_lbl, (const char*)F("Graph"));
         lv_obj_set_align(this->frm_discovery_btn_graph_lbl, LV_ALIGN_CENTER);
 
         // Add list object
@@ -420,10 +420,10 @@ void discovery_app::initUI(lv_obj_t * parent)
         lv_obj_align(this->frm_discovery_nodeList, LV_ALIGN_TOP_MID, 0, 5);
         lv_obj_set_style_border_opa(this->frm_discovery_nodeList, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_border_width(this->frm_discovery_nodeList, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        Serial.println("discovery_app::initUI() - READY");
+        Serial.println(F("discovery_app::initUI() - READY"));
     }
     else
-        Serial.println("discovery_app::initUI() - parent NULL");
+        Serial.println(F("discovery_app::initUI() - parent NULL"));
 }
 
 void discovery_app::init_graph_ui(){
@@ -442,7 +442,7 @@ void discovery_app::init_graph_ui(){
     lv_obj_add_event_cb(this->frm_graph_main_btn_back, hide_graph, LV_EVENT_SHORT_CLICKED, this->frm_graph_main);
     
     this->frm_graph_main_btn_back_lbl = lv_label_create(this->frm_graph_main_btn_back);
-    lv_label_set_text(this->frm_graph_main_btn_back_lbl, "Back");
+    lv_label_set_text(this->frm_graph_main_btn_back_lbl, (const char*)F("Back"));
     lv_obj_set_align(this->frm_graph_main_btn_back_lbl, LV_ALIGN_CENTER);
 
     // Graph form
@@ -454,7 +454,7 @@ void discovery_app::init_graph_ui(){
 
     lv_obj_add_flag(this->frm_graph_main, LV_OBJ_FLAG_HIDDEN);
 
-    Serial.printf("discovery_app::init_graph_ui() - READY\n");
+    Serial.printf((const char*)F("discovery_app::init_graph_ui() - READY\n"));
 
     // Demo
     disc_node n1, n2, n3, n4, n5, n6, n7, n8, n9, n10;
