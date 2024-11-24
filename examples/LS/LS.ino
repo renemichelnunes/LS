@@ -5130,7 +5130,6 @@ void setup(){
     //tft.writecommand(0x11);
     setup_sound();
     Serial.println((const char*)F("loading TTT contacts"));
-    delay(2000);
     load_ttt_contacts();
 }
 

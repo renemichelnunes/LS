@@ -67,7 +67,9 @@ static void hide(lv_event_t *e)
                 Serial.println(F("task_ttt_evt_handler deleted"));
             }
             //lv_obj_clean(t->frm_main);
+            pthread_mutex_lock(t->lvgl_mutex);
             lv_obj_del(t->frm_main);
+            pthread_mutex_unlock(t->lvgl_mutex);
             //delete t->frm_main;
             t->frm_main = NULL;
         }
@@ -149,22 +151,31 @@ void btn_event_handler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     
     if(code == LV_EVENT_CLICKED){
-        int linha = lv_obj_get_y(btn) / 52;    // A posição do botão no eixo Y (linha)
-        int coluna = lv_obj_get_x(btn) / 52;   // A posição do botão no eixo X (coluna)
+        int row = lv_obj_get_y(btn) / 52;    
+        int col = lv_obj_get_x(btn) / 52;   
         
-        Serial.printf("%d %d\n", lv_obj_get_y(btn), lv_obj_get_x(btn));
-        Serial.printf("%d %d\n", linha, coluna);
         ttt_mov mov;
-        mov.row = linha;
-        mov.col = coluna;
+        mov.row = row;
+        mov.col = col;
         
-        // Se o botão ainda estiver vazio e o jogo estiver ativoSem vencedores
-        if (ttt->board[linha][coluna] == ' ' && ttt->active) {
-            // Atualiza o estado do botão
-            ttt->board[linha][coluna] = ttt->player;
+        if (ttt->board[row][col] == ' ' && ttt->active) {
+            ttt->board[row][col] = ttt->player;
+
+            Serial.println();
+            for(uint8_t i = 0; i < 3; i++){
+                for(uint8_t j = 0; j < 3; j++){
+                    if(ttt->board[i][j] == ' ')
+                        Serial.printf("%c ", '_');
+                    else    
+                        Serial.printf("%c ", ttt->board[i][j]);
+                }
+                Serial.println();
+            }
+            Serial.println();
+
             char p[2] = {'\0'};
             p[0] = ttt->player;
-            // Definir o texto no botão (X ou O)
+            
             lv_label_set_text(lv_obj_get_child(btn, 0), p);
             // Send the move
             if(ttt->player == 'X'){
@@ -177,33 +188,22 @@ void btn_event_handler(lv_event_t* e) {
                     else
                         Serial.println((const char*)F("It's online but no player selected"));
                 }
-
-                /*
-                uint8_t c = 0;
-                for(uint8_t i = 0; i < sizeof(lp.data); i++){
-                    Serial.printf("%x ", lp.data[i]);
-                    c++;
-                    if(c == 20){
-                        Serial.printf("\n");
-                        c = 0;
-                    }
-                }
-                Serial.printf("\n");
-                */
             }
             
-            //lv_label_set_text(frame_game_lbl, "waiting the player...");
-
-            // Verificar se o jogador atual venceu
             if (ttt->checkVictory()) {
-                if(ttt->player == 'X')
+                if(ttt->player == 'X'){
                     lv_label_set_text(ttt->frame_game_lbl, (const char*)F("You won!"));
-                else
+                    Serial.println((const char*)F("You won!"));
+                }
+                else{
                     lv_label_set_text(ttt->frame_game_lbl, (const char*)F("Better luck next time."));
+                    Serial.println((const char*)F("Better luck next time."));
+                }
                 ttt->active = false;
                 lv_obj_clear_flag(ttt->frame_game_new_game_btn, LV_OBJ_FLAG_HIDDEN);
             } else if (ttt->checkDraw()) {
                 lv_label_set_text(ttt->frame_game_lbl, (const char*)F("Draw!"));
+                Serial.println(F("Draw!"));
                 ttt->active = false;
                 lv_obj_clear_flag(ttt->frame_game_new_game_btn, LV_OBJ_FLAG_HIDDEN);
             } else {
@@ -211,10 +211,12 @@ void btn_event_handler(lv_event_t* e) {
                 ttt->player = (ttt->player == 'X') ? 'O' : 'X';
                 if(ttt->player == 'X'){
                     strcpy(msg, (const char*)F("Your turn."));
+                    Serial.println((const char*)F("Your turn."));
                     lv_obj_add_flag(ttt->frame_game_block, LV_OBJ_FLAG_HIDDEN);
                 }
                 else{
                     strcpy(msg, (const char*)F("Friend's turn."));
+                    Serial.println(F("Friend's turn."));
                     ttt->cpu_turn = true;
                     lv_obj_clear_flag(ttt->frame_game_block, LV_OBJ_FLAG_HIDDEN);
                 }
@@ -465,12 +467,14 @@ void tictactoe::init_board()
     // Inicializar o tabuleiro com 9 botões
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
+            pthread_mutex_lock(this->lvgl_mutex);
             this->btns[i][j] = lv_btn_create(this->frame_game);
             lv_obj_set_size(this->btns[i][j], 50, 50);
             lv_obj_set_pos(this->btns[i][j], j * 52, i * 52); // Definir a posição do botão
             lv_obj_add_event_cb(this->btns[i][j], btn_event_handler, LV_EVENT_CLICKED, this);
             lv_obj_t* label = lv_label_create(this->btns[i][j]);
             lv_label_set_text(label, ""); // Inicialmente, os botões estão vazios
+            pthread_mutex_unlock(this->lvgl_mutex);
         }
     }
 
@@ -507,7 +511,7 @@ void tictactoe::init_board()
 
     this->frame_game_new_game_btn = lv_btn_create(this->frame_game);
     lv_obj_set_size(this->frame_game_new_game_btn, 40, 20);
-    lv_obj_align(this->frame_game_new_game_btn, LV_ALIGN_TOP_RIGHT, 0, -15);
+    lv_obj_align(this->frame_game_new_game_btn, LV_ALIGN_TOP_RIGHT, 0, -10);
     lv_obj_add_event_cb(this->frame_game_new_game_btn, new_game, LV_EVENT_SHORT_CLICKED, this);
 
     this->frame_game_new_game_btn_lbl = lv_label_create(this->frame_game_new_game_btn);
@@ -517,24 +521,24 @@ void tictactoe::init_board()
     this->frame_game_online_list = lv_list_create(this->frame_game);
     lv_obj_set_size(this->frame_game_online_list, 140, 145);
     lv_obj_set_scroll_dir(this->frame_game_online_list, LV_DIR_VER);
-    lv_obj_align(this->frame_game_online_list, LV_ALIGN_TOP_RIGHT, 15, 10);
+    lv_obj_align(this->frame_game_online_list, LV_ALIGN_TOP_RIGHT, 10, 10);
     lv_obj_set_style_bg_color(this->frame_game_online_list, lv_color_hex(0xeeeeee), LV_PART_MAIN);
     lv_obj_add_flag(this->frame_game_online_list, LV_OBJ_FLAG_HIDDEN);
 
     this->frame_game_invitation_frame = lv_obj_create(this->frame_game);
     lv_obj_set_size(this->frame_game_invitation_frame, 130, 100);
-    lv_obj_align(this->frame_game_invitation_frame, LV_ALIGN_TOP_RIGHT, 15, 10);
+    lv_obj_align(this->frame_game_invitation_frame, LV_ALIGN_TOP_RIGHT, 7, 10);
     lv_obj_clear_flag(this->frame_game_invitation_frame, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(this->frame_game_invitation_frame, LV_OBJ_FLAG_HIDDEN);
 
     this->frame_game_invitation_frame_lbl = lv_label_create(this->frame_game_invitation_frame);
     lv_obj_set_size(this->frame_game_invitation_frame_lbl, 110, LV_SIZE_CONTENT);
     lv_label_set_long_mode(this->frame_game_invitation_frame_lbl, LV_LABEL_LONG_WRAP);
-    lv_obj_align(this->frame_game_invitation_frame_lbl, LV_ALIGN_TOP_MID, 0, -15);
+    lv_obj_align(this->frame_game_invitation_frame_lbl, LV_ALIGN_TOP_MID, 0, -5);
 
     this->frame_game_invitation_frame_btn_accept = lv_btn_create(this->frame_game_invitation_frame);
     lv_obj_set_size(this->frame_game_invitation_frame_btn_accept, 50, 20);
-    lv_obj_align(this->frame_game_invitation_frame_btn_accept, LV_ALIGN_TOP_LEFT, -15, 50);
+    lv_obj_align(this->frame_game_invitation_frame_btn_accept, LV_ALIGN_TOP_LEFT, -10, 50);
     lv_obj_add_event_cb(this->frame_game_invitation_frame_btn_accept, accept_inv, LV_EVENT_SHORT_CLICKED, this);
 
     this->frame_game_invitation_frame_btn_accept_lbl = lv_label_create(this->frame_game_invitation_frame_btn_accept);
@@ -543,7 +547,7 @@ void tictactoe::init_board()
 
     this->frame_game_invitation_frame_btn_decline = lv_btn_create(this->frame_game_invitation_frame);
     lv_obj_set_size(this->frame_game_invitation_frame_btn_decline, 50, 20);
-    lv_obj_align(this->frame_game_invitation_frame_btn_decline, LV_ALIGN_TOP_LEFT, 50, 50);
+    lv_obj_align(this->frame_game_invitation_frame_btn_decline, LV_ALIGN_TOP_LEFT, 60, 50);
     lv_obj_add_event_cb(this->frame_game_invitation_frame_btn_decline, decline_inv, LV_EVENT_SHORT_CLICKED, this);
 
     this->frame_game_invitation_frame_btn_decline_lbl = lv_label_create(this->frame_game_invitation_frame_btn_decline);
