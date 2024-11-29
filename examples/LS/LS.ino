@@ -1485,6 +1485,8 @@ void collectPackets(void * param){
                     rssi = radio.getRSSI();
                     snr = radio.getSNR();
                     // Put the radio to listen.
+                    radio.sleep();
+                    radio.standby();
                     radio.startReceive();
                     xSemaphoreGive(xSemaphore);
                     gotPacket = false;
