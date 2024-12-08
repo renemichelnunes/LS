@@ -176,7 +176,6 @@ lora_packet lora_outgoing_packets::check_packets(){
                         strcpy(data->id, p.id);
                         strcpy(data->sender, p.sender);
                         strcpy(data->destiny, p.destiny);
-                        //strcpy(data->status, p.status);
                         memcpy(data->data, p.data, p.data_size);
                         data->data_size = p.data_size;
                         data->crc = calculate_data_crc(p.data, 208);
@@ -197,7 +196,6 @@ lora_packet lora_outgoing_packets::check_packets(){
                         strcpy(data->id, p.id);
                         strcpy(data->sender, p.sender);
                         strcpy(data->destiny, p.destiny);
-                        //strcpy(data->status, p.status);
                         memcpy(data->data, p.data, p.data_size);
                         data->data_size = p.data_size;
                         data->crc = calculate_data_crc(p.data, 64);
@@ -241,7 +239,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                         packet = NULL;
                     }
                     
-                    vTaskDelay(r / portTICK_PERIOD_MS);
+                    vTaskDelay((r / 4) / portTICK_PERIOD_MS);
                     //this->finish_transmit_func_callback();
                     if(!this->has_packets())
                         return lora_packet();

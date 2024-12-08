@@ -126,7 +126,7 @@ class lora_outgoing_packets{
         int16_t (*transmit_func_callback)(uint8_t *, size_t);
         int16_t (*finish_transmit_func_callback)();
         uint32_t time_on_air = 0;
-        uint8_t max = 200;
+        uint8_t max = 30;
     public:
         // Instatiate a lora_outgoing_packets object passing a LoRa radio transmit function.
         lora_outgoing_packets(int16_t (*transmit_func_callback)(uint8_t *, size_t), int16_t (*finish_transmit_func_callback)());
@@ -149,7 +149,7 @@ class lora_pkt_history{
         // Vector that holds the IDs.
         std::vector<String> history;
         // Vector max capacity.
-        uint8_t max = 200;
+        uint8_t max = 30;
     public:
         // Adds a packet ID to the list.
         bool add(char * pkt_id);

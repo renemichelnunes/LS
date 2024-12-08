@@ -1844,11 +1844,16 @@ static int16_t transmit(uint8_t * data, size_t len){
         }
         if(!gotPacket){
             Serial.printf((const char*)F("Transmitting packet...\n"));
+            while(radio.scanChannel() == RADIOLIB_LORA_DETECTED){
+                Serial.println(F("Channel busy, wait"));
+                delay(100);
+            }
             transmit_pkt_list.setOnAirTime(radio.getTimeOnAir(len) / 1000);
-            r = radio.startTransmit((uint8_t*)data, len);
+            r = radio.transmit((uint8_t*)data, len);
         }
         else
             r = RADIOLIB_ERR_TX_TIMEOUT;
+            radio.startReceive();
         xSemaphoreGive(xSemaphore);
     }
     if(r == RADIOLIB_ERR_NONE){
@@ -4920,7 +4925,32 @@ void task_beacon(void * param){
 void setup_sound(){
     audio.setPinout(BOARD_I2S_BCK, BOARD_I2S_WS, BOARD_I2S_DOUT);
     audio.setVolume(2);
-    
+    uint32_t ret_val = ESP_OK;
+
+    Wire.beginTransmission(ES7210_ADDR);
+    uint8_t error = Wire.endTransmission();
+    if (error != 0) {
+        Serial.println("ES7210 address not found");
+    }
+
+    audio_hal_codec_config_t cfg = {
+        .adc_input = AUDIO_HAL_ADC_INPUT_ALL,
+        .codec_mode = AUDIO_HAL_CODEC_MODE_ENCODE,
+        .i2s_iface =
+        {
+            .mode = AUDIO_HAL_MODE_SLAVE,
+            .fmt = AUDIO_HAL_I2S_NORMAL,
+            .samples = AUDIO_HAL_16K_SAMPLES,
+            .bits = AUDIO_HAL_BIT_LENGTH_16BITS,
+        },
+    };
+
+    ret_val |= es7210_adc_init(&Wire, &cfg);
+    ret_val |= es7210_adc_config_i2s(cfg.codec_mode, &cfg.i2s_iface);
+    ret_val |= es7210_adc_set_gain(
+                   (es7210_input_mics_t)(ES7210_INPUT_MIC1 | ES7210_INPUT_MIC2),
+                   (es7210_gain_value_t)GAIN_6DB);
+    ret_val |= es7210_adc_ctrl_state(cfg.codec_mode, AUDIO_HAL_CTRL_START);
     
     
     //SPIFFS.end();
@@ -4939,11 +4969,13 @@ void play_packet_received(){
 
 void play_message_received(){
     if(SPIFFS.exists((const char*)F("/comp_up.mp3"))){
+        audio.setVolume(5);
         audio.connecttoFS(SPIFFS, (const char*)F("comp_up.mp3"));
         while(audio.isRunning()){
             audio.loop();
             delay(5);
         }
+        audio.setVolume(2);
     }else
         Serial.println((const char*)F("comp_up.mp3 not found"));
 }
