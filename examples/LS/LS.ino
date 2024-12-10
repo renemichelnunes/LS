@@ -1500,7 +1500,7 @@ void collectPackets(void * param){
                 }
                 else{
                     invalid_pkt_size = true;
-                    Serial.printf("Unknown packet size - %d bytes\n", packet_size);
+                    //Serial.printf("Unknown packet size - %d bytes\n", packet_size);
                 }
                 // A pointer just to get the packet type
                 p = (lora_packet*)packet;
@@ -1549,7 +1549,7 @@ void collectPackets(void * param){
                         }
                         break;
                     default:
-                        Serial.printf("Packet type %d unknown\n", lp.type);
+                        //Serial.printf("Packet type %d unknown\n", lp.type);
                         invalid_pkt_size = true;
                         break;
                 }
@@ -1561,7 +1561,7 @@ void collectPackets(void * param){
                 }
 
                 if(non_printable_chars(lp.id) || non_printable_chars(lp.sender)){
-                    Serial.printf((const char*)F("Packet ID or sender corrupted\n"));
+                    //Serial.printf((const char*)F("Packet ID or sender corrupted\n"));
                     invalid_pkt_size = true;
                 }
                 
@@ -1570,7 +1570,7 @@ void collectPackets(void * param){
                         if(lp.app_id != APP_SYSTEM) 
                             if(lp.app_id != APP_TICTACTOE){
                                 if(lp.type != LORA_PKT_ANNOUNCE){
-                                    Serial.printf("APP_ID %d unknown\n", lp.app_id);
+                                    //Serial.printf("APP_ID %d unknown\n", lp.app_id);
                                     invalid_pkt_size = true;
                                 }
                 }
@@ -1843,9 +1843,9 @@ static int16_t transmit(uint8_t * data, size_t len){
                 break;
         }
         if(!gotPacket){
-            Serial.printf((const char*)F("Transmitting packet...\n"));
+            //Serial.printf((const char*)F("Transmitting packet...\n"));
             while(radio.scanChannel() == RADIOLIB_LORA_DETECTED){
-                Serial.println(F("Channel busy, wait"));
+                //Serial.println(F("Channel busy, wait"));
                 delay(100);
             }
             transmit_pkt_list.setOnAirTime(radio.getTimeOnAir(len) / 1000);
@@ -4917,7 +4917,7 @@ void task_beacon(void * param){
     while(true){
         r = transmit_pkt_list.genPktTimeout(30);
         announce();
-        vTaskDelay(r / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
@@ -5126,7 +5126,7 @@ void setup(){
     */
     //Load settings
     loadSettings();
-    delay(2000);
+    //delay(2000);
     ttt = new tictactoe(lv_scr_act(), transmit_pkt_list_add, &lvgl_mutex);
     strcpy(ttt->user_id, user_id);
     // set brightness.
