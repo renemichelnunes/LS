@@ -1,5 +1,4 @@
 #include <apps/tictactoe/tictactoe.hpp>
-#include "lora_messages.hpp"
 #include "tictactoe.hpp"
 
 ttt_player * actual_player;

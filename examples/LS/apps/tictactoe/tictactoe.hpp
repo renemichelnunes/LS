@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <lvgl.h>
-#include "lora_messages.hpp"
+#include "l2l.hpp"
 #include <vector>
 
 #define APP_TICTACTOE 4
