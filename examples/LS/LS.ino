@@ -1509,6 +1509,8 @@ void collectPackets(void * param){
                 strcpy(lp.id, p->id);
                 strcpy(lp.sender, p->sender);
                 // Especific packet type properties
+                if(p->type != LORA_PKT_EMPTY)
+                    Serial.printf("rx, %s, %1.2f, %1.2f\n", p->id, rssi, snr);
                 switch(p->type){
                     case LORA_PKT_ANNOUNCE:
                         lp.hops = ((lora_packet_announce*)packet)->hops;
