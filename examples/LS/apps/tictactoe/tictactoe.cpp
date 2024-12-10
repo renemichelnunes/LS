@@ -103,7 +103,7 @@ void ttt_event_handler(void * p){
             lp.type = LORA_PKT_DATA_SMALL;
             lp.data_size = sizeof(ttt->tttp);
             memcpy(lp.data, &ttt->tttp, lp.data_size);
-            lp.confirmed = false;
+            lp.confirmed = false; // Wait for an ACK
 
             if(ttt->tttp.packet_type == TTT_TYPE_INVITATION){
                 if(ttt->selected_player)
