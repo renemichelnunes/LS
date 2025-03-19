@@ -1495,6 +1495,12 @@ void collectPackets(void * param){
                 // Check if the packet is valid.
                 if(packet_size == sizeof(lora_packet_ack) || packet_size == sizeof(lora_packet_announce) ||
                     packet_size == sizeof(lora_packet_comm) || packet_size == sizeof(lora_packet_data) || 
+                    packet_size == sizeof(lora_packet_data_16) || packet_size == sizeof(lora_packet_data_32) ||
+                    packet_size == sizeof(lora_packet_data_48) || packet_size == sizeof(lora_packet_data_64) ||
+                    packet_size == sizeof(lora_packet_data_80) || packet_size == sizeof(lora_packet_data_96) ||
+                    packet_size == sizeof(lora_packet_data_112) || packet_size == sizeof(lora_packet_data_128) ||
+                    packet_size == sizeof(lora_packet_data_144) || packet_size == sizeof(lora_packet_data_160) ||
+                    packet_size == sizeof(lora_packet_data_176) || packet_size == sizeof(lora_packet_data_192) ||
                     packet_size == sizeof(lora_packet_data_small) || packet_size == sizeof(lora_packet_ping)){
                     invalid_pkt_size = false;
                 }
@@ -1544,6 +1550,186 @@ void collectPackets(void * param){
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
                         if(calculate_data_crc(((lora_packet_data_small*)packet)->data, 64) == ((lora_packet_data_small*)packet)->crc){
                             lp.crc = ((lora_packet_data_small*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_16:
+                        strcpy(lp.destiny, ((lora_packet_data_16*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_16*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_16*)packet)->data, ((lora_packet_data_16*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_16*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_16*)packet)->data, 64) == ((lora_packet_data_16*)packet)->crc){
+                            lp.crc = ((lora_packet_data_16*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_32:
+                        strcpy(lp.destiny, ((lora_packet_data_32*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_32*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_32*)packet)->data, ((lora_packet_data_32*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_32*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_32*)packet)->data, 64) == ((lora_packet_data_32*)packet)->crc){
+                            lp.crc = ((lora_packet_data_32*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_48:
+                        strcpy(lp.destiny, ((lora_packet_data_48*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_48*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_48*)packet)->data, ((lora_packet_data_48*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_48*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_48*)packet)->data, 64) == ((lora_packet_data_48*)packet)->crc){
+                            lp.crc = ((lora_packet_data_48*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_64:
+                        strcpy(lp.destiny, ((lora_packet_data_64*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_64*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_64*)packet)->data, ((lora_packet_data_64*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_64*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_64*)packet)->data, 64) == ((lora_packet_data_64*)packet)->crc){
+                            lp.crc = ((lora_packet_data_64*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_80:
+                        strcpy(lp.destiny, ((lora_packet_data_80*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_80*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_80*)packet)->data, ((lora_packet_data_80*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_80*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_80*)packet)->data, 64) == ((lora_packet_data_80*)packet)->crc){
+                            lp.crc = ((lora_packet_data_80*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_96:
+                        strcpy(lp.destiny, ((lora_packet_data_96*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_96*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_96*)packet)->data, ((lora_packet_data_96*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_96*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_96*)packet)->data, 64) == ((lora_packet_data_96*)packet)->crc){
+                            lp.crc = ((lora_packet_data_96*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_112:
+                        strcpy(lp.destiny, ((lora_packet_data_112*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_112*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_112*)packet)->data, ((lora_packet_data_112*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_112*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_112*)packet)->data, 64) == ((lora_packet_data_112*)packet)->crc){
+                            lp.crc = ((lora_packet_data_112*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_128:
+                        strcpy(lp.destiny, ((lora_packet_data_128*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_128*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_128*)packet)->data, ((lora_packet_data_128*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_128*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_128*)packet)->data, 64) == ((lora_packet_data_128*)packet)->crc){
+                            lp.crc = ((lora_packet_data_128*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_144:
+                        strcpy(lp.destiny, ((lora_packet_data_144*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_144*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_144*)packet)->data, ((lora_packet_data_144*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_144*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_144*)packet)->data, 64) == ((lora_packet_data_144*)packet)->crc){
+                            lp.crc = ((lora_packet_data_144*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_160:
+                        strcpy(lp.destiny, ((lora_packet_data_160*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_160*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_160*)packet)->data, ((lora_packet_data_160*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_160*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_160*)packet)->data, 64) == ((lora_packet_data_160*)packet)->crc){
+                            lp.crc = ((lora_packet_data_160*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_176:
+                        strcpy(lp.destiny, ((lora_packet_data_176*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_176*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_176*)packet)->data, ((lora_packet_data_176*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_176*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_176*)packet)->data, 64) == ((lora_packet_data_176*)packet)->crc){
+                            lp.crc = ((lora_packet_data_176*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
+                    case LORA_PKT_DATA_192:
+                        strcpy(lp.destiny, ((lora_packet_data_192*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_192*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_192*)packet)->data, ((lora_packet_data_192*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_192*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_192*)packet)->data, 64) == ((lora_packet_data_192*)packet)->crc){
+                            lp.crc = ((lora_packet_data_192*)packet)->crc;
                         }
                         else{
                             Serial.printf((const char*)F("Data crc mismatch\n"));
