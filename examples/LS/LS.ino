@@ -1501,6 +1501,7 @@ void collectPackets(void * param){
                     packet_size == sizeof(lora_packet_data_112) || packet_size == sizeof(lora_packet_data_128) ||
                     packet_size == sizeof(lora_packet_data_144) || packet_size == sizeof(lora_packet_data_160) ||
                     packet_size == sizeof(lora_packet_data_176) || packet_size == sizeof(lora_packet_data_192) ||
+                    packet_size == sizeof(lora_packet_data_208) ||
                     packet_size == sizeof(lora_packet_data_small) || packet_size == sizeof(lora_packet_ping)){
                     invalid_pkt_size = false;
                 }
@@ -1533,7 +1534,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data*)packet)->data, 208) == ((lora_packet_data*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data*)packet)->crc){
                             lp.crc = ((lora_packet_data*)packet)->crc;
                         }
                         else{
@@ -1548,7 +1549,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_small*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_small*)packet)->data, 64) == ((lora_packet_data_small*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_small*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_small*)packet)->crc){
                             lp.crc = ((lora_packet_data_small*)packet)->crc;
                         }
                         else{
@@ -1563,7 +1564,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_16*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_16*)packet)->data, 64) == ((lora_packet_data_16*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_16*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_16*)packet)->crc){
                             lp.crc = ((lora_packet_data_16*)packet)->crc;
                         }
                         else{
@@ -1578,7 +1579,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_32*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_32*)packet)->data, 64) == ((lora_packet_data_32*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_32*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_32*)packet)->crc){
                             lp.crc = ((lora_packet_data_32*)packet)->crc;
                         }
                         else{
@@ -1593,7 +1594,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_48*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_48*)packet)->data, 64) == ((lora_packet_data_48*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_48*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_48*)packet)->crc){
                             lp.crc = ((lora_packet_data_48*)packet)->crc;
                         }
                         else{
@@ -1608,7 +1609,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_64*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_64*)packet)->data, 64) == ((lora_packet_data_64*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_64*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_64*)packet)->crc){
                             lp.crc = ((lora_packet_data_64*)packet)->crc;
                         }
                         else{
@@ -1623,7 +1624,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_80*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_80*)packet)->data, 64) == ((lora_packet_data_80*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_80*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_80*)packet)->crc){
                             lp.crc = ((lora_packet_data_80*)packet)->crc;
                         }
                         else{
@@ -1638,7 +1639,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_96*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_96*)packet)->data, 64) == ((lora_packet_data_96*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_96*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_96*)packet)->crc){
                             lp.crc = ((lora_packet_data_96*)packet)->crc;
                         }
                         else{
@@ -1653,7 +1654,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_112*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_112*)packet)->data, 64) == ((lora_packet_data_112*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_112*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_112*)packet)->crc){
                             lp.crc = ((lora_packet_data_112*)packet)->crc;
                         }
                         else{
@@ -1668,7 +1669,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_128*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_128*)packet)->data, 64) == ((lora_packet_data_128*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_128*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_128*)packet)->crc){
                             lp.crc = ((lora_packet_data_128*)packet)->crc;
                         }
                         else{
@@ -1683,7 +1684,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_144*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_144*)packet)->data, 64) == ((lora_packet_data_144*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_144*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_144*)packet)->crc){
                             lp.crc = ((lora_packet_data_144*)packet)->crc;
                         }
                         else{
@@ -1698,7 +1699,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_160*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_160*)packet)->data, 64) == ((lora_packet_data_160*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_160*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_160*)packet)->crc){
                             lp.crc = ((lora_packet_data_160*)packet)->crc;
                         }
                         else{
@@ -1713,7 +1714,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_176*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_176*)packet)->data, 64) == ((lora_packet_data_176*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_176*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_176*)packet)->crc){
                             lp.crc = ((lora_packet_data_176*)packet)->crc;
                         }
                         else{
@@ -1728,7 +1729,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_192*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_192*)packet)->data, 64) == ((lora_packet_data_192*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_192*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_192*)packet)->crc){
                             lp.crc = ((lora_packet_data_192*)packet)->crc;
                         }
                         else{
@@ -1743,7 +1744,7 @@ void collectPackets(void * param){
                         lp.app_id = ((lora_packet_data_208*)packet)->app_id;
                         // Date time of arrival.
                         strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
-                        if(calculate_data_crc(((lora_packet_data_208*)packet)->data, 64) == ((lora_packet_data_208*)packet)->crc){
+                        if(calculate_data_crc(((lora_packet_data_208*)packet)->data, ((lora_packet_data_208*)packet)->data_size) == ((lora_packet_data_208*)packet)->crc){
                             lp.crc = ((lora_packet_data_208*)packet)->crc;
                         }
                         else{
