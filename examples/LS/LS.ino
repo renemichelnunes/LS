@@ -1895,7 +1895,14 @@ void processPackets2(void * param){
                 }
                 pthread_mutex_unlock(&messages_mutex);
             }
-            else if(p.type == LORA_PKT_DATA || p.type == LORA_PKT_DATA_SMALL){
+            else if(p.type == LORA_PKT_DATA || p.type == LORA_PKT_DATA_SMALL ||
+                p.type == LORA_PKT_DATA_16 || p.type == LORA_PKT_DATA_32 ||
+                p.type == LORA_PKT_DATA_48 || p.type == LORA_PKT_DATA_64 ||
+                p.type == LORA_PKT_DATA_80 || p.type == LORA_PKT_DATA_96 ||
+                p.type == LORA_PKT_DATA_112 || p.type == LORA_PKT_DATA_128 ||
+                p.type == LORA_PKT_DATA_144 || p.type == LORA_PKT_DATA_160 ||
+                p.type == LORA_PKT_DATA_176 || p.type == LORA_PKT_DATA_192 ||
+                p.type == LORA_PKT_DATA_208){
                 // Create a ack packet
                 Serial.printf("DATA packet received p.app_id %d\n", p.app_id);
                 lora_packet ack;
