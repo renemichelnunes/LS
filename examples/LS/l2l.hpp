@@ -23,6 +23,7 @@
 #define LORA_PKT_DATA_160 16
 #define LORA_PKT_DATA_176 17
 #define LORA_PKT_DATA_192 18
+#define LORA_PKT_DATA_208 19
 
 #define MAX_HOPS 200
 
@@ -241,6 +242,20 @@ struct lora_packet_data_192{
     uint8_t hops = MAX_HOPS;
     //char status[7] = {'\0'};
     char data[192] = {'\0'};
+    uint8_t data_size = 0;
+    uint8_t app_id = 0;
+    uint32_t crc = 0;
+};
+
+/// @brief Struct that is used when we send messages 208 bytes.
+struct lora_packet_data_208{
+    uint8_t type = LORA_PKT_DATA;
+    char id[7] = {'\0'};
+    char sender[7] = {'\0'};
+    char destiny[7] = {'\0'};
+    uint8_t hops = MAX_HOPS;
+    //char status[7] = {'\0'};
+    char data[208] = {'\0'};
     uint8_t data_size = 0;
     uint8_t app_id = 0;
     uint32_t crc = 0;

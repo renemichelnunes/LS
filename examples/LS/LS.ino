@@ -1736,6 +1736,21 @@ void collectPackets(void * param){
                             invalid_pkt_size = true;
                         }
                         break;
+                    case LORA_PKT_DATA_208:
+                        strcpy(lp.destiny, ((lora_packet_data_208*)packet)->destiny);
+                        lp.data_size = ((lora_packet_data_208*)packet)->data_size;
+                        memcpy(lp.data, ((lora_packet_data_208*)packet)->data, ((lora_packet_data_208*)packet)->data_size);
+                        lp.app_id = ((lora_packet_data_208*)packet)->app_id;
+                        // Date time of arrival.
+                        strftime(lp.date_time, sizeof(lp.date_time)," - %a, %b %d %Y %H:%M", &timeinfo);
+                        if(calculate_data_crc(((lora_packet_data_208*)packet)->data, 64) == ((lora_packet_data_208*)packet)->crc){
+                            lp.crc = ((lora_packet_data_208*)packet)->crc;
+                        }
+                        else{
+                            Serial.printf((const char*)F("Data crc mismatch\n"));
+                            invalid_pkt_size = true;
+                        }
+                        break;
                     default:
                         //Serial.printf("Packet type %d unknown\n", lp.type);
                         invalid_pkt_size = true;

@@ -208,6 +208,266 @@ lora_packet lora_outgoing_packets::check_packets(){
                         Serial.println("Small data packet not ready");
                     }
                 }
+                else if(p.type == LORA_PKT_DATA_16){
+                    pkt_size = sizeof(lora_packet_data_16);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_16 * data = (lora_packet_data_16*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 16);
+                        data->type = LORA_PKT_DATA_16;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_16 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_16 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_32){
+                    pkt_size = sizeof(lora_packet_data_32);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_32 * data = (lora_packet_data_32*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 32);
+                        data->type = LORA_PKT_DATA_32;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_32 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_32 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_48){
+                    pkt_size = sizeof(lora_packet_data_48);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_48 * data = (lora_packet_data_48*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 48);
+                        data->type = LORA_PKT_DATA_48;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_48 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_48 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_64){
+                    pkt_size = sizeof(lora_packet_data_64);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_64 * data = (lora_packet_data_64*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 64);
+                        data->type = LORA_PKT_DATA_64;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_64 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_64 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_80){
+                    pkt_size = sizeof(lora_packet_data_80);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_80 * data = (lora_packet_data_80*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 80);
+                        data->type = LORA_PKT_DATA_80;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_80 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_80 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_96){
+                    pkt_size = sizeof(lora_packet_data_96);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_96 * data = (lora_packet_data_96*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 96);
+                        data->type = LORA_PKT_DATA_96;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_96 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_96 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_112){
+                    pkt_size = sizeof(lora_packet_data_112);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_112 * data = (lora_packet_data_112*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 112);
+                        data->type = LORA_PKT_DATA_112;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_112 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_112 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_128){
+                    pkt_size = sizeof(lora_packet_data_128);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_128 * data = (lora_packet_data_128*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 128);
+                        data->type = LORA_PKT_DATA_128;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_128 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_128 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_144){
+                    pkt_size = sizeof(lora_packet_data_144);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_144 * data = (lora_packet_data_144*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 144);
+                        data->type = LORA_PKT_DATA_144;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_144 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_144 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_160){
+                    pkt_size = sizeof(lora_packet_data_160);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_160 * data = (lora_packet_data_160*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 160);
+                        data->type = LORA_PKT_DATA_160;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_160 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_160 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_176){
+                    pkt_size = sizeof(lora_packet_data_176);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_176 * data = (lora_packet_data_176*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 176);
+                        data->type = LORA_PKT_DATA_176;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_176 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_176 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_192){
+                    pkt_size = sizeof(lora_packet_data_192);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_192 * data = (lora_packet_data_192*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 192);
+                        data->type = LORA_PKT_DATA_192;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_192 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_192 data packet not ready");
+                    }
+                }
+                else if(p.type == LORA_PKT_DATA_208){
+                    pkt_size = sizeof(lora_packet_data_208);
+                    packet = calloc(1, pkt_size);
+                    if(packet){
+                        lora_packet_data_208 * data = (lora_packet_data_208*)packet;
+                        strcpy(data->id, p.id);
+                        strcpy(data->sender, p.sender);
+                        strcpy(data->destiny, p.destiny);
+                        memcpy(data->data, p.data, p.data_size);
+                        data->data_size = p.data_size;
+                        data->crc = calculate_data_crc(p.data, 208);
+                        data->type = LORA_PKT_DATA_208;
+                        data->app_id = p.app_id;
+                        data->hops = p.hops;
+                        Serial.printf("lora_packet_data_208 data packet ID %s ready\n", data->id);
+                    }
+                    else{
+                        Serial.println("lora_packet_data_208 data packet not ready");
+                    }
+                }
                 else if(p.type == LORA_PKT_PING){
 
                 }
