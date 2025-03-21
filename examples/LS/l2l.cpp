@@ -492,17 +492,7 @@ lora_packet lora_outgoing_packets::check_packets(){
                     //Serial.printf("Tempo de espera %lu\n", r);
                     if(r < 5000)
                         r += 5000;
-                    //Serial.printf("TX time %1.3fs\n--------------------------------\n", (float)this->time_on_air / 1000);
-                    //Serial.printf("Next transmission in %1.1fs\n--------------------------------\n", (float)(r) / 1000);
-                    Serial.printf("tx, %s, %1.3f, %1.1f\n", p.id, (float)this->time_on_air / 1000, (float)(r) / 1000);
-                    if(packet){
-                        free(packet);
-                        packet = NULL;
-                    }
-                    
-                    vTaskDelay((r) / portTICK_PERIOD_MS);
-                    //this->finish_transmit_func_callback();
-                    if(!this->has_packets())
+                    //Serial.printf("TX time %1.3fs\n--------------------------------\n", (floanational
                         return lora_packet();
                     if(p.confirmed || p.type == LORA_PKT_ANNOUNCE || p.type == LORA_PKT_ACK){
                         //Serial.printf("Erasing ID %s\n", p.id);

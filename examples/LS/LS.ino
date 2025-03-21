@@ -1770,7 +1770,7 @@ void collectPackets(void * param){
                 }
                 
                 if(lp.app_id != APP_DISCOVERY)
-                    if( lp.app_id != APP_LORA_CHAT)
+                    if(lp.app_id != APP_LORA_CHAT)
                         if(lp.app_id != APP_SYSTEM) 
                             if(lp.app_id != APP_TICTACTOE){
                                 if(lp.type != LORA_PKT_ANNOUNCE){
@@ -1948,14 +1948,14 @@ void processPackets2(void * param){
                         c->addMessage(cm);
                         c->new_message = true;
                         pthread_mutex_unlock(&messages_mutex);
-                        sendContactMessages(p.sender);
-                        while(sendingJson){
-                            vTaskDelay(100 / portTICK_PERIOD_MS);
-                        }
+                        //sendContactMessages(p.sender);
+                        //while(sendingJson){
+                        //    vTaskDelay(100 / portTICK_PERIOD_MS);
+                        //}
                         // On client side there is a javascript function that reproduces a sound when a message is received.
-                        pthread_mutex_lock(&send_json_mutex);
-                        sendJSON("{\"command\" : \"playNewMessage\"}");
-                        pthread_mutex_unlock(&send_json_mutex);
+                        //pthread_mutex_lock(&send_json_mutex);
+                        //sendJSON("{\"command\" : \"playNewMessage\"}");
+                        //pthread_mutex_unlock(&send_json_mutex);
                         // Now w prepare a string to be shown on the notification area.
                         char message[208] = {'\0'};
                         char cmsg[208] = {'\0'};
@@ -2116,9 +2116,9 @@ void processReceivedStats(void * param){
             while(parsing){
                 vTaskDelay(10 / portTICK_PERIOD_MS);
             }
-            pthread_mutex_lock(&send_json_mutex);
-            sendJSON(json);
-            pthread_mutex_unlock(&send_json_mutex);
+            //pthread_mutex_lock(&send_json_mutex);
+            //sendJSON(json);
+            //pthread_mutex_unlock(&send_json_mutex);
             new_stats = false;
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
