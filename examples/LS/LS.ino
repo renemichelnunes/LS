@@ -2382,28 +2382,6 @@ void setupRadio(lv_event_t * e)
 
 }
 
-/// @brief This sends a ping packet.
-/// @param e 
-void ping(lv_event_t * e){
-    /*
-    // Lets send a simple byte
-    while(gotPacket)
-        delay(10 / portTICK_PERIOD_MS);
-    // Get exclusive access through SPI.
-    transmiting = true;
-    // Using a SDR radio and SDR++ set the radio to listen to 915 MHz, put this device on DX mode,
-    // touch 'ping' button and watch the waterfall ou record the screen to analyse further more.
-    if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE){
-        if(radio.transmit((uint8_t*)'A', 1) == RADIOLIB_ERR_NONE){
-            Serial.println("Ping sent");
-        }
-        else
-            Serial.println("Ping not sent");
-        xSemaphoreGive(xSemaphore);
-    }
-    transmiting = false;
-    */
-}
 /// @brief This hides the contact list.
 /// @param e 
 void hide_contacts_frm(lv_event_t * e){
@@ -2653,6 +2631,35 @@ void show_chat(lv_event_t * e){
     }
 }
 
+uint8_t get_data_pkt_type(uint8_t size){
+    if(size <= 16)
+        return LORA_PKT_DATA_16;
+    else if(size <= 32)
+        return LORA_PKT_DATA_32;
+    else if(size <= 48)
+        return LORA_PKT_DATA_48;
+    else if(size <= 64)
+        return LORA_PKT_DATA_64;
+    else if(size <= 80)
+        return LORA_PKT_DATA_80;
+    else if(size <= 96)
+        return LORA_PKT_DATA_96;
+    else if(size <= 112)
+        return LORA_PKT_DATA_112;
+    else if(size <= 128)
+        return LORA_PKT_DATA_128;
+    else if(size <= 144)
+        return LORA_PKT_DATA_144;
+    else if(size <= 160)
+        return LORA_PKT_DATA_160;
+    else if(size <= 176)
+        return LORA_PKT_DATA_176;
+    else if(size <= 192)
+        return LORA_PKT_DATA_192;
+    else if(size <= 208)
+        return LORA_PKT_DATA_208;
+}
+
 /// @brief Transmits a message through the LoRa module. Used with the chat dialog.
 /// @param e 
 void send_message(lv_event_t * e){
@@ -2662,8 +2669,6 @@ void send_message(lv_event_t * e){
     if(code == LV_EVENT_SHORT_CLICKED){
         // Lets assemble a lora packet.
         lora_packet pkt;
-        // Set the lora_packet type to DATA
-        pkt.type = LORA_PKT_DATA;
         // Set the app id
         pkt.app_id = APP_LORA_CHAT;
         // The sender is the owner.
@@ -2686,6 +2691,8 @@ void send_message(lv_event_t * e){
                 memcpy(pkt.data, ciphertext, padded_len);
                 strcpy(pkt.id, generate_ID(6).c_str());
                 pkt.data_size = padded_len;
+                // Set the lora_packet type to DATA
+                pkt.type = get_data_pkt_type(pkt.data_size);
                 transmit_pkt_list.add(pkt);
                 // add the message to the contact's list of messages.
                 // This is used when we are assembling the chat messages list, every time we found me = true we are 
