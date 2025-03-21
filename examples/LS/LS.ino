@@ -4053,7 +4053,7 @@ void ui(){
     lv_obj_set_style_text_font(lbl_btn_test, &ubuntu, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(lbl_btn_test, (const char*)F("Ping"));
     lv_obj_align(lbl_btn_test, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(btn_test, ping, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_obj_add_event_cb(btn_test, NULL, LV_EVENT_SHORT_CLICKED, NULL);
 
     // Nodes button
     discoveryApp.initUI(lv_scr_act());
