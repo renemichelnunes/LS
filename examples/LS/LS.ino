@@ -1820,7 +1820,14 @@ void collectPackets(void * param){
                             }
                         }
                         else{
-                            if(lp.type == LORA_PKT_DATA || lp.type == LORA_PKT_DATA_SMALL){
+                            if(lp.type == LORA_PKT_DATA || lp.type == LORA_PKT_DATA_SMALL ||
+                                lp.type == LORA_PKT_DATA_16 || lp.type == LORA_PKT_DATA_32 ||
+                                lp.type == LORA_PKT_DATA_48 || lp.type == LORA_PKT_DATA_64 ||
+                                lp.type == LORA_PKT_DATA_80 || lp.type == LORA_PKT_DATA_96 ||
+                                lp.type == LORA_PKT_DATA_112 || lp.type == LORA_PKT_DATA_128 ||
+                                lp.type == LORA_PKT_DATA_144 || lp.type == LORA_PKT_DATA_160 ||
+                                lp.type == LORA_PKT_DATA_176 || lp.type == LORA_PKT_DATA_192 ||
+                                lp.type == LORA_PKT_DATA_208){
                                 lora_packet ack;
                                 ack.type = LORA_PKT_ACK;
                                 //Serial.printf("collectPackets - p.app_id %d\n");

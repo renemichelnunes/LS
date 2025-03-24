@@ -81,7 +81,7 @@ struct lora_packet_data{
 
 /// @brief Struct that is used when we send messages 16 bytes.
 struct lora_packet_data_16{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_16;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -95,7 +95,7 @@ struct lora_packet_data_16{
 
 /// @brief Struct that is used when we send messages 32 bytes.
 struct lora_packet_data_32{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_32;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -109,7 +109,7 @@ struct lora_packet_data_32{
 
 /// @brief Struct that is used when we send messages 48 bytes.
 struct lora_packet_data_48{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_48;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -123,7 +123,7 @@ struct lora_packet_data_48{
 
 /// @brief Struct that is used when we send messages 64 bytes.
 struct lora_packet_data_64{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_64;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -137,7 +137,7 @@ struct lora_packet_data_64{
 
 /// @brief Struct that is used when we send messages 80 bytes.
 struct lora_packet_data_80{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_80;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -151,7 +151,7 @@ struct lora_packet_data_80{
 
 /// @brief Struct that is used when we send messages 96 bytes.
 struct lora_packet_data_96{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_96;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -165,7 +165,7 @@ struct lora_packet_data_96{
 
 /// @brief Struct that is used when we send messages 112 bytes.
 struct lora_packet_data_112{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_112;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -179,7 +179,7 @@ struct lora_packet_data_112{
 
 /// @brief Struct that is used when we send messages 128 bytes.
 struct lora_packet_data_128{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_128;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -193,7 +193,7 @@ struct lora_packet_data_128{
 
 /// @brief Struct that is used when we send messages 144 bytes.
 struct lora_packet_data_144{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_144;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -207,7 +207,7 @@ struct lora_packet_data_144{
 
 /// @brief Struct that is used when we send messages 160 bytes.
 struct lora_packet_data_160{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_160;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -221,7 +221,7 @@ struct lora_packet_data_160{
 
 /// @brief Struct that is used when we send messages 176 bytes.
 struct lora_packet_data_176{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_176;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -235,7 +235,7 @@ struct lora_packet_data_176{
 
 /// @brief Struct that is used when we send messages 192 bytes.
 struct lora_packet_data_192{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_192;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
@@ -249,7 +249,7 @@ struct lora_packet_data_192{
 
 /// @brief Struct that is used when we send messages 208 bytes.
 struct lora_packet_data_208{
-    uint8_t type = LORA_PKT_DATA;
+    uint8_t type = LORA_PKT_DATA_208;
     char id[7] = {'\0'};
     char sender[7] = {'\0'};
     char destiny[7] = {'\0'};
