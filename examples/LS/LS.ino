@@ -2640,7 +2640,7 @@ void show_chat(lv_event_t * e){
 
 /// @brief Return the lora packet type based on the size of the payload
 /// @param size 
-/// @return uint8_t
+/// @return uint8_t LORA_PKT_DATA_XX
 uint8_t get_data_pkt_type(uint8_t size){
     if(size <= 16)
         return LORA_PKT_DATA_16;
