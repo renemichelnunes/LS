@@ -29,7 +29,7 @@
 #include "script.h"
 //#include "favicon.h"
 #include "ArduinoJson.hpp"
-#include "apps/discovery/app_discovery.hpp"
+//#include "apps/discovery/app_discovery.hpp"
 #include "apps/tictactoe/tictactoe.hpp"
 
 using namespace httpsserver;
@@ -154,7 +154,7 @@ volatile bool wifi_got_ip = false;
 volatile float rssi, snr;
 #define APP_SYSTEM 1
 #define APP_LORA_CHAT 2
-discovery_app discoveryApp = discovery_app(&lvgl_mutex);
+//discovery_app discoveryApp = discovery_app(&lvgl_mutex);
 void transmit_pkt_list_add(lora_packet p);
 tictactoe * ttt = NULL;
 
@@ -1769,7 +1769,7 @@ void collectPackets(void * param){
                     invalid_pkt_size = true;
                 }
                 
-                if(lp.app_id != APP_DISCOVERY)
+                //if(lp.app_id != APP_DISCOVERY)
                     if(lp.app_id != APP_LORA_CHAT)
                         if(lp.app_id != APP_SYSTEM) 
                             if(lp.app_id != APP_TICTACTOE){
@@ -1777,7 +1777,7 @@ void collectPackets(void * param){
                                     //Serial.printf("APP_ID %d unknown\n", lp.app_id);
                                     invalid_pkt_size = true;
                                 }
-                }
+                            }
                 // If we received the ACK we made
                 if(lp.type == LORA_PKT_ACK && strcmp(lp.sender, user_id) == 0)
                     invalid_pkt_size = true;
@@ -1878,15 +1878,15 @@ void processPackets2(void * param){
             p = pkt_list.get();
             if(p.type == LORA_PKT_ANNOUNCE){
                 // Save the node ID in the discovery list
-                disc_node dis;
-                strcpy(dis.id, p.sender);
-                discovery_node dn = discovery_node(MAX_HOPS - p.hops, dis);
-                if(discoveryApp.add(dn)){
+                //disc_node dis;
+                //strcpy(dis.id, p.sender);
+                //discovery_node dn = discovery_node(MAX_HOPS - p.hops, dis);
+                //if(discoveryApp.add(dn)){
                     //Serial.printf("Node ID %s added to discovery list\n", dn.gridLocalization.node_id);
-                }
-                else{
+                //}
+                //else{
                     //Serial.printf("Node ID %s already exists in discovery list\n", dn.gridLocalization.node_id);
-                }
+                //}
                 // We need to know who is saying Hi! If is on our contact list, we'll update his status, if not, drop it.
                 pthread_mutex_lock(&messages_mutex);
                 Contact * c = contacts_list.getContactByID(p.sender);
@@ -1926,8 +1926,8 @@ void processPackets2(void * param){
                 // Redirect the data to its application
                 if(p.app_id == APP_LORA_CHAT)
                     Serial.println((const char*)F("APP_LORA_CHAT"));
-                else if(p.app_id == APP_DISCOVERY)
-                    Serial.println((const char*)F("APP_DISCOVERY"));
+                //else if(p.app_id == APP_DISCOVERY)
+                //    Serial.println((const char*)F("APP_DISCOVERY"));
                 else if(p.app_id == APP_SYSTEM)
                     Serial.println((const char*)F("APP_SYSTEM"));
                 else if(p.app_id == APP_TICTACTOE)
@@ -2020,9 +2020,9 @@ void processPackets2(void * param){
                         Serial.printf("Contact ID %s not found in contact list\n", p.sender);
                     }
                 }
-                else if(p.app_id == APP_DISCOVERY){
+                //else if(p.app_id == APP_DISCOVERY){
 
-                }
+                //}
                 else if(p.app_id == APP_TICTACTOE){
                     Serial.printf("Received an ACK from %s to TTT packet ID %s\n", p.sender, p.status);
                     if(!transmit_pkt_list.del(p.status))
@@ -2638,6 +2638,9 @@ void show_chat(lv_event_t * e){
     }
 }
 
+/// @brief Return the lora packet type based on the size of the payload
+/// @param size 
+/// @return uint8_t
 uint8_t get_data_pkt_type(uint8_t size){
     if(size <= 16)
         return LORA_PKT_DATA_16;
@@ -2665,6 +2668,7 @@ uint8_t get_data_pkt_type(uint8_t size){
         return LORA_PKT_DATA_192;
     else if(size <= 208)
         return LORA_PKT_DATA_208;
+    return 255;
 }
 
 /// @brief Transmits a message through the LoRa module. Used with the chat dialog.
@@ -3940,7 +3944,7 @@ void rssi_chart_zoom(lv_event_t * e){
 }
 
 void show_discovery_app(lv_event_t * e){
-    discoveryApp.showUI();
+    //discoveryApp.showUI();
 }
 
 void show_ttt(lv_event_t * e){
@@ -4063,8 +4067,8 @@ void ui(){
     lv_obj_add_event_cb(btn_test, NULL, LV_EVENT_SHORT_CLICKED, NULL);
 
     // Nodes button
-    discoveryApp.initUI(lv_scr_act());
-    delay(2000);
+    //discoveryApp.initUI(lv_scr_act());
+    //delay(2000);
     btn_nodes = lv_btn_create(frm_home);
     lv_obj_set_size(btn_nodes, 50, 20);
     lv_obj_align(btn_nodes, LV_ALIGN_BOTTOM_RIGHT, 0, -50);
